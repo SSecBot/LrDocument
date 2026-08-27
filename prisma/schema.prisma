@@ -1,0 +1,188 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String              @id @default(cuid())
+  name         String
+  email        String              @unique
+  passwordHash String
+  role             String              @default("USER") // "USER" | "ADMIN"
+  status           String              @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  subscriptionPlan String              @default("Aylık") // "Aylık" | "Tek Seferlik"
+  createdAt        DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  folders      Folder[]
+  notes        Note[]
+  scripts      Script[]
+  tasks        Task[]
+  events       CalendarEvent[]
+  mediaItems   MediaItem[]
+  transactions FinanceTransaction[]
+  categories   FinanceCategory[]
+  kanbanCards  KanbanCard[]
+}
+
+model Folder {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  iconName    String?  @default("Folder")
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  content    String
+  folder     String   @default("genel")
+  tags       String   @default("[]") // JSON string
+  isFavorite Boolean  @default(false)
+  isPinned   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Script {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  targetPlatform  String   @default("YouTube")
+  status          String   @default("fikir")
+  sections        String   @default("[]") // JSON string of ScriptSection[]
+  speakingRateWPM Int      @default(130)
+  linkedNoteId    String?
+  tags            String   @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Task {
+  id             String    @id @default(cuid())
+  userId         String
+  title          String
+  description    String?
+  completed      Boolean   @default(false)
+  priority       String    @default("orta")
+  dueDate        String?
+  linkedNoteId   String?
+  linkedScriptId String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CalendarEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  description     String?
+  date            String
+  time            String?
+  durationMinutes Int      @default(30)
+  eventType       String   @default("gorev")
+  platform        String?
+  linkedScriptId  String?
+  linkedNoteId    String?
+  linkedTaskId    String?
+  status          String   @default("planlandi")
+  checklist       String   @default("[]") // JSON string of EventChecklistItem[]
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MediaItem {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  description    String?
+  type           String   @default("image")
+  url            String
+  thumbnailUrl   String?
+  linkedNoteId   String?
+  linkedScriptId String?
+  tags           String   @default("[]")
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model FinanceTransaction {
+  id                 String   @id @default(cuid())
+  userId             String
+  title              String
+  amount             Float
+  type               String   @default("gelir")
+  category           String
+  date               String
+  currency           String?  @default("TRY")
+  originalAmount     Float?
+  exchangeRate       Float?
+  markupTRY          Float?
+  effectiveRate      Float?
+  description        String?
+  linkedScriptId     String?
+  isRecurring        Boolean  @default(false)
+  recurringFrequency String?
+  isConfirmed        Boolean  @default(false)
+  dueDate            String?
+  priority           String?  @default("orta")
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model FinanceCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String   @default("gelir")
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model KanbanCard {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  description    String?
+  projectType    String   @default("genel")
+  columnId       String   @default("fikir")
+  priority       String   @default("orta")
+  dueDate        String?
+  tags           String   @default("[]")
+  linkedScriptId String?
+  linkedNoteId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

@@ -19,7 +19,6 @@ import {
   FolderPlus,
   Edit2,
   Trash2,
-  MoreVertical,
 } from 'lucide-react';
 import { formatTurkishDate } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
@@ -40,6 +39,7 @@ export const NotesWorkspace: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
 
   // Folder Modals state
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
@@ -127,20 +127,35 @@ export const NotesWorkspace: React.FC = () => {
     }
   };
 
+  const handleSelectNoteMobile = (noteId: string) => {
+    setActiveNoteId(noteId);
+    setMobileView('editor');
+  };
+
+  const handleNewNoteMobile = () => {
+    const newId = addNote();
+    setActiveNoteId(newId);
+    setMobileView('editor');
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#121212]">
       {/* Secondary Left Column: Notes List & Folders */}
-      <div className="w-80 border-r border-[#262626] bg-[#161616] flex flex-col h-full shrink-0">
+      <div
+        className={`${
+          mobileView === 'list' ? 'flex w-full' : 'hidden'
+        } md:flex md:w-80 border-r border-[#262626] bg-[#161616] flex-col h-full shrink-0`}
+      >
         {/* Header & Search */}
-        <div className="p-4 border-b border-[#262626] space-y-3">
+        <div className="p-3.5 sm:p-4 border-b border-[#262626] space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
               <FileText className="w-4 h-4 text-emerald-400" />
               Not Defteri
             </h2>
             <button
-              onClick={() => addNote()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+              onClick={handleNewNoteMobile}
+              className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Yeni Not</span>
@@ -155,7 +170,7 @@ export const NotesWorkspace: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Notlarda veya LaTeX'te ara..."
-              className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#71717a] focus:outline-none transition-colors"
+              className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none transition-colors min-h-[40px]"
             />
           </div>
         </div>
@@ -166,17 +181,17 @@ export const NotesWorkspace: React.FC = () => {
             <span className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider">Klasörler</span>
             <button
               onClick={() => setIsNewFolderModalOpen(true)}
-              className="text-[#71717a] hover:text-emerald-400 p-0.5 rounded transition-colors flex items-center gap-1 text-[11px]"
+              className="text-[#71717a] hover:text-emerald-400 p-1 rounded transition-colors flex items-center gap-1 text-[11px]"
               title="Yeni Klasör Oluştur"
             >
               <FolderPlus className="w-3.5 h-3.5" />
               <span>+ Klasör</span>
             </button>
           </div>
-          <div className="space-y-0.5 max-h-48 overflow-y-auto pr-0.5">
+          <div className="space-y-0.5 max-h-40 sm:max-h-48 overflow-y-auto pr-0.5 no-scrollbar">
             <button
               onClick={() => { setActiveFolder('all'); setSelectedTag(null); }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeFolder === 'all' && !selectedTag
+              className={`w-full min-h-[36px] flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeFolder === 'all' && !selectedTag
                   ? 'bg-[#2d5a27]/25 text-emerald-300 border border-[#2d5a27]/40'
                   : 'text-[#9ca3af] hover:text-white hover:bg-[#202020]'
                 }`}
@@ -190,7 +205,7 @@ export const NotesWorkspace: React.FC = () => {
 
             <button
               onClick={() => { setActiveFolder('favorites'); setSelectedTag(null); }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeFolder === 'favorites'
+              className={`w-full min-h-[36px] flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeFolder === 'favorites'
                   ? 'bg-[#2d5a27]/25 text-emerald-300 border border-[#2d5a27]/40'
                   : 'text-[#9ca3af] hover:text-white hover:bg-[#202020]'
                 }`}
@@ -212,7 +227,7 @@ export const NotesWorkspace: React.FC = () => {
                 <div
                   key={folder.id}
                   onClick={() => { setActiveFolder(folder.id); setSelectedTag(null); }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer group/f ${isActive
+                  className={`w-full min-h-[36px] flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer group/f ${isActive
                       ? 'bg-[#2d5a27]/25 text-emerald-300 border border-[#2d5a27]/40'
                       : 'text-[#9ca3af] hover:text-white hover:bg-[#202020]'
                     }`}
@@ -254,14 +269,14 @@ export const NotesWorkspace: React.FC = () => {
 
         {/* Tag Filters */}
         {allTags.length > 0 && (
-          <div className="px-3 py-2 border-b border-[#242424] overflow-x-auto">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="px-3 py-2 border-b border-[#242424] overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 flex-nowrap sm:flex-wrap">
               <Tag className="w-3 h-3 text-[#71717a] shrink-0" />
               {allTags.slice(0, 8).map((tag) => (
                 <button
                   key={tag}
                   onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full transition-all ${selectedTag === tag
+                  className={`min-h-[28px] text-[10px] px-2.5 py-0.5 rounded-full transition-all whitespace-nowrap ${selectedTag === tag
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium'
                       : 'bg-[#202020] text-[#71717a] hover:text-[#d1d5db] border border-[#2a2a2a]'
                     }`}
@@ -279,7 +294,7 @@ export const NotesWorkspace: React.FC = () => {
             <div className="p-6 text-center text-[#71717a] text-xs space-y-2">
               <FileText className="w-8 h-8 text-[#333] mx-auto mb-1" />
               <p className="text-white font-medium">Henüz kayıtlı bir not bulunmuyor.</p>
-              <p className="text-[11px] text-[#888]">Yeni bir matematik notu eklemek için yukarıdaki "+ Yeni Not" butonunu kullanın.</p>
+              <p className="text-[11px] text-[#888]">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>
             </div>
           ) : (
             sortedNotes.map((n) => {
@@ -292,10 +307,10 @@ export const NotesWorkspace: React.FC = () => {
               return (
                 <div
                   key={n.id}
-                  onClick={() => setActiveNoteId(n.id)}
-                  className={`p-3 rounded-xl cursor-pointer border transition-all relative group ${isSelected
+                  onClick={() => handleSelectNoteMobile(n.id)}
+                  className={`p-3 sm:p-3.5 rounded-xl cursor-pointer border transition-all relative group ${isSelected
                       ? 'bg-[#202820] border-[#2d5a27] shadow-lg shadow-black/40'
-                      : 'bg-[#1a1a1a] hover:bg-[#222222] border-[#282828] hover:border-[#383838]'
+                      : 'bg-[#1a1a1a] hover:bg-[#222222] active:bg-[#252525] border-[#282828] hover:border-[#383838]'
                     }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -332,26 +347,36 @@ export const NotesWorkspace: React.FC = () => {
       </div>
 
       {/* Main Right Area: Active Note Editor */}
-      {activeNote ? (
-        <NoteEditor key={activeNote.id} note={activeNote} />
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#71717a] space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#2e2e2e] flex items-center justify-center text-emerald-400 shadow-inner">
-            <FileText className="w-8 h-8" />
+      <div
+        className={`${
+          mobileView === 'editor' ? 'flex flex-1' : 'hidden'
+        } md:flex md:flex-1 h-full overflow-hidden`}
+      >
+        {activeNote ? (
+          <NoteEditor
+            key={activeNote.id}
+            note={activeNote}
+            onBack={() => setMobileView('list')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#71717a] space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#2e2e2e] flex items-center justify-center text-emerald-400 shadow-inner">
+              <FileText className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-white tracking-tight">Henüz Kayıtlı Bir Not Bulunmuyor</h3>
+            <p className="text-xs max-w-md text-[#9ca3af] leading-relaxed">
+              Markdown formatında zengin notlar yazabilir, canlı KaTeX formülleri ($e^{'{'}i\pi{'}'} + 1 = 0$) ekleyebilir ve klasörlerle organize edebilirsiniz.
+            </p>
+            <button
+              onClick={handleNewNoteMobile}
+              className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 flex items-center gap-2 transition-all min-h-[44px]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>İlk Notunuzu Başlatın</span>
+            </button>
           </div>
-          <h3 className="text-lg font-bold text-white tracking-tight">Henüz Kayıtlı Bir Not Bulunmuyor</h3>
-          <p className="text-xs max-w-md text-[#9ca3af] leading-relaxed">
-            Markdown formatında zengin notlar yazabilir, canlı KaTeX formülleri ($e^{'{'}i\pi{'}'} + 1 = 0$) ekleyebilir ve klasörlerle organize edebilirsiniz.
-          </p>
-          <button
-            onClick={() => addNote()}
-            className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 flex items-center gap-2 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>İlk Notunuzu Başlatın</span>
-          </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Create Folder Modal */}
       <Modal
@@ -369,7 +394,7 @@ export const NotesWorkspace: React.FC = () => {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="Örn: Kuantum Mekaniği, YKS 2026..."
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div>
@@ -379,22 +404,22 @@ export const NotesWorkspace: React.FC = () => {
               value={newFolderDesc}
               onChange={(e) => setNewFolderDesc(e.target.value)}
               placeholder="Bu klasördeki notların kısa açıklaması..."
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setIsNewFolderModalOpen(false)}
-              className="px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+              className="min-h-[40px] px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl transition-colors"
+              className="min-h-[40px] px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl shadow-md transition-colors"
             >
-              Klasörü Kaydet
+              Klasör Oluştur
             </button>
           </div>
         </form>
@@ -405,7 +430,7 @@ export const NotesWorkspace: React.FC = () => {
         isOpen={!!editingFolder}
         onClose={() => setEditingFolder(null)}
         title="Klasörü Düzenle"
-        subtitle="Klasör adını veya açıklamasını güncelleyin."
+        subtitle="Klasör adını ve açıklamasını güncelleyin."
       >
         <form onSubmit={handleSaveEditFolder} className="space-y-4">
           <div>
@@ -415,62 +440,61 @@ export const NotesWorkspace: React.FC = () => {
               required
               value={editFolderName}
               onChange={(e) => setEditFolderName(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Açıklama</label>
+            <label className="block text-xs font-semibold text-white mb-1">Açıklama (Opsiyonel)</label>
             <input
               type="text"
               value={editFolderDesc}
               onChange={(e) => setEditFolderDesc(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setEditingFolder(null)}
-              className="px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+              className="min-h-[40px] px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl transition-colors"
+              className="min-h-[40px] px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl shadow-md transition-colors"
             >
-              Değişiklikleri Kaydet
+              Kaydet
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete Folder Confirmation Modal */}
+      {/* Delete Folder Confirm Modal */}
       <Modal
         isOpen={!!deletingFolder}
         onClose={() => setDeletingFolder(null)}
         title="Klasörü Sil"
-        subtitle="Bu klasörü silmek istediğinizden emin misiniz?"
+        subtitle="Bu klasörü silmek istediğinize emin misiniz? İçindeki notlar silinmez, kök dizine taşınır."
       >
-        <div className="space-y-4">
-          <p className="text-xs text-[#d1d5db] leading-relaxed">
-            <strong>"{deletingFolder?.name}"</strong> klasörü silinecektir. Klasörün içindeki mevcut notlar silinmez, otomatik olarak <strong>Matematik Fikirleri</strong> klasörüne taşınır.
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-[#d1d5db]">
+            <strong>{deletingFolder?.name}</strong> klasörü silinecektir.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setDeletingFolder(null)}
-              className="px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+              className="min-h-[40px] px-4 py-2 bg-[#262626] hover:bg-[#333] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
             >
               Vazgeç
             </button>
             <button
               type="button"
               onClick={handleDeleteFolderConfirm}
-              className="px-4 py-2 bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5"
+              className="min-h-[40px] px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white rounded-xl shadow-md transition-colors"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Klasörü Sil</span>
+              Evet, Sil
             </button>
           </div>
         </div>

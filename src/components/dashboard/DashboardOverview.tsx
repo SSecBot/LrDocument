@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { PlatformBadge, ScriptStatusBadge, PriorityBadge } from '@/components/ui/Badge';
+import { PlatformBadge } from '@/components/ui/Badge';
 import { AlertBanner } from './AlertBanner';
 import {
   FileText,
@@ -15,9 +15,7 @@ import {
   Sparkles,
   ArrowRight,
   Clock,
-  Layers,
   Star,
-  TrendingUp,
   Kanban,
 } from 'lucide-react';
 import { formatTurkishDate, getRelativeTimeTurkish, formatCurrencyTRY } from '@/lib/utils';
@@ -36,7 +34,6 @@ export const DashboardOverview: React.FC = () => {
     setActiveScriptId,
     addNote,
     addScript,
-    addTask,
   } = useAppStore();
 
   const totalNotes = notes.length;
@@ -53,34 +50,34 @@ export const DashboardOverview: React.FC = () => {
   const upcomingReleaseEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 3);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#121212] p-6 md:p-10 space-y-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="flex-1 overflow-y-auto bg-[#121212] p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
+      <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6">
         {/* Overdue & Pending Alert Banner */}
         <AlertBanner />
 
         {/* Welcome Hero Banner */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#182318] via-[#1a1a1a] to-[#161616] border border-[#2d5a27]/40 rounded-3xl p-6 md:p-8 shadow-2xl">
-          <div className="relative z-10 space-y-3 max-w-2xl">
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#182318] via-[#1a1a1a] to-[#161616] border border-[#2d5a27]/40 rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 shadow-2xl">
+          <div className="relative z-10 space-y-2.5 sm:space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2d5a27]/30 border border-[#2d5a27]/60 text-emerald-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               <span>LrDocument Çalışma Alanı</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
               İçerik, Araştırma & Üretim Yönetim Merkezi
             </h1>
-            <p className="text-sm text-[#d1d5db] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#d1d5db] leading-relaxed">
               Zengin matematik notları yazın, video konuşma sürelerini hesaplayın, medya varlıklarınızı depolayın, evrensel Kanban panosunda projelerinizi yönetin ve bütçenizi takip edin.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 pt-4 relative z-10 flex-wrap">
+          <div className="flex items-center gap-2.5 sm:gap-3 pt-4 relative z-10 flex-wrap">
             <button
               onClick={() => {
                 const id = addNote();
                 setActiveNoteId(id);
                 setActiveTab('notes');
               }}
-              className="px-4 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all"
+              className="min-h-[44px] px-4 py-2.5 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Yeni Not Başlat</span>
@@ -92,7 +89,7 @@ export const DashboardOverview: React.FC = () => {
                 setActiveScriptId(id);
                 setActiveTab('scripts');
               }}
-              className="px-4 py-2.5 bg-[#222] hover:bg-[#2c2c2c] border border-[#383838] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+              className="min-h-[44px] px-4 py-2.5 bg-[#222] hover:bg-[#2c2c2c] active:bg-[#2e2e2e] border border-[#383838] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
             >
               <Video className="w-4 h-4 text-emerald-400" />
               <span>Yeni Video Senaryosu</span>
@@ -100,37 +97,37 @@ export const DashboardOverview: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('kanban')}
-              className="px-4 py-2.5 bg-[#202020] hover:bg-[#282828] border border-[#333] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+              className="min-h-[44px] px-4 py-2.5 bg-[#202020] hover:bg-[#282828] active:bg-[#2e2e2e] border border-[#333] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
             >
               <Kanban className="w-4 h-4 text-emerald-400" />
-              <span>Kanban Panosunu Aç</span>
+              <span>Kanban Panosu</span>
             </button>
 
             <button
               onClick={() => setActiveTab('finance')}
-              className="px-4 py-2.5 bg-[#202020] hover:bg-[#282828] border border-[#333] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+              className="min-h-[44px] px-4 py-2.5 bg-[#202020] hover:bg-[#282828] active:bg-[#2e2e2e] border border-[#333] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
             >
               <Wallet className="w-4 h-4 text-emerald-400" />
-              <span>Gelir ve Gideri Aç</span>
+              <span>Gelir ve Gider</span>
             </button>
           </div>
         </div>
 
-        {/* 7 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+        {/* 7 Metric Cards: 2-col on mobile, 4-col on tablet, 7-col on wide screens */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3.5">
           {/* Notes Metric */}
           <div
             onClick={() => setActiveTab('notes')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Notlar</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Notlar</span>
               <div className="p-1.5 bg-[#202820] border border-[#2d5a27]/40 rounded-lg text-emerald-400">
                 <FileText className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{totalNotes}</div>
-            <div className="text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{totalNotes}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>Notlara git</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -139,16 +136,16 @@ export const DashboardOverview: React.FC = () => {
           {/* Scripts Metric */}
           <div
             onClick={() => setActiveTab('scripts')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Senaryolar</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Senaryolar</span>
               <div className="p-1.5 bg-[#142028] border border-[#1e3a4e] rounded-lg text-sky-400">
                 <Video className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{scripts.length}</div>
-            <div className="text-[11px] text-sky-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{scripts.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-sky-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>{readyScripts} hazır</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -157,16 +154,16 @@ export const DashboardOverview: React.FC = () => {
           {/* Kanban Metric */}
           <div
             onClick={() => setActiveTab('kanban')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Kanban</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Kanban</span>
               <div className="p-1.5 bg-[#202820] border border-[#2d5a27]/40 rounded-lg text-emerald-400">
                 <Kanban className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{kanbanCards.length}</div>
-            <div className="text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{kanbanCards.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>{inProgressKanban} aktif</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -175,16 +172,16 @@ export const DashboardOverview: React.FC = () => {
           {/* Media Metric */}
           <div
             onClick={() => setActiveTab('media')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Medya</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Medya</span>
               <div className="p-1.5 bg-[#281424] border border-[#4e1e44] rounded-lg text-pink-400">
                 <ImageIcon className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{mediaItems.length}</div>
-            <div className="text-[11px] text-pink-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{mediaItems.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-pink-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>Çizim & Galeri</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -193,16 +190,16 @@ export const DashboardOverview: React.FC = () => {
           {/* Tasks Metric */}
           <div
             onClick={() => setActiveTab('tasks')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Görevler</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Görevler</span>
               <div className="p-1.5 bg-[#282014] border border-[#4e3a1e] rounded-lg text-amber-400">
                 <CheckSquare className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{pendingTasks}</div>
-            <div className="text-[11px] text-amber-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{pendingTasks}</div>
+            <div className="text-[10px] sm:text-[11px] text-amber-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>Yapılacaklar</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -211,16 +208,16 @@ export const DashboardOverview: React.FC = () => {
           {/* Calendar Metric */}
           <div
             onClick={() => setActiveTab('calendar')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Takvim</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Takvim</span>
               <div className="p-1.5 bg-[#201828] border border-[#3e1e4e] rounded-lg text-purple-400">
                 <Calendar className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-white">{upcomingEvents}</div>
-            <div className="text-[11px] text-purple-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-lg sm:text-xl font-extrabold text-white">{upcomingEvents}</div>
+            <div className="text-[10px] sm:text-[11px] text-purple-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>Planlananlar</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -229,18 +226,18 @@ export const DashboardOverview: React.FC = () => {
           {/* Finance Metric */}
           <div
             onClick={() => setActiveTab('finance')}
-            className="bg-[#181818] hover:bg-[#202020] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-4 cursor-pointer transition-all shadow-sm space-y-1.5 group"
+            className="col-span-2 sm:col-span-1 bg-[#181818] hover:bg-[#202020] active:bg-[#252525] border border-[#282828] hover:border-[#2d5a27] rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all shadow-sm space-y-1 group min-h-[90px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Net Bakiye</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider">Net Bakiye</span>
               <div className="p-1.5 bg-[#182818] border border-[#2d5a27]/50 rounded-lg text-emerald-400">
                 <Wallet className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="text-xl font-extrabold font-mono text-emerald-400">
+            <div className="text-lg sm:text-xl font-extrabold font-mono text-emerald-400">
               {formatCurrencyTRY(netBalance)}
             </div>
-            <div className="text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               <span>Finans Paneli</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </div>
@@ -248,24 +245,24 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         {/* 2 Column Quick Highlights: Notes & Releases */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Recent Notes */}
-          <div className="bg-[#161616] border border-[#262626] rounded-3xl p-6 shadow-xl space-y-4">
+          <div className="bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-base font-bold text-white tracking-tight">Son Düzenlenen Notlar</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Son Düzenlenen Notlar</h2>
               </div>
               <button
                 onClick={() => setActiveTab('notes')}
-                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-medium"
+                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-medium min-h-[36px]"
               >
                 <span>Tümünü Gör</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 sm:space-y-3">
               {recentNotes.length === 0 ? (
                 <div className="text-center py-8 text-[#71717a] text-xs space-y-2">
                   <p>Henüz kayıtlı bir not bulunmuyor.</p>
@@ -275,7 +272,7 @@ export const DashboardOverview: React.FC = () => {
                       setActiveNoteId(id);
                       setActiveTab('notes');
                     }}
-                    className="text-emerald-400 hover:underline font-semibold text-xs inline-flex items-center gap-1"
+                    className="text-emerald-400 hover:underline font-semibold text-xs inline-flex items-center gap-1 min-h-[36px]"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Yeni Not Başlat</span>
@@ -289,7 +286,7 @@ export const DashboardOverview: React.FC = () => {
                       setActiveNoteId(note.id);
                       setActiveTab('notes');
                     }}
-                    className="p-3.5 rounded-2xl bg-[#1d1d1d] hover:bg-[#252525] border border-[#2e2e2e] cursor-pointer transition-all flex items-center justify-between gap-3 group"
+                    className="p-3.5 rounded-2xl bg-[#1d1d1d] hover:bg-[#252525] active:bg-[#282828] border border-[#2e2e2e] cursor-pointer transition-all flex items-center justify-between gap-3 group"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -318,28 +315,28 @@ export const DashboardOverview: React.FC = () => {
           </div>
 
           {/* Upcoming Calendar Releases */}
-          <div className="bg-[#161616] border border-[#262626] rounded-3xl p-6 shadow-xl space-y-4">
+          <div className="bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-purple-400" />
-                <h2 className="text-base font-bold text-white tracking-tight">Yaklaşan Yayın Takvimi</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Yaklaşan Yayın Takvimi</h2>
               </div>
               <button
                 onClick={() => setActiveTab('calendar')}
-                className="text-xs text-purple-400 hover:underline flex items-center gap-1 font-medium"
+                className="text-xs text-purple-400 hover:underline flex items-center gap-1 font-medium min-h-[36px]"
               >
                 <span>Takvimi Aç</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 sm:space-y-3">
               {upcomingReleaseEvents.length === 0 ? (
                 <div className="text-center py-8 text-[#71717a] text-xs space-y-2">
                   <p>Planlanmış yaklaşan etkinlik bulunmuyor.</p>
                   <button
                     onClick={() => setActiveTab('calendar')}
-                    className="text-purple-400 hover:underline font-semibold text-xs inline-flex items-center gap-1"
+                    className="text-purple-400 hover:underline font-semibold text-xs inline-flex items-center gap-1 min-h-[36px]"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Yeni Etkinlik Planla</span>
@@ -350,7 +347,7 @@ export const DashboardOverview: React.FC = () => {
                   <div
                     key={ev.id}
                     onClick={() => setActiveTab('calendar')}
-                    className="p-3.5 rounded-2xl bg-[#1d1d1d] hover:bg-[#252525] border border-[#2e2e2e] cursor-pointer transition-all flex items-center justify-between gap-3 group"
+                    className="p-3.5 rounded-2xl bg-[#1d1d1d] hover:bg-[#252525] active:bg-[#282828] border border-[#2e2e2e] cursor-pointer transition-all flex items-center justify-between gap-3 group"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

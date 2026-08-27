@@ -16,14 +16,16 @@ import {
   Copy,
   CalendarPlus,
   FileText,
+  ChevronLeft,
 } from 'lucide-react';
 import { calculateTiming } from '@/lib/scriptTiming';
 
 interface ScriptEditorProps {
   script: Script;
+  onBack?: () => void;
 }
 
-export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
+export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) => {
   const {
     updateScript,
     deleteScript,
@@ -108,14 +110,24 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
   return (
     <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-hidden">
       {/* Top Header */}
-      <div className="px-6 py-4 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 flex-1 min-w-[300px]">
+      <div className="px-4 sm:px-6 py-3.5 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[200px]">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="md:hidden min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-[#2a2a2a] active:bg-[#333] border border-[#333] rounded-xl text-[#d1d5db] flex items-center justify-center transition-colors shrink-0"
+              title="Senaryo Listesine Dön"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
+
           <input
             type="text"
             value={script.title}
             onChange={handleTitleChange}
             placeholder="Senaryo Başlığı..."
-            className="text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-[#383838] focus:border-[#2d5a27] focus:outline-none px-1.5 py-0.5 w-full transition-colors"
+            className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-[#383838] focus:border-[#2d5a27] focus:outline-none px-1.5 py-0.5 w-full transition-colors truncate"
           />
         </div>
 
@@ -125,7 +137,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
           <select
             value={script.targetPlatform}
             onChange={(e) => handlePlatformChange(e.target.value as Platform)}
-            className="bg-[#222] text-[#e5e7eb] border border-[#333] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27]"
+            className="min-h-[38px] bg-[#222] text-[#e5e7eb] border border-[#333] rounded-xl px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27]"
           >
             <option value="YouTube">YouTube</option>
             <option value="TikTok">TikTok</option>
@@ -138,7 +150,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
           <select
             value={script.status}
             onChange={(e) => handleStatusChange(e.target.value as ScriptStatus)}
-            className="bg-[#222] text-[#e5e7eb] border border-[#333] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27]"
+            className="min-h-[38px] bg-[#222] text-[#e5e7eb] border border-[#333] rounded-xl px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27]"
           >
             <option value="fikir">Fikir Aşamasında</option>
             <option value="senaryo_hazir">Senaryo Hazır</option>
@@ -150,7 +162,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
           {/* Actions */}
           <button
             onClick={handleCopyFullScript}
-            className="p-2 bg-[#222] hover:bg-[#2c2c2c] border border-[#333] text-[#9ca3af] hover:text-white rounded-lg transition-colors"
+            className="min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-[#2c2c2c] active:bg-[#333] border border-[#333] text-[#9ca3af] hover:text-white rounded-xl transition-colors flex items-center justify-center"
             title="Tüm Metni Kopyala"
           >
             <Copy className="w-4 h-4" />
@@ -158,16 +170,19 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
 
           <button
             onClick={handleCreateCalendarEvent}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2d5a27]/25 hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-emerald-300 rounded-lg text-xs font-medium transition-colors"
-            title="Yayın takvimine ekle"
+            className="min-h-[38px] px-3 py-1.5 bg-[#202820] hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-[#2d5a27]/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            title="Takvime Yayın Olarak Ekle"
           >
             <CalendarPlus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Takvime Ekle</span>
           </button>
 
           <button
-            onClick={() => deleteScript(script.id)}
-            className="p-2 bg-[#222] hover:bg-rose-950/40 border border-[#333] hover:border-rose-800 text-[#9ca3af] hover:text-rose-300 rounded-lg transition-colors"
+            onClick={() => {
+              deleteScript(script.id);
+              if (onBack) onBack();
+            }}
+            className="min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-rose-950/40 border border-[#333] text-[#9ca3af] hover:text-rose-400 rounded-xl transition-colors flex items-center justify-center"
             title="Senaryoyu Sil"
           >
             <Trash2 className="w-4 h-4" />
@@ -175,84 +190,102 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
         </div>
       </div>
 
-      {/* Linked Note Info Banner (if any) */}
-      {linkedNote && (
-        <div className="px-6 py-2 bg-[#162316] border-b border-emerald-900/40 flex items-center justify-between text-xs text-emerald-300">
-          <div className="flex items-center gap-2">
-            <Link2 className="w-3.5 h-3.5" />
-            <span>Bağlı Matematik Notu: <strong>{linkedNote.title}</strong></span>
-          </div>
-          <button
-            onClick={() => {
-              setActiveNoteId(linkedNote.id);
-              setActiveTab('notes');
-            }}
-            className="underline hover:text-white flex items-center gap-1 font-medium"
-          >
-            <FileText className="w-3 h-3" />
-            Notu Görüntüle
-          </button>
-        </div>
-      )}
-
-      {/* Timing and speech rate bar */}
+      {/* Script Timing & Target Duration Bar */}
       <ScriptTimingBar
         fullText={fullScriptText}
         wpm={script.speakingRateWPM || 130}
         onWpmChange={handleWpmChange}
       />
 
-      {/* Script Sections Builder */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="max-w-4xl mx-auto space-y-5">
-          {script.sections.map((section, index) => {
-            const sectionTiming = calculateTiming(section.content, script.speakingRateWPM || 130);
+      {/* Linked Note Info Banner (If linked) */}
+      {linkedNote && (
+        <div className="px-4 sm:px-6 py-2 bg-[#182318]/50 border-b border-[#2d5a27]/40 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-[#d1d5db] truncate">
+            <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-[#888]">Bağlı Matematik Notu:</span>
+            <span className="font-semibold text-emerald-300 truncate">{linkedNote.title}</span>
+          </div>
+          <button
+            onClick={() => {
+              setActiveNoteId(linkedNote.id);
+              setActiveTab('notes');
+            }}
+            className="text-xs text-emerald-400 hover:underline shrink-0 ml-2"
+          >
+            Notu Aç →
+          </button>
+        </div>
+      )}
+
+      {/* Script Sections Editor List */}
+      <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4">
+        {script.sections.length === 0 ? (
+          <div className="p-12 text-center text-[#71717a] text-xs space-y-3">
+            <p>Bu senaryoda henüz bölüm bulunmuyor.</p>
+            <button
+              onClick={() => addScriptSection(script.id, { type: 'hook', title: 'Kanca / Giriş' })}
+              className="px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl"
+            >
+              İlk Bölümü Ekle
+            </button>
+          </div>
+        ) : (
+          script.sections.map((section, index) => {
+            const timing = calculateTiming(section.content, script.speakingRateWPM || 130);
 
             return (
               <div
                 key={section.id}
-                className="bg-[#181818] border border-[#282828] rounded-2xl p-5 shadow-sm space-y-4 hover:border-[#383838] transition-colors"
+                className="bg-[#181818] border border-[#282828] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm hover:border-[#383838] transition-all"
               >
                 {/* Section Header */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 flex-1">
-                    <span
-                      className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border ${getSectionBadgeColor(
-                        section.type
-                      )}`}
-                    >
-                      Bölüm {index + 1}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <span className="text-xs font-mono font-bold text-[#666] w-5">
+                      #{index + 1}
                     </span>
+
+                    {/* Section Type Selector */}
+                    <select
+                      value={section.type}
+                      onChange={(e) => updateScriptSection(script.id, section.id, { type: e.target.value as ScriptSectionType })}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border focus:outline-none ${getSectionBadgeColor(section.type)}`}
+                    >
+                      <option value="hook" className="bg-[#202020] text-rose-300">Kanca (Hook)</option>
+                      <option value="intro" className="bg-[#202020] text-blue-300">Giriş (Intro)</option>
+                      <option value="proof" className="bg-[#202020] text-emerald-300">İspat / Çözüm (Proof)</option>
+                      <option value="example" className="bg-[#202020] text-amber-300">Örnek (Example)</option>
+                      <option value="cta" className="bg-[#202020] text-purple-300">Kapanış / CTA</option>
+                    </select>
 
                     <input
                       type="text"
                       value={section.title}
-                      onChange={(e) =>
-                        updateScriptSection(script.id, section.id, { title: e.target.value })
-                      }
-                      placeholder="Bölüm Başlığı (örn: Kanca, İspat, Giriş)..."
-                      className="bg-transparent text-sm font-bold text-white border-b border-transparent focus:border-[#2d5a27] focus:outline-none px-1 py-0.5 flex-1"
+                      onChange={(e) => updateScriptSection(script.id, section.id, { title: e.target.value })}
+                      placeholder="Bölüm Başlığı..."
+                      className="text-xs sm:text-sm font-bold text-white bg-transparent border-b border-transparent hover:border-[#383838] focus:border-[#2d5a27] focus:outline-none px-1.5 py-0.5 flex-1 min-w-[120px]"
                     />
                   </div>
 
-                  {/* Section Stats & Ordering buttons */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-medium text-emerald-400 bg-[#142214] px-2 py-0.5 rounded border border-[#2d5a27]/30">
-                      ⏱ {sectionTiming.formattedDuration} ({sectionTiming.wordCount} kelime)
+                  {/* Section Timing & Order Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-mono text-emerald-400 bg-[#152215] border border-[#2d5a27]/30 px-2 py-0.5 rounded-lg">
+                      ⏱ {timing.formattedDuration} ({timing.wordCount} kelime)
                     </span>
 
                     <button
                       onClick={() => handleMoveSection(index, 'up')}
                       disabled={index === 0}
-                      className="p-1 bg-[#222] hover:bg-[#2e2e2e] disabled:opacity-30 rounded text-[#9ca3af] hover:text-white"
+                      className="min-h-[32px] min-w-[32px] p-1.5 hover:bg-[#282828] disabled:opacity-20 text-[#9ca3af] rounded-lg transition-colors flex items-center justify-center"
                       title="Yukarı Taşı"
                     >
                       <ChevronUp className="w-3.5 h-3.5" />
                     </button>
+
                     <button
                       onClick={() => handleMoveSection(index, 'down')}
                       disabled={index === script.sections.length - 1}
-                      className="p-1 bg-[#222] hover:bg-[#2e2e2e] disabled:opacity-30 rounded text-[#9ca3af] hover:text-white"
+                      className="min-h-[32px] min-w-[32px] p-1.5 hover:bg-[#282828] disabled:opacity-20 text-[#9ca3af] rounded-lg transition-colors flex items-center justify-center"
                       title="Aşağı Taşı"
                     >
                       <ChevronDown className="w-3.5 h-3.5" />
@@ -260,7 +293,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
 
                     <button
                       onClick={() => deleteScriptSection(script.id, section.id)}
-                      className="p-1 bg-[#222] hover:bg-rose-950/40 rounded text-[#9ca3af] hover:text-rose-300"
+                      className="min-h-[32px] min-w-[32px] p-1.5 hover:bg-rose-950/40 text-[#9ca3af] hover:text-rose-400 rounded-lg transition-colors flex items-center justify-center"
                       title="Bölümü Sil"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -268,67 +301,49 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script }) => {
                   </div>
                 </div>
 
-                {/* Section Content Area */}
-                <div>
-                  <textarea
-                    value={section.content}
-                    onChange={(e) =>
-                      updateScriptSection(script.id, section.id, { content: e.target.value })
-                    }
-                    placeholder="Konuşmacı metnini buraya yazın..."
-                    rows={4}
-                    className="w-full bg-[#121212] border border-[#262626] focus:border-[#2d5a27] rounded-xl p-3.5 text-sm text-[#f5f5f0] leading-relaxed resize-y focus:outline-none"
-                  />
-                </div>
+                {/* Spoken Text & Visual Notes (Side by Side on desktop, Stacked on Mobile) */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  {/* Spoken Script Text */}
+                  <div className="lg:col-span-2 space-y-1">
+                    <label className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider block">
+                      Konuşma Metni (Spoken Script)
+                    </label>
+                    <textarea
+                      value={section.content}
+                      onChange={(e) => updateScriptSection(script.id, section.id, { content: e.target.value })}
+                      placeholder="Bu bölümde kameraya söylenecek veya seslendirilecek metni yazın..."
+                      className="w-full h-28 bg-[#121212] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl p-3 text-xs text-[#f5f5f0] placeholder-[#666] resize-none focus:outline-none font-sans leading-relaxed"
+                    />
+                  </div>
 
-                {/* B-Roll & Visual Notes input */}
-                <div className="flex items-center gap-2 bg-[#141414] border border-[#262626] rounded-xl px-3 py-2">
-                  <Camera className="w-4 h-4 text-amber-400 shrink-0" />
-                  <input
-                    type="text"
-                    value={section.visualNotes || ''}
-                    onChange={(e) =>
-                      updateScriptSection(script.id, section.id, { visualNotes: e.target.value })
-                    }
-                    placeholder="Görsel / B-Roll / Kamera notları (örn: Manim animasyonu, yakın çekim)..."
-                    className="bg-transparent text-xs text-[#fef08a] placeholder-[#71717a] focus:outline-none w-full"
-                  />
+                  {/* Visual Notes / B-Roll / Animations */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider flex items-center gap-1">
+                      <Camera className="w-3 h-3 text-sky-400" />
+                      <span>Görsel Not & Manim Kurgusu</span>
+                    </label>
+                    <textarea
+                      value={section.visualNotes || ''}
+                      onChange={(e) => updateScriptSection(script.id, section.id, { visualNotes: e.target.value })}
+                      placeholder="Ekranda görünecek grafik, Manim animasyonu, B-roll veya kamera açısı..."
+                      className="w-full h-28 bg-[#141414] border border-[#282828] focus:border-sky-800 rounded-xl p-3 text-xs text-[#9ca3af] placeholder-[#555] resize-none focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             );
-          })}
+          })
+        )}
 
-          {/* Add Section Quick Bar */}
-          <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
-            <button
-              onClick={() => addScriptSection(script.id, { type: 'hook', title: 'Yeni Kanca (Hook)' })}
-              className="px-3 py-2 bg-[#181818] hover:bg-[#242424] border border-[#2e2e2e] text-xs font-medium text-rose-300 rounded-xl flex items-center gap-1.5 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Kanca</span>
-            </button>
-            <button
-              onClick={() => addScriptSection(script.id, { type: 'body', title: 'Yeni Gelişme / Açıklama' })}
-              className="px-3 py-2 bg-[#181818] hover:bg-[#242424] border border-[#2e2e2e] text-xs font-medium text-emerald-300 rounded-xl flex items-center gap-1.5 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Gelişme</span>
-            </button>
-            <button
-              onClick={() => addScriptSection(script.id, { type: 'proof', title: 'Matematiksel İspat / Çözüm' })}
-              className="px-3 py-2 bg-[#181818] hover:bg-[#242424] border border-[#2e2e2e] text-xs font-medium text-sky-300 rounded-xl flex items-center gap-1.5 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ İspat / Çözüm</span>
-            </button>
-            <button
-              onClick={() => addScriptSection(script.id, { type: 'cta', title: 'Kapanış & Çağrı (CTA)' })}
-              className="px-3 py-2 bg-[#181818] hover:bg-[#242424] border border-[#2e2e2e] text-xs font-medium text-purple-300 rounded-xl flex items-center gap-1.5 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Kapanış / CTA</span>
-            </button>
-          </div>
+        {/* Quick Add Section Button */}
+        <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
+          <button
+            onClick={() => addScriptSection(script.id, { type: 'proof', title: 'Yeni İspat / Konu Anlatımı' })}
+            className="min-h-[40px] px-4 py-2 bg-[#202020] hover:bg-[#282828] active:bg-[#333] border border-[#333] hover:border-[#2d5a27] text-xs font-semibold text-white rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Yeni Bölüm Ekle</span>
+          </button>
         </div>
       </div>
     </div>

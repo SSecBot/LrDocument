@@ -12,7 +12,6 @@ import {
   Kanban,
   FileEdit,
   Sparkles,
-  Filter,
 } from 'lucide-react';
 import { Platform, ScriptStatus } from '@/types';
 import { calculateTiming } from '@/lib/scriptTiming';
@@ -26,6 +25,7 @@ export const ScriptsWorkspace: React.FC = () => {
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<'editor' | 'kanban'>('editor');
+  const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<ScriptStatus | 'all'>('all');
@@ -46,21 +46,36 @@ export const ScriptsWorkspace: React.FC = () => {
 
   const activeScript = scripts.find(s => s.id === activeScriptId) || filteredScripts[0];
 
+  const handleSelectScriptMobile = (id: string) => {
+    setActiveScriptId(id);
+    setMobileView('editor');
+  };
+
+  const handleNewScriptMobile = () => {
+    const newId = addScript();
+    setActiveScriptId(newId);
+    setMobileView('editor');
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#121212]">
       {/* Sidebar for Scripts (Visible in Editor mode) */}
       {viewMode === 'editor' && (
-        <div className="w-80 border-r border-[#262626] bg-[#161616] flex flex-col h-full shrink-0">
+        <div
+          className={`${
+            mobileView === 'list' ? 'flex w-full' : 'hidden'
+          } md:flex md:w-80 border-r border-[#262626] bg-[#161616] flex-col h-full shrink-0`}
+        >
           {/* Header & New Script */}
-          <div className="p-4 border-b border-[#262626] space-y-3">
+          <div className="p-3.5 sm:p-4 border-b border-[#262626] space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
                 <Video className="w-4 h-4 text-emerald-400" />
                 Senaryo Stüdyosu
               </h2>
               <button
-                onClick={() => addScript()}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-lg shadow-sm transition-all"
+                onClick={handleNewScriptMobile}
+                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Yeni Senaryo</span>
@@ -68,17 +83,17 @@ export const ScriptsWorkspace: React.FC = () => {
             </div>
 
             {/* View Switcher button in sidebar */}
-            <div className="flex bg-[#222] p-1 rounded-lg border border-[#333]">
+            <div className="flex bg-[#222] p-1 rounded-xl border border-[#333]">
               <button
                 onClick={() => setViewMode('editor')}
-                className="flex-1 py-1 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors bg-[#2d5a27] text-white"
+                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-[#2d5a27] text-white"
               >
                 <FileEdit className="w-3.5 h-3.5" />
                 <span>Editör</span>
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className="flex-1 py-1 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors text-[#9ca3af] hover:text-white"
+                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors text-[#9ca3af] hover:text-white"
               >
                 <Kanban className="w-3.5 h-3.5" />
                 <span>Kanban Panosu</span>
@@ -93,24 +108,24 @@ export const ScriptsWorkspace: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Senaryolarda ara..."
-                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#71717a] focus:outline-none"
+                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none min-h-[40px]"
               />
             </div>
           </div>
 
           {/* Platform Filters */}
-          <div className="px-3 py-2 border-b border-[#242424] flex gap-1 overflow-x-auto">
+          <div className="px-3 py-2 border-b border-[#242424] flex gap-1.5 overflow-x-auto no-scrollbar">
             {(['all', 'YouTube', 'TikTok', 'Instagram', 'Web'] as const).map((plat) => (
               <button
                 key={plat}
                 onClick={() => setSelectedPlatform(plat)}
-                className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${
+                className={`min-h-[28px] text-[11px] px-2.5 py-0.5 rounded-full whitespace-nowrap transition-colors ${
                   selectedPlatform === plat
                     ? 'bg-[#2d5a27] text-white font-medium'
                     : 'bg-[#202020] text-[#9ca3af] hover:text-white'
                 }`}
               >
-                {plat === 'all' ? 'Tüm Platformlar' : plat}
+                {plat === 'all' ? 'Tümü' : plat}
               </button>
             ))}
           </div>
@@ -121,7 +136,7 @@ export const ScriptsWorkspace: React.FC = () => {
               <div className="p-6 text-center text-[#71717a] text-xs space-y-2">
                 <Video className="w-8 h-8 text-[#333] mx-auto mb-1" />
                 <p className="text-white font-medium">Henüz kayıtlı bir senaryo bulunmuyor.</p>
-                <p className="text-[11px] text-[#888]">Yeni bir video senaryosu eklemek için yukarıdaki "+ Yeni Senaryo" butonunu kullanın.</p>
+                <p className="text-[11px] text-[#888]">Yeni bir video senaryosu eklemek için yukarıdaki butonu kullanın.</p>
               </div>
             ) : (
               filteredScripts.map((s) => {
@@ -132,11 +147,11 @@ export const ScriptsWorkspace: React.FC = () => {
                 return (
                   <div
                     key={s.id}
-                    onClick={() => setActiveScriptId(s.id)}
+                    onClick={() => handleSelectScriptMobile(s.id)}
                     className={`p-3.5 rounded-xl cursor-pointer border transition-all space-y-2 ${
                       isSelected
                         ? 'bg-[#202820] border-[#2d5a27] shadow-lg'
-                        : 'bg-[#1a1a1a] hover:bg-[#222222] border-[#282828]'
+                        : 'bg-[#1a1a1a] hover:bg-[#222222] active:bg-[#252525] border-[#282828]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -162,66 +177,33 @@ export const ScriptsWorkspace: React.FC = () => {
         </div>
       )}
 
-      {/* Main Area: Editor or Kanban */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Kanban Top Navigation bar (when in kanban mode) */}
-        {viewMode === 'kanban' && (
-          <div className="px-6 py-3 bg-[#181818] border-b border-[#282828] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                <Kanban className="w-4 h-4 text-emerald-400" />
-                Senaryo Üretim Hattı (Kanban)
-              </h2>
-              <span className="text-xs text-[#9ca3af]">Kartları aşamalar arasında ilerletin</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('editor')}
-                className="px-3 py-1.5 bg-[#222] hover:bg-[#2c2c2c] text-xs font-medium text-[#d1d5db] rounded-lg border border-[#333] flex items-center gap-1.5 transition-colors"
-              >
-                <FileEdit className="w-3.5 h-3.5" />
-                <span>Editöre Dön</span>
-              </button>
-              <button
-                onClick={() => addScript()}
-                className="px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-lg flex items-center gap-1.5 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Yeni Senaryo</span>
-              </button>
-            </div>
-          </div>
-        )}
-
+      {/* Main Workspace Area (Editor or Kanban) */}
+      <div
+        className={`${
+          viewMode === 'editor' && mobileView === 'list' ? 'hidden' : 'flex'
+        } md:flex flex-1 flex-col h-full overflow-hidden`}
+      >
         {viewMode === 'editor' ? (
           activeScript ? (
-            <ScriptEditor key={activeScript.id} script={activeScript} />
+            <ScriptEditor
+              key={activeScript.id}
+              script={activeScript}
+              onBack={() => setMobileView('list')}
+            />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#71717a] space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#2e2e2e] flex items-center justify-center text-sky-400 shadow-inner">
-                <Video className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Henüz Kayıtlı Bir Senaryo Bulunmuyor</h3>
-              <p className="text-xs max-w-md text-[#9ca3af] leading-relaxed">
-                YouTube, TikTok ve Instagram için bölüm bölüm kurgulanmış video metinleri hazırlayın ve konuşma süresini anlık olarak hesaplayın.
-              </p>
+              <Video className="w-12 h-12 text-emerald-400" />
+              <h3 className="text-lg font-bold text-white">Senaryo Seçilmedi</h3>
               <button
-                onClick={() => addScript()}
-                className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 flex items-center gap-2 transition-all"
+                onClick={handleNewScriptMobile}
+                className="px-4 py-2 bg-[#2d5a27] text-white text-xs font-semibold rounded-xl"
               >
-                <Plus className="w-4 h-4" />
-                <span>Yeni Video Senaryosu Oluştur</span>
+                Yeni Senaryo Başlat
               </button>
             </div>
           )
         ) : (
-          <ScriptKanban
-            onSelectScript={(id) => {
-              setActiveScriptId(id);
-              setViewMode('editor');
-            }}
-          />
+          <ScriptKanban onBackToEditor={() => setViewMode('editor')} />
         )}
       </div>
     </div>

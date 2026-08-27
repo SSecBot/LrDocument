@@ -12,7 +12,6 @@ import {
   Video,
   Link2,
   Trash2,
-  Clock,
   AlertCircle,
   AlertTriangle,
 } from 'lucide-react';
@@ -76,7 +75,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   return (
     <>
       <div
-        className={`p-4 rounded-2xl border transition-all space-y-3 group ${
+        className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3 group ${
           task.completed
             ? 'bg-[#161616]/70 border-[#222222] opacity-75'
             : overdue
@@ -84,27 +83,31 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             : 'bg-[#181818] hover:bg-[#1f1f1f] border-[#282828] hover:border-[#383838]'
         }`}
       >
-        <div className="flex items-start gap-3.5">
-          {/* Custom Checkbox */}
+        <div className="flex items-start gap-2.5 sm:gap-3.5">
+          {/* Custom Checkbox with touch-target container */}
           <button
             onClick={handleToggle}
-            className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all mt-0.5 shrink-0 border ${
-              task.completed
-                ? 'bg-[#2d5a27] border-emerald-500 text-white shadow-sm shadow-emerald-900/40'
-                : overdue
-                ? 'bg-[#281619] border-rose-700/60 hover:border-rose-500 text-transparent'
-                : 'bg-[#222] border-[#3e3e3e] hover:border-[#2d5a27] text-transparent'
-            }`}
+            className="min-h-[44px] min-w-[44px] -ml-2 -mt-2 p-2 flex items-center justify-center rounded-xl transition-all"
             aria-label={task.completed ? 'Tamamlandı olarak işaretlendi' : 'Tamamla'}
           >
-            <Check className={`w-3.5 h-3.5 stroke-[3] ${task.completed ? 'text-white' : 'text-transparent'}`} />
+            <div
+              className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border ${
+                task.completed
+                  ? 'bg-[#2d5a27] border-emerald-500 text-white shadow-sm shadow-emerald-900/40'
+                  : overdue
+                  ? 'bg-[#281619] border-rose-700/60 hover:border-rose-500 text-transparent'
+                  : 'bg-[#222] border-[#3e3e3e] hover:border-[#2d5a27] text-transparent'
+              }`}
+            >
+              <Check className={`w-3.5 h-3.5 stroke-[3] ${task.completed ? 'text-white' : 'text-transparent'}`} />
+            </div>
           </button>
 
           {/* Task Info */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pt-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h4
-                className={`text-sm font-semibold transition-all ${
+                className={`text-xs sm:text-sm font-semibold transition-all ${
                   task.completed ? 'line-through text-[#71717a]' : 'text-white'
                 }`}
               >
@@ -118,7 +121,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               {overdue && (
                 <span className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-700/80 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-md animate-pulse">
                   <AlertTriangle className="w-3 h-3 text-rose-400" />
-                  <span>Vadesi Geçti (Otomatik Yüksek Öncelik)</span>
+                  <span>Vadesi Geçti</span>
                 </span>
               )}
             </div>
@@ -130,11 +133,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             )}
 
             {/* Badges & Links row */}
-            <div className="flex items-center gap-2 mt-3 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-2.5 flex-wrap text-xs">
               {/* Due date */}
               {task.dueDate && (
                 <div
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium min-h-[30px] ${
                     overdue
                       ? 'bg-rose-950/60 border-rose-800/60 text-rose-300'
                       : 'bg-[#222] border-[#333] text-[#a1a1aa]'
@@ -150,11 +153,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               {linkedNote && (
                 <button
                   onClick={handleJumpToNote}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors"
+                  className="min-h-[30px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors"
                   title="Bağlı Nota Git"
                 >
                   <FileText className="w-3 h-3 text-emerald-400" />
-                  <span className="truncate max-w-[150px]">Not: {linkedNote.title}</span>
+                  <span className="truncate max-w-[130px]">Not: {linkedNote.title}</span>
                 </button>
               )}
 
@@ -162,22 +165,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               {linkedScript && (
                 <button
                   onClick={handleJumpToScript}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors"
+                  className="min-h-[30px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors"
                   title="Bağlı Video Senaryosuna Git"
                 >
                   <Video className="w-3 h-3 text-emerald-400" />
-                  <span className="truncate max-w-[150px]">Senaryo: {linkedScript.title}</span>
+                  <span className="truncate max-w-[130px]">Senaryo: {linkedScript.title}</span>
                 </button>
               )}
 
               {/* Cross Link button */}
               <button
                 onClick={() => setIsCrossLinkModalOpen(true)}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#202020] hover:bg-[#2a2a2a] border border-[#333] text-[11px] text-[#9ca3af] hover:text-white transition-colors"
+                className="min-h-[30px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] border border-[#333] text-[11px] text-[#9ca3af] hover:text-white transition-colors"
                 title="Döküman bağlantılarını düzenle"
               >
                 <Link2 className="w-3 h-3" />
-                <span>{linkedNote || linkedScript ? 'Bağlantıyı Değiştir' : '+ Not/Senaryo Bağla'}</span>
+                <span>{linkedNote || linkedScript ? 'Bağlantı' : '+ Not/Senaryo'}</span>
               </button>
             </div>
           </div>
@@ -185,8 +188,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
           {/* Delete Button */}
           <button
             onClick={() => deleteTask(task.id)}
-            className="p-2 text-[#71717a] hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+            className="min-h-[40px] min-w-[40px] p-2 text-[#71717a] hover:text-rose-400 hover:bg-rose-950/30 rounded-xl transition-colors opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shrink-0"
             title="Görevi Sil"
+            aria-label="Sil"
           >
             <Trash2 className="w-4 h-4" />
           </button>

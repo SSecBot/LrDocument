@@ -14,6 +14,7 @@ import {
   Download,
   List,
   Grid,
+  CalendarDays,
   Clock,
   GripVertical,
   TrendingUp,
@@ -33,7 +34,7 @@ export const CalendarWorkspace: React.FC = () => {
   } = useAppStore();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date(2026, 7, 1)); // August 2026
-  const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [selectedEventType, setSelectedEventType] = useState<CalendarEventType | 'all'>('all');
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | 'all'>('all');
 
@@ -198,36 +199,61 @@ export const CalendarWorkspace: React.FC = () => {
     return 'bg-rose-950/70 border-rose-800/60 text-rose-300';
   };
 
+  // Generate 7 days for weekly view (starting from today or reference date in August 2026)
+  const getWeekDays = () => {
+    const base = new Date(currentDate);
+    const dayOfWeek = (base.getDay() + 6) % 7; // Monday = 0
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - dayOfWeek);
+
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return {
+        date: d,
+        dateStr,
+        dayName: dayNames[i],
+        dayNum: d.getDate(),
+        monthName: monthNames[d.getMonth()],
+      };
+    });
+  };
+
+  const weekDays = getWeekDays();
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-hidden select-none">
-      {/* Top Header */}
-      <div className="px-6 py-4 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
+      {/* Top Header & Navigation */}
+      <div className="px-4 sm:px-6 py-3.5 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2d5a27] to-[#142812] border border-[#387030] flex items-center justify-center shadow-lg shadow-emerald-950/40">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2d5a27] to-[#142812] border border-[#387030] flex items-center justify-center shadow-lg shadow-emerald-950/40 shrink-0">
               <CalendarIcon className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-xl font-extrabold text-white tracking-tight">
-              Takvim & Yayın Planı
+            <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+              Takvim
             </h2>
           </div>
 
           {/* Month Navigation */}
-          <div className="flex items-center gap-1.5 bg-[#222] p-1 rounded-xl border border-[#333]">
+          <div className="flex items-center gap-1 bg-[#222] p-1 rounded-xl border border-[#333]">
             <button
               onClick={handlePrevMonth}
-              className="p-1.5 hover:bg-[#2c2c2c] rounded-lg text-[#9ca3af] hover:text-white transition-colors"
+              className="min-h-[36px] min-w-[36px] p-2 hover:bg-[#2c2c2c] active:bg-[#383838] rounded-lg text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center"
               title="Önceki Ay"
+              aria-label="Önceki Ay"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="font-bold text-sm text-white px-3 min-w-[130px] text-center">
+            <span className="font-bold text-xs sm:text-sm text-white px-2 sm:px-3 min-w-[110px] sm:min-w-[130px] text-center">
               {monthNames[month]} {year}
             </span>
             <button
               onClick={handleNextMonth}
-              className="p-1.5 hover:bg-[#2c2c2c] rounded-lg text-[#9ca3af] hover:text-white transition-colors"
+              className="min-h-[36px] min-w-[36px] p-2 hover:bg-[#2c2c2c] active:bg-[#383838] rounded-lg text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center"
               title="Sonraki Ay"
+              aria-label="Sonraki Ay"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -235,65 +261,56 @@ export const CalendarWorkspace: React.FC = () => {
 
           <button
             onClick={handleToday}
-            className="text-xs px-3 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-[#d1d5db] border border-[#333] rounded-lg transition-colors font-medium"
+            className="min-h-[36px] text-xs px-3 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] active:bg-[#333] text-[#d1d5db] border border-[#333] rounded-lg transition-colors font-medium"
           >
             Bugün
           </button>
         </div>
 
         {/* View Toggle & Actions */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Event Type Filter */}
-          <div className="flex bg-[#222] p-1 rounded-xl border border-[#333]">
-            {[
-              { id: 'all', label: 'Tümü' },
-              { id: 'yayin', label: '🔴 Yayınlar' },
-              { id: 'gorev', label: '🟡 Görevler' },
-              { id: 'finans', label: '💰 Finans' },
-              { id: 'ozel_gun', label: '🟢 Özel Günler' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedEventType(t.id as CalendarEventType | 'all')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
-                  selectedEventType === t.id ? 'bg-[#2d5a27] text-white font-bold' : 'text-[#9ca3af] hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* View Mode */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* View Mode Selector */}
           <div className="flex bg-[#222] p-1 rounded-xl border border-[#333]">
             <button
               onClick={() => setViewMode('month')}
-              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
-                viewMode === 'month' ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+              className={`min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === 'month' ? 'bg-[#2d5a27] text-white shadow-sm' : 'text-[#9ca3af] hover:text-white'
               }`}
-              title="Aylık Izgara Görünümü (Sürükle-Bırak Destekli)"
+              title="Aylık Izgara Görünümü"
             >
               <Grid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Aylık</span>
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              className={`min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === 'week' ? 'bg-[#2d5a27] text-white shadow-sm' : 'text-[#9ca3af] hover:text-white'
+              }`}
+              title="Haftalık Kompakt Akış"
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Haftalık</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
-                viewMode === 'list' ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+              className={`min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === 'list' ? 'bg-[#2d5a27] text-white shadow-sm' : 'text-[#9ca3af] hover:text-white'
               }`}
               title="Ajanda Liste Görünümü"
             >
               <List className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ajanda</span>
             </button>
           </div>
 
           {/* Export / Sync Button */}
           <button
             onClick={() => handleOpenExport()}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#202820] hover:bg-[#2d5a27]/30 border border-[#2d5a27]/50 text-emerald-300 text-xs font-semibold rounded-xl transition-all"
+            className="min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 bg-[#202820] hover:bg-[#2d5a27]/30 border border-[#2d5a27]/50 text-emerald-300 text-xs font-semibold rounded-xl transition-all"
             title="Apple ve Google Takvim'e aktar"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>.ICS Senkronize Et</span>
+            <span className="hidden md:inline">.ICS Senkronize Et</span>
           </button>
 
           {/* New Event Button */}
@@ -303,7 +320,7 @@ export const CalendarWorkspace: React.FC = () => {
               setEditingEvent(null);
               setIsEventModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-md transition-all"
+            className="min-h-[36px] flex items-center gap-1.5 px-3.5 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-md transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Etkinlik Ekle</span>
@@ -311,17 +328,43 @@ export const CalendarWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 bg-[#121212]">
+      {/* Filter Toolbar */}
+      <div className="px-4 sm:px-6 py-2 bg-[#151515] border-b border-[#242424] flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <span className="text-[10px] font-bold text-[#666] uppercase tracking-wider shrink-0 mr-1">
+          Filtre:
+        </span>
+        {[
+          { id: 'all', label: 'Tümü' },
+          { id: 'yayin', label: '🔴 Yayınlar' },
+          { id: 'gorev', label: '🟡 Görevler' },
+          { id: 'finans', label: '💰 Finans' },
+          { id: 'ozel_gun', label: '🟢 Özel Günler' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSelectedEventType(t.id as CalendarEventType | 'all')}
+            className={`min-h-[34px] px-3 py-1 text-xs font-medium rounded-xl whitespace-nowrap transition-colors border ${
+              selectedEventType === t.id
+                ? 'bg-[#2d5a27] text-white font-bold border-[#387030] shadow-sm'
+                : 'bg-[#1e1e1e] text-[#9ca3af] hover:text-white border-[#2c2c2c] hover:bg-[#252525]'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Calendar Content Area */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#121212]">
         {viewMode === 'month' ? (
-          /* Monthly Grid View with Drag & Drop */
-          <div className="max-w-7xl mx-auto h-full flex flex-col bg-[#161616] border border-[#262626] rounded-3xl overflow-hidden shadow-xl">
+          /* Monthly Grid View */
+          <div className="max-w-7xl mx-auto h-full flex flex-col bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl">
             {/* Days Header */}
             <div className="grid grid-cols-7 border-b border-[#262626] bg-[#1a1a1a]">
               {dayNames.map((d, i) => (
                 <div
                   key={d}
-                  className={`py-2.5 text-center text-xs font-bold uppercase tracking-wider ${
+                  className={`py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
                     i >= 5 ? 'text-emerald-400/80' : 'text-[#a1a1aa]'
                   }`}
                 >
@@ -336,7 +379,7 @@ export const CalendarWorkspace: React.FC = () => {
               {Array.from({ length: firstDayIndex }).map((_, i) => {
                 const prevDateNum = daysInPrevMonth - firstDayIndex + i + 1;
                 return (
-                  <div key={`prev-${i}`} className="bg-[#121212]/50 p-2 min-h-[110px] text-[#444] text-xs">
+                  <div key={`prev-${i}`} className="bg-[#121212]/50 p-1 sm:p-2 min-h-[75px] sm:min-h-[110px] text-[#444] text-[10px] sm:text-xs">
                     <span className="font-mono">{prevDateNum}</span>
                   </div>
                 );
@@ -358,7 +401,7 @@ export const CalendarWorkspace: React.FC = () => {
                     onDragOver={(e) => handleDragOver(e, dateStr)}
                     onDragLeave={(e) => handleDragLeave(e, dateStr)}
                     onDrop={(e) => handleDrop(e, dateStr)}
-                    className={`p-2 min-h-[110px] cursor-pointer transition-all flex flex-col justify-between group relative ${
+                    className={`p-1 sm:p-2 min-h-[75px] sm:min-h-[110px] cursor-pointer transition-all flex flex-col justify-between group relative overflow-hidden ${
                       isDragTarget
                         ? 'bg-[#203420] ring-2 ring-inset ring-emerald-400'
                         : isToday
@@ -369,7 +412,7 @@ export const CalendarWorkspace: React.FC = () => {
                     {/* Day number & Quick add */}
                     <div className="flex items-center justify-between pointer-events-none">
                       <span
-                        className={`text-xs font-mono font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                        className={`text-[10px] sm:text-xs font-mono font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center ${
                           isToday
                             ? 'bg-[#2d5a27] text-white shadow-sm'
                             : 'text-[#d1d5db] group-hover:text-white'
@@ -382,16 +425,15 @@ export const CalendarWorkspace: React.FC = () => {
                           e.stopPropagation();
                           handleCellClick(dateStr);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-[#71717a] hover:text-emerald-400 transition-opacity pointer-events-auto"
-                        title="Bu güne etkinlik ekle"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-[#71717a] hover:text-emerald-400 transition-opacity pointer-events-auto"
+                        title="Etkinlik ekle"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </button>
                     </div>
 
-                    {/* Events and Financial Items in Day */}
-                    <div className="space-y-1 mt-1 flex-1 overflow-y-auto max-h-[85px] pr-0.5">
-                      {/* Events */}
+                    {/* Events & Transactions */}
+                    <div className="space-y-0.5 sm:space-y-1 mt-1 flex-1 overflow-y-auto max-h-[85px] pr-0.5">
                       {dayEvents.map((ev) => {
                         const isOverdue = isEventOverdue(ev);
 
@@ -401,23 +443,22 @@ export const CalendarWorkspace: React.FC = () => {
                             draggable={true}
                             onDragStart={(e) => handleDragStart(e, ev.id)}
                             onClick={(e) => handleEventClick(ev, e)}
-                            className={`p-1.5 rounded-lg border text-[11px] font-semibold truncate transition-all shadow-sm flex items-center gap-1 cursor-grab active:cursor-grabbing select-none ${getEventBadgeStyle(
+                            className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border text-[9px] sm:text-[11px] font-semibold truncate transition-all shadow-sm flex items-center gap-1 cursor-grab active:cursor-grabbing select-none ${getEventBadgeStyle(
                               ev
                             )}`}
                             title={`${isOverdue ? '⚠️ [GECİKMİŞ ETKİNLİK] ' : ''}${ev.time || '09:00'} - ${ev.title}`}
                           >
                             {isOverdue ? (
-                              <AlertTriangle className="w-3 h-3 text-rose-300 shrink-0" />
+                              <AlertTriangle className="w-2.5 h-2.5 text-rose-300 shrink-0" />
                             ) : (
-                              <GripVertical className="w-2.5 h-2.5 opacity-50 shrink-0" />
+                              <GripVertical className="w-2 h-2 opacity-50 shrink-0 hidden sm:inline" />
                             )}
-                            <span className="font-mono text-[9px] opacity-80 shrink-0">{ev.time || '09:00'}</span>
+                            <span className="font-mono text-[8px] sm:text-[9px] opacity-80 shrink-0">{ev.time || '09:00'}</span>
                             <span className="truncate">{ev.title}</span>
                           </div>
                         );
                       })}
 
-                      {/* Synced Financial Transactions */}
                       {dayTransactions.map((tr) => {
                         const isOverdue = isTransactionOverdue(tr);
 
@@ -425,23 +466,23 @@ export const CalendarWorkspace: React.FC = () => {
                           <div
                             key={tr.id}
                             onClick={(e) => handleTransactionClick(tr, e)}
-                            className={`p-1.5 rounded-lg border text-[11px] font-semibold truncate transition-all shadow-sm flex items-center justify-between gap-1 select-none ${getTransactionBadgeStyle(
+                            className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border text-[9px] sm:text-[11px] font-semibold truncate transition-all shadow-sm flex items-center justify-between gap-1 select-none ${getTransactionBadgeStyle(
                               tr
                             )}`}
-                            title={`${isOverdue ? '⚠️ [GECİKMİŞ ÖDEME/GELİR] ' : ''}${tr.type === 'gelir' ? '+' : '-'}${formatCurrencyTRY(tr.amount)} - ${tr.title} (${tr.isConfirmed ? 'Onaylandı' : 'Onay Bekliyor'})`}
+                            title={`${isOverdue ? '⚠️ [GECİKMİŞ] ' : ''}${tr.type === 'gelir' ? '+' : '-'}${formatCurrencyTRY(tr.amount)} - ${tr.title}`}
                           >
                             <div className="flex items-center gap-1 min-w-0">
                               {isOverdue ? (
-                                <AlertTriangle className="w-3 h-3 text-rose-300 shrink-0" />
+                                <AlertTriangle className="w-2.5 h-2.5 text-rose-300 shrink-0" />
                               ) : tr.type === 'gelir' ? (
-                                <TrendingUp className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                                <TrendingUp className="w-2 h-2 text-emerald-400 shrink-0" />
                               ) : (
-                                <TrendingDown className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                                <TrendingDown className="w-2 h-2 text-rose-400 shrink-0" />
                               )}
-                              <span className="font-mono text-[9px] font-bold">
+                              <span className="font-mono text-[8px] sm:text-[9px] font-bold">
                                 {tr.type === 'gelir' ? '+' : '-'}{tr.amount}₺
                               </span>
-                              <span className="truncate text-[10px] opacity-90">{tr.title}</span>
+                              <span className="truncate text-[8px] sm:text-[10px] opacity-90 hidden sm:inline">{tr.title}</span>
                             </div>
 
                             <button
@@ -449,12 +490,12 @@ export const CalendarWorkspace: React.FC = () => {
                                 e.stopPropagation();
                                 toggleTransactionConfirmation(tr.id);
                               }}
-                              className={`p-0.5 rounded transition-colors ${
-                                tr.isConfirmed ? 'text-emerald-400 hover:bg-emerald-950' : 'text-rose-400 hover:bg-rose-950'
+                              className={`p-0.5 rounded text-[8px] font-bold ${
+                                tr.isConfirmed ? 'text-emerald-300' : 'text-amber-300'
                               }`}
-                              title={tr.isConfirmed ? 'Onaylandı' : 'Onayla'}
+                              title={tr.isConfirmed ? 'Onaylandı' : 'Onay Bekliyor'}
                             >
-                              <Check className="w-3 h-3" />
+                              <Check className="w-2.5 h-2.5" />
                             </button>
                           </div>
                         );
@@ -465,29 +506,165 @@ export const CalendarWorkspace: React.FC = () => {
               })}
             </div>
           </div>
+        ) : viewMode === 'week' ? (
+          /* Compact Weekly View for Mobile & Touch */
+          <div className="max-w-4xl mx-auto space-y-4">
+            <div className="flex items-center justify-between px-2 text-xs text-[#71717a]">
+              <span>Haftalık Akış & Günlük Program</span>
+              <span>Kayıt eklemek için güne tıklayın</span>
+            </div>
+
+            <div className="space-y-3">
+              {weekDays.map((w) => {
+                const dayEvents = getEventsForDate(w.dateStr);
+                const dayTransactions = getTransactionsForDate(w.dateStr);
+                const isToday = new Date().toISOString().split('T')[0] === w.dateStr;
+                const totalItems = dayEvents.length + dayTransactions.length;
+
+                return (
+                  <div
+                    key={w.dateStr}
+                    className={`rounded-2xl border transition-all overflow-hidden ${
+                      isToday
+                        ? 'bg-[#162016] border-[#2d5a27] shadow-lg shadow-emerald-950/30'
+                        : 'bg-[#181818] border-[#282828] hover:border-[#333]'
+                    }`}
+                  >
+                    {/* Day Header Bar */}
+                    <div
+                      onClick={() => handleCellClick(w.dateStr)}
+                      className="p-3.5 sm:p-4 bg-[#1e1e1e]/70 border-b border-[#282828] flex items-center justify-between cursor-pointer hover:bg-[#222] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm font-mono ${
+                            isToday ? 'bg-[#2d5a27] text-white shadow-sm' : 'bg-[#262626] text-[#d1d5db]'
+                          }`}
+                        >
+                          {w.dayNum}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-white">
+                              {w.dayName}, {w.dayNum} {w.monthName}
+                            </h3>
+                            {isToday && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 font-bold border border-emerald-700/60">
+                                Bugün
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#71717a]">
+                            {totalItems === 0 ? 'Planlanan etkinlik veya ödeme yok' : `${totalItems} kayıt`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCellClick(w.dateStr);
+                        }}
+                        className="min-h-[38px] px-3 py-1.5 bg-[#252525] hover:bg-[#303030] text-emerald-400 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ekle</span>
+                      </button>
+                    </div>
+
+                    {/* Day Items List */}
+                    <div className="p-3.5 space-y-2">
+                      {totalItems === 0 ? (
+                        <div className="py-2 text-center text-xs text-[#555]">
+                          Bu gün için serbest zaman veya planlanmamış
+                        </div>
+                      ) : (
+                        <>
+                          {/* Events */}
+                          {dayEvents.map((ev) => {
+                            const isOverdue = isEventOverdue(ev);
+                            return (
+                              <div
+                                key={ev.id}
+                                onClick={(e) => handleEventClick(ev, e)}
+                                className={`p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all flex items-center justify-between gap-3 ${getEventBadgeStyle(
+                                  ev
+                                )}`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {isOverdue ? (
+                                    <AlertTriangle className="w-4 h-4 text-rose-300 shrink-0" />
+                                  ) : (
+                                    <Clock className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                                  )}
+                                  <span className="font-mono text-xs opacity-90">{ev.time || '09:00'}</span>
+                                  <span className="truncate text-white">{ev.title}</span>
+                                </div>
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-black/30 font-medium shrink-0">
+                                  {ev.eventType === 'yayin' ? (ev.platform || 'Yayın') : ev.eventType === 'gorev' ? 'Görev' : 'Özel Gün'}
+                                </span>
+                              </div>
+                            );
+                          })}
+
+                          {/* Transactions */}
+                          {dayTransactions.map((tr) => {
+                            const isOverdue = isTransactionOverdue(tr);
+                            return (
+                              <div
+                                key={tr.id}
+                                onClick={(e) => handleTransactionClick(tr, e)}
+                                className={`p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all flex items-center justify-between gap-3 ${getTransactionBadgeStyle(
+                                  tr
+                                )}`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {isOverdue ? (
+                                    <AlertTriangle className="w-4 h-4 text-rose-300 shrink-0" />
+                                  ) : tr.type === 'gelir' ? (
+                                    <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0" />
+                                  ) : (
+                                    <TrendingDown className="w-4 h-4 text-rose-400 shrink-0" />
+                                  )}
+                                  <span className="truncate">{tr.title} ({tr.category})</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="font-mono font-bold text-xs">
+                                    {tr.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(tr.amount)}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleTransactionConfirmation(tr.id);
+                                    }}
+                                    className={`min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
+                                      tr.isConfirmed ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900 text-rose-200 animate-pulse'
+                                    }`}
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>{tr.isConfirmed ? 'Onaylandı' : 'Onayla'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           /* Agenda / List View */
           <div className="max-w-4xl mx-auto space-y-4">
             {filteredEvents.length === 0 && filteredTransactions.length === 0 ? (
-              <div className="p-16 text-center bg-[#161616] border border-[#262626] rounded-3xl text-[#71717a] space-y-4 shadow-xl">
-                <div className="w-16 h-16 rounded-2xl bg-[#1f1f1f] border border-[#2e2e2e] flex items-center justify-center text-purple-400 mx-auto shadow-inner">
-                  <CalendarIcon className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-bold text-white tracking-tight">Henüz Planlanmış Bir Etkinlik Bulunmuyor</h3>
-                <p className="text-xs text-[#9ca3af] max-w-md mx-auto leading-relaxed">
-                  YouTube video yayınları, sosyal medya içerik teslimleri veya önemli proje tarihlerini takviminize ekleyerek zaman çizelgenizi oluşturun.
-                </p>
-                <button
-                  onClick={() => {
-                    setSelectedDateForNewEvent(new Date().toISOString().split('T')[0]);
-                    setEditingEvent(null);
-                    setIsEventModalOpen(true);
-                  }}
-                  className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 inline-flex items-center gap-2 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Yeni Etkinlik veya Yayın Planla</span>
-                </button>
+              <div className="p-16 text-center text-[#71717a] text-xs space-y-3">
+                <CalendarIcon className="w-12 h-12 mx-auto text-[#333]" />
+                <p className="text-sm font-semibold text-white">Bu Filtreye Uygun Etkinlik Bulunamadı</p>
+                <p>Yeni bir etkinlik planlamak için yukarıdaki butonu kullanabilirsiniz.</p>
               </div>
             ) : (
               <>
@@ -504,14 +681,14 @@ export const CalendarWorkspace: React.FC = () => {
                           setEditingEvent(ev);
                           setIsEventModalOpen(true);
                         }}
-                        className={`bg-[#181818] hover:bg-[#202020] border rounded-2xl p-5 cursor-pointer transition-all shadow-sm space-y-3 group ${
+                        className={`bg-[#181818] hover:bg-[#202020] border rounded-2xl p-4 sm:p-5 cursor-pointer transition-all shadow-sm space-y-3 group ${
                           isOverdue
                             ? 'animate-pulse border-2 border-rose-500 bg-rose-950/40 shadow-[0_0_15px_rgba(244,63,94,0.5)]'
                             : 'border-[#282828] hover:border-[#387030]'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
                               isOverdue ? 'bg-rose-950 text-rose-300 border-rose-700 font-extrabold' :
                               ev.eventType === 'yayin' ? 'bg-red-950/60 text-red-300 border-red-800/40' :
@@ -523,7 +700,7 @@ export const CalendarWorkspace: React.FC = () => {
 
                             <div className="flex items-center gap-1.5 text-xs text-[#a1a1aa] font-mono">
                               <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>{formatTurkishDate(ev.date)} • {ev.time || '18:00'} ({ev.durationMinutes || 60} dk)</span>
+                              <span>{formatTurkishDate(ev.date)} • {ev.time || '18:00'}</span>
                             </div>
                           </div>
 
@@ -532,7 +709,7 @@ export const CalendarWorkspace: React.FC = () => {
                               e.stopPropagation();
                               handleOpenExport(ev);
                             }}
-                            className="px-2.5 py-1 bg-[#222] hover:bg-[#2d5a27]/30 border border-[#333] hover:border-[#2d5a27] text-xs font-medium text-emerald-300 rounded-lg flex items-center gap-1 transition-colors"
+                            className="min-h-[38px] px-3 py-1.5 bg-[#222] hover:bg-[#2d5a27]/30 border border-[#333] hover:border-[#2d5a27] text-xs font-medium text-emerald-300 rounded-xl flex items-center gap-1 transition-colors"
                           >
                             <Download className="w-3.5 h-3.5" />
                             <span>Senkronize Et</span>
@@ -540,7 +717,7 @@ export const CalendarWorkspace: React.FC = () => {
                         </div>
 
                         <div>
-                          <h4 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
+                          <h4 className="text-sm sm:text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
                             {ev.title}
                           </h4>
                           {ev.description && (
@@ -553,7 +730,7 @@ export const CalendarWorkspace: React.FC = () => {
                     );
                   })}
 
-                {/* Finance Transactions list on agenda */}
+                {/* Finance Transactions list */}
                 {filteredTransactions
                   .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                   .map((tr) => {
@@ -566,14 +743,14 @@ export const CalendarWorkspace: React.FC = () => {
                           setEditingTransaction(tr);
                           setIsFinanceModalOpen(true);
                         }}
-                        className={`bg-[#181818] hover:bg-[#202020] border rounded-2xl p-5 cursor-pointer transition-all shadow-sm space-y-3 group ${
+                        className={`bg-[#181818] hover:bg-[#202020] border rounded-2xl p-4 sm:p-5 cursor-pointer transition-all shadow-sm space-y-3 group ${
                           isOverdue
                             ? 'animate-pulse border-2 border-rose-500 bg-rose-950/40 shadow-[0_0_15px_rgba(244,63,94,0.5)]'
                             : 'border-[#282828] hover:border-[#387030]'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-md border flex items-center gap-1 ${
                               isOverdue ? 'bg-rose-950 text-rose-300 border-rose-700 font-extrabold' :
                               tr.type === 'gelir' ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' :
@@ -601,7 +778,7 @@ export const CalendarWorkspace: React.FC = () => {
                                 e.stopPropagation();
                                 toggleTransactionConfirmation(tr.id);
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 transition-all ${
+                              className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1 transition-all ${
                                 tr.isConfirmed
                                   ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50'
                                   : 'bg-rose-950 text-rose-300 border-rose-700 animate-pulse'
@@ -614,7 +791,7 @@ export const CalendarWorkspace: React.FC = () => {
                         </div>
 
                         <div>
-                          <h4 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
+                          <h4 className="text-sm sm:text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
                             {tr.title}
                           </h4>
                           {tr.description && (

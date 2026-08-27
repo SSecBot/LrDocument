@@ -5,15 +5,12 @@ import { useAppStore } from '@/store/useAppStore';
 import { MediaItem, MediaType } from '@/types';
 import { MediaItemModal } from './MediaItemModal';
 import { Modal } from '@/components/ui/Modal';
-import { extractYouTubeId, getYouTubeThumbnailUrl, isYouTubeUrl } from '@/lib/youtube';
+import { getYouTubeThumbnailUrl, isYouTubeUrl } from '@/lib/youtube';
 import {
   Image as ImageIcon,
   Video,
   Plus,
   Search,
-  Layers,
-  Sparkles,
-  ExternalLink,
   Copy,
   Trash2,
   Edit2,
@@ -74,36 +71,36 @@ export const MediaWorkspace: React.FC = () => {
   const getTypeBadge = (type: MediaType, isYt: boolean = false) => {
     if (isYt) {
       return (
-        <span className="bg-red-950/80 border border-red-800/80 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+        <span className="bg-red-950/90 border border-red-800/80 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
           <Play className="w-2.5 h-2.5 fill-red-300" />
-          <span>YouTube Video</span>
+          <span>YouTube</span>
         </span>
       );
     }
     switch (type) {
       case 'diagram':
-        return <span className="bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Şema & Grafik</span>;
+        return <span className="bg-emerald-950/90 border border-emerald-800/80 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Şema</span>;
       case 'sketch':
-        return <span className="bg-amber-950/80 border border-amber-800/80 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Çizim</span>;
+        return <span className="bg-amber-950/90 border border-amber-800/80 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Çizim</span>;
       case 'video_link':
-        return <span className="bg-sky-950/80 border border-sky-800/80 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Video Link</span>;
+        return <span className="bg-sky-950/90 border border-sky-800/80 text-sky-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Video</span>;
       case 'image':
-        return <span className="bg-purple-950/80 border border-purple-800/80 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Görsel</span>;
+        return <span className="bg-purple-950/90 border border-purple-800/80 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-sm">Görsel</span>;
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-y-auto p-6 md:p-8">
-      <div className="max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-y-auto p-4 sm:p-6 md:p-8">
+      <div className="max-w-7xl mx-auto w-full space-y-5 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
           <div>
-            <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-              <ImageIcon className="w-6 h-6 text-emerald-400" />
-              Medya Deposu & Çizim Galerisi
+            <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+              <ImageIcon className="w-5 sm:w-6 h-5 sm:h-6 text-emerald-400" />
+              Medya Deposu & Görsel Galerisi
             </h2>
             <p className="text-xs text-[#9ca3af] mt-1">
-              Matematik şemaları, geometrik çizimler, otomatik kapaklı YouTube video bağlantıları ve görsel varlıklar.
+              Matematik şemaları, YouTube video bağlantıları ve görsel varlıklarınız.
             </p>
           </div>
 
@@ -113,7 +110,7 @@ export const MediaWorkspace: React.FC = () => {
               setEditingItem(null);
               setIsAddModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-md transition-all"
+            className="min-h-[40px] flex items-center gap-1.5 px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-semibold rounded-xl shadow-md transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Yeni Medya Ekle</span>
@@ -121,20 +118,20 @@ export const MediaWorkspace: React.FC = () => {
         </div>
 
         {/* Filter Bar & Search */}
-        <div className="flex items-center justify-between gap-3 flex-wrap bg-[#181818] p-3 rounded-2xl border border-[#282828]">
+        <div className="flex items-center justify-between gap-3 flex-wrap bg-[#181818] p-2.5 sm:p-3 rounded-2xl border border-[#282828]">
           {/* Category Chips */}
-          <div className="flex gap-1.5 overflow-x-auto">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
             {[
               { id: 'all', label: 'Tüm Medyalar' },
-              { id: 'diagram', label: 'Şemalar & Grafikler' },
-              { id: 'sketch', label: 'Çizimler & Taslaklar' },
-              { id: 'video_link', label: 'Video / YouTube Linkleri' },
-              { id: 'image', label: 'Kapak & Görseller' },
+              { id: 'diagram', label: 'Şemalar' },
+              { id: 'sketch', label: 'Çizimler' },
+              { id: 'video_link', label: 'Video Linkleri' },
+              { id: 'image', label: 'Görseller' },
             ].map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedType(cat.id as MediaType | 'all')}
-                className={`text-xs px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
+                className={`min-h-[34px] text-xs px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
                   selectedType === cat.id
                     ? 'bg-[#2d5a27] text-white font-semibold shadow-sm'
                     : 'bg-[#222] text-[#9ca3af] hover:text-white'
@@ -146,20 +143,20 @@ export const MediaWorkspace: React.FC = () => {
           </div>
 
           {/* Search */}
-          <div className="relative min-w-[240px]">
+          <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Başlık veya etiket ara..."
-              className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#71717a] focus:outline-none"
+              className="w-full min-h-[38px] bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#71717a] focus:outline-none"
             />
           </div>
         </div>
 
         {/* Media Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {filteredItems.map((item) => {
             const linkedNote = item.linkedNoteId ? notes.find(n => n.id === item.linkedNoteId) : null;
             const linkedScript = item.linkedScriptId ? scripts.find(s => s.id === item.linkedScriptId) : null;
@@ -175,7 +172,7 @@ export const MediaWorkspace: React.FC = () => {
                 className="bg-[#181818] hover:bg-[#1f1f1f] border border-[#282828] hover:border-[#387030] rounded-2xl overflow-hidden cursor-pointer transition-all shadow-sm hover:shadow-xl flex flex-col group"
               >
                 {/* Media Image / YouTube Thumbnail Header */}
-                <div className="relative h-48 bg-[#121212] overflow-hidden flex items-center justify-center">
+                <div className="relative h-44 sm:h-48 bg-[#121212] overflow-hidden flex items-center justify-center">
                   {item.type === 'video_link' && !isYt ? (
                     <div className="flex flex-col items-center justify-center text-center p-4">
                       <div className="w-12 h-12 rounded-full bg-sky-950/60 border border-sky-800/50 flex items-center justify-center text-sky-400 mb-2 group-hover:scale-110 transition-transform">
@@ -210,87 +207,90 @@ export const MediaWorkspace: React.FC = () => {
                   <div className="absolute top-2.5 left-2.5">
                     {getTypeBadge(item.type, isYt)}
                   </div>
-
-                  {/* Hover quick action overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPreviewItem(item);
-                      }}
-                      className="p-2 bg-[#222]/90 hover:bg-[#333] text-white rounded-xl text-xs flex items-center gap-1 shadow"
-                      title="Önizle"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => handleCopyUrl(item.url, e)}
-                      className="p-2 bg-[#222]/90 hover:bg-[#333] text-white rounded-xl text-xs flex items-center gap-1 shadow"
-                      title="URL Kopyala"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingItem(item);
-                        setIsAddModalOpen(true);
-                      }}
-                      className="p-2 bg-[#222]/90 hover:bg-[#333] text-white rounded-xl text-xs flex items-center gap-1 shadow"
-                      title="Düzenle"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
                   <div>
-                    <h3 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                    <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
                       {item.title}
                     </h3>
                     {item.description && (
-                      <p className="text-[11px] text-[#9ca3af] line-clamp-2 mt-1 leading-relaxed">
+                      <p className="text-xs text-[#9ca3af] line-clamp-2 mt-1 leading-relaxed">
                         {item.description}
                       </p>
                     )}
                   </div>
 
-                  {/* Linked Docs & Tags */}
-                  <div className="space-y-2 pt-2 border-t border-[#262626]">
-                    {/* Linked Note / Script Links */}
-                    <div className="flex items-center gap-2 flex-wrap">
+                  {/* Tags */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {item.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] px-2 py-0.5 rounded-md bg-[#242424] text-[#9ca3af] border border-[#333]"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Connected Notes / Scripts Links */}
+                  {(linkedNote || linkedScript) && (
+                    <div className="pt-2 border-t border-[#262626] space-y-1">
                       {linkedNote && (
                         <button
                           onClick={(e) => handleJumpToNote(linkedNote.id, e)}
-                          className="inline-flex items-center gap-1 bg-[#142214] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[10px] text-emerald-300 px-2 py-0.5 rounded-md transition-colors truncate max-w-full"
-                          title="Bağlı Nota Git"
+                          className="min-h-[28px] w-full text-left flex items-center gap-1.5 text-[11px] text-emerald-400 hover:underline truncate"
                         >
-                          <FileText className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span className="truncate">{linkedNote.title}</span>
+                          <FileText className="w-3 h-3 shrink-0" />
+                          <span className="truncate">Not: {linkedNote.title}</span>
                         </button>
                       )}
-
                       {linkedScript && (
                         <button
                           onClick={(e) => handleJumpToScript(linkedScript.id, e)}
-                          className="inline-flex items-center gap-1 bg-[#142214] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[10px] text-emerald-300 px-2 py-0.5 rounded-md transition-colors truncate max-w-full"
-                          title="Bağlı Senaryoya Git"
+                          className="min-h-[28px] w-full text-left flex items-center gap-1.5 text-[11px] text-emerald-400 hover:underline truncate"
                         >
-                          <Video className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span className="truncate">{linkedScript.title}</span>
+                          <Video className="w-3 h-3 shrink-0" />
+                          <span className="truncate">Senaryo: {linkedScript.title}</span>
                         </button>
                       )}
                     </div>
+                  )}
 
-                    {/* Tags */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {item.tags.slice(0, 3).map((t) => (
-                        <span key={t} className="text-[10px] text-[#71717a] bg-[#222] px-1.5 py-0.2 rounded">
-                          #{t}
-                        </span>
-                      ))}
+                  {/* Footer date & touch action buttons */}
+                  <div className="pt-2 border-t border-[#262626] flex items-center justify-between text-[11px] text-[#71717a]">
+                    <span>{formatTurkishDate(item.createdAt)}</span>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => handleCopyUrl(item.url, e)}
+                        className="min-h-[34px] min-w-[34px] p-1.5 hover:bg-[#282828] text-[#9ca3af] hover:text-white rounded-lg transition-colors flex items-center justify-center"
+                        title="URL Kopyala"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingItem(item);
+                          setIsAddModalOpen(true);
+                        }}
+                        className="min-h-[34px] min-w-[34px] p-1.5 hover:bg-[#282828] text-[#9ca3af] hover:text-white rounded-lg transition-colors flex items-center justify-center"
+                        title="Düzenle"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMediaItem(item.id);
+                        }}
+                        className="min-h-[34px] min-w-[34px] p-1.5 hover:bg-rose-950/40 text-[#9ca3af] hover:text-rose-400 rounded-lg transition-colors flex items-center justify-center"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -300,120 +300,63 @@ export const MediaWorkspace: React.FC = () => {
         </div>
 
         {filteredItems.length === 0 && (
-          <div className="text-center py-20 bg-[#161616] border border-[#262626] rounded-3xl p-8 space-y-4 shadow-xl">
-            <div className="w-16 h-16 rounded-2xl bg-[#1f1f1f] border border-[#2e2e2e] flex items-center justify-center text-emerald-400 mx-auto shadow-inner">
-              <ImageIcon className="w-8 h-8" />
+          <div className="text-center py-16 bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl p-8 space-y-3 shadow-xl">
+            <div className="w-14 h-14 rounded-2xl bg-[#1f1f1f] border border-[#2e2e2e] flex items-center justify-center text-emerald-400 mx-auto shadow-inner">
+              <ImageIcon className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-bold text-white tracking-tight">Henüz Kayıtlı Bir Medya Varlığı Bulunmuyor</h3>
-            <p className="text-xs text-[#9ca3af] max-w-md mx-auto leading-relaxed">
-              Matematik araştırmalarınız için geometri çizimleri, formül grafikleri veya otomatik kapak görseli oluşturan YouTube video bağlantıları ekleyin.
+            <h3 className="text-base font-bold text-white tracking-tight">Kayıtlı Medya Öğesi Bulunamadı</h3>
+            <p className="text-xs text-[#9ca3af] max-w-sm mx-auto leading-relaxed">
+              Matematik çizimleri, diyagramlar, YouTube video bağlantıları veya kapak resimleri eklemek için "Yeni Medya Ekle" butonunu kullanın.
             </p>
-            <button
-              onClick={() => {
-                setEditingItem(null);
-                setIsAddModalOpen(true);
-              }}
-              className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 inline-flex items-center gap-2 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Yeni Medya veya YouTube Linki Ekle</span>
-            </button>
           </div>
         )}
       </div>
 
-      {/* Add / Edit Media Modal */}
+      {/* Add / Edit Modal */}
       <MediaItemModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingItem(null);
+        }}
         editItem={editingItem}
       />
 
-      {/* Preview Lightbox Modal */}
+      {/* Preview Modal */}
       {previewItem && (
         <Modal
           isOpen={!!previewItem}
           onClose={() => setPreviewItem(null)}
           title={previewItem.title}
-          subtitle={previewItem.description}
-          maxWidth="max-w-3xl"
+          subtitle={`${formatTurkishDate(previewItem.createdAt)} • ${previewItem.tags.join(', ')}`}
+          maxWidth="max-w-4xl"
         >
           <div className="space-y-4">
-            <div className="bg-[#121212] rounded-2xl overflow-hidden flex items-center justify-center p-2 border border-[#282828] max-h-[60vh]">
-              {isYouTubeUrl(previewItem.url) ? (
-                <div className="w-full text-center space-y-3">
-                  <div className="relative rounded-xl overflow-hidden max-h-[45vh] mx-auto inline-block">
-                    <img
-                      src={getYouTubeThumbnailUrl(previewItem.url, 'hq') || ''}
-                      alt={previewItem.title}
-                      className="max-h-[45vh] object-contain rounded-xl"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <div className="w-14 h-14 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl">
-                        <Play className="w-6 h-6 fill-white ml-0.5" />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-white font-mono">{previewItem.url}</p>
-                  <a
-                    href={previewItem.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition-colors shadow-md"
-                  >
-                    <span>YouTube'da İzle</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ) : previewItem.type === 'video_link' ? (
-                <div className="p-12 text-center space-y-3">
-                  <Video className="w-12 h-12 text-sky-400 mx-auto" />
-                  <p className="text-xs text-white font-mono">{previewItem.url}</p>
-                  <a
-                    href={previewItem.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl"
-                  >
-                    <span>Videoyu Yeni Sekmede Aç</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ) : (
+            {isYouTubeUrl(previewItem.url) ? (
+              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-[#333]">
+                <iframe
+                  src={`https://www.youtube.com/embed/${previewItem.url.includes('v=') ? previewItem.url.split('v=')[1].split('&')[0] : previewItem.url.split('youtu.be/')[1]}`}
+                  title={previewItem.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl overflow-hidden bg-[#121212] border border-[#333] flex items-center justify-center p-2">
                 <img
                   src={previewItem.url}
                   alt={previewItem.title}
-                  className="max-h-[55vh] object-contain rounded-xl"
+                  className="max-h-[60vh] object-contain rounded-xl"
                 />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2a] flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                {getTypeBadge(previewItem.type, isYouTubeUrl(previewItem.url))}
-                <span className="text-xs text-[#71717a]">{formatTurkishDate(previewItem.createdAt)}</span>
               </div>
+            )}
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => handleCopyUrl(previewItem.url, e)}
-                  className="px-3 py-1.5 bg-[#222] hover:bg-[#333] text-xs font-medium text-white rounded-xl flex items-center gap-1.5 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>URL Kopyala</span>
-                </button>
-                <button
-                  onClick={() => {
-                    deleteMediaItem(previewItem.id);
-                    setPreviewItem(null);
-                  }}
-                  className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-xs font-medium text-rose-300 rounded-xl flex items-center gap-1.5 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Sil</span>
-                </button>
+            {previewItem.description && (
+              <div className="p-4 bg-[#141414] rounded-xl border border-[#282828] text-xs text-[#d1d5db] leading-relaxed">
+                {previewItem.description}
               </div>
-            </div>
+            )}
           </div>
         </Modal>
       )}

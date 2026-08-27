@@ -186,4 +186,59 @@ export interface KanbanCard {
   updatedAt: string;
 }
 
-export type ActiveTab = 'dashboard' | 'notes' | 'scripts' | 'media' | 'tasks' | 'kanban' | 'calendar' | 'finance';
+export type UserRole = 'ADMIN' | 'USER';
+export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  subscriptionPlan?: SubscriptionPlan;
+}
+
+export interface AdminUserItem {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  subscriptionPlan: SubscriptionPlan;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    notes: number;
+    scripts: number;
+    tasks: number;
+    kanbanCards: number;
+    events: number;
+    mediaItems: number;
+    transactions: number;
+  };
+}
+
+export interface AdminMetrics {
+  totalUsers: number;
+  pendingCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  totalNotes: number;
+  totalTasks: number;
+  totalScripts: number;
+}
+
+export type ActiveTab =
+  | 'dashboard'
+  | 'notes'
+  | 'scripts'
+  | 'media'
+  | 'tasks'
+  | 'kanban'
+  | 'calendar'
+  | 'finance'
+  | 'admin'
+  | 'settings';
+
+

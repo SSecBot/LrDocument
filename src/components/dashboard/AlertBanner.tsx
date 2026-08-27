@@ -5,13 +5,10 @@ import { useAppStore, isTaskOverdue, isTransactionOverdue } from '@/store/useApp
 import {
   AlertTriangle,
   Clock,
-  CheckCircle2,
   Calendar,
-  ArrowRight,
   X,
   ChevronRight,
   Check,
-  Wallet,
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
@@ -24,7 +21,6 @@ export const AlertBanner: React.FC = () => {
     transactions,
     toggleTask,
     toggleTransactionConfirmation,
-    updateEvent,
     setActiveTab,
   } = useAppStore();
 
@@ -56,37 +52,38 @@ export const AlertBanner: React.FC = () => {
   if (isDismissed || totalAlertCount === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-[#2a171a] via-[#1f1418] to-[#1a1816] border border-rose-500/40 rounded-3xl p-5 shadow-2xl space-y-4 animate-fade-in relative overflow-hidden">
+    <div className="bg-gradient-to-r from-[#2a171a] via-[#1f1418] to-[#1a1816] border border-rose-500/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3.5 animate-fade-in relative overflow-hidden">
       {/* Top Banner Bar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 animate-pulse">
+          <div className="p-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 animate-pulse shrink-0">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-tight">Geciken & Acil Eylem Bildirimleri</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight">Geciken & Acil Eylem Bildirimleri</h3>
               <span className="bg-rose-950 text-rose-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-700/60 font-mono">
-                {totalAlertCount} Dikkat Gerektiren Öğe
+                {totalAlertCount} Bildirim
               </span>
             </div>
-            <p className="text-xs text-[#d1d5db] mt-0.5">
-              Teslim tarihi geçen görevler, onaylanmamış finansal ödemeler/tahsilatlar veya bekleyen yayınlar bulunmaktadır.
+            <p className="text-[11px] sm:text-xs text-[#d1d5db] mt-0.5">
+              Teslim tarihi geçen görevler veya onaylanmamış finansal ödemeler bulunmaktadır.
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setIsDismissed(true)}
-          className="p-1.5 rounded-lg bg-[#241a1c] hover:bg-[#342426] text-[#9ca3af] hover:text-white transition-colors"
+          className="min-h-[38px] min-w-[38px] p-2 rounded-xl bg-[#241a1c] hover:bg-[#342426] text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center shrink-0"
           title="Bildirimi Gizle"
+          aria-label="Gizle"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Alert Item Cards List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 pt-1">
         {/* Overdue Financial Items */}
         {overdueTransactions.map((tr) => (
           <div
@@ -100,7 +97,7 @@ export const AlertBanner: React.FC = () => {
                 ) : (
                   <TrendingDown className="w-3 h-3 text-rose-400" />
                 )}
-                <span>Gecikmiş {tr.type === 'gelir' ? 'Gelir' : 'Ödeme'} ({formatTurkishDate(tr.date)})</span>
+                <span>Gecikmiş {tr.type === 'gelir' ? 'Gelir' : 'Ödeme'}</span>
               </div>
               <h4 className="text-xs font-semibold text-white truncate">{tr.title}</h4>
               <p className="text-[11px] font-mono font-bold text-rose-300 mt-0.5">
@@ -110,7 +107,7 @@ export const AlertBanner: React.FC = () => {
 
             <button
               onClick={() => toggleTransactionConfirmation(tr.id)}
-              className="px-2.5 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white border border-[#387030] rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 shadow-sm"
+              className="min-h-[36px] px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white border border-[#387030] rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 shadow-sm"
               title={tr.type === 'gelir' ? 'Gelir Geldi (Onayla)' : 'Gider Ödendi (Onayla)'}
             >
               <Check className="w-3.5 h-3.5" />
@@ -128,14 +125,14 @@ export const AlertBanner: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-1">
                 <Clock className="w-3 h-3" />
-                <span>Gecikmiş Görev ({formatTurkishDate(t.dueDate || '')})</span>
+                <span>Gecikmiş Görev</span>
               </div>
               <h4 className="text-xs font-semibold text-white truncate">{t.title}</h4>
             </div>
 
             <button
               onClick={() => toggleTask(t.id)}
-              className="p-2 bg-emerald-950/40 hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-emerald-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1"
+              className="min-h-[36px] min-w-[36px] p-2 bg-emerald-950/40 hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-emerald-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center justify-center"
               title="Görevi Tamamla"
             >
               <Check className="w-3.5 h-3.5" />
@@ -159,7 +156,7 @@ export const AlertBanner: React.FC = () => {
 
             <button
               onClick={() => toggleTask(t.id)}
-              className="p-2 bg-emerald-950/40 hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-emerald-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1"
+              className="min-h-[36px] min-w-[36px] p-2 bg-emerald-950/40 hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-emerald-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center justify-center"
               title="Görevi Tamamla"
             >
               <Check className="w-3.5 h-3.5" />
@@ -183,7 +180,7 @@ export const AlertBanner: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('calendar')}
-              className="p-1.5 px-2.5 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1"
+              className="min-h-[36px] p-1.5 px-2.5 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-800/40 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1"
             >
               <span>Takvim</span>
               <ChevronRight className="w-3 h-3" />

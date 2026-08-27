@@ -79,12 +79,12 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
       />
 
       {/* Drawer Container */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-[#161616] border-l border-[#2e2e2e] shadow-2xl flex flex-col h-full animate-fade-in">
+      <div className="fixed inset-y-0 right-0 max-w-full flex w-full sm:w-auto">
+        <div className="w-full sm:w-screen sm:max-w-md bg-[#161616] sm:border-l border-[#2e2e2e] shadow-2xl flex flex-col h-full animate-fade-in">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-[#282828] bg-[#1a1a1a] flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-b border-[#282828] bg-[#1a1a1a] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#2d5a27]/30 border border-[#2d5a27]/50 flex items-center justify-center text-emerald-400">
+              <div className="w-9 h-9 rounded-xl bg-[#2d5a27]/30 border border-[#2d5a27]/50 flex items-center justify-center text-emerald-400 shrink-0">
                 <Sigma className="w-4 h-4" />
               </div>
               <div>
@@ -95,36 +95,37 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-[#242424] hover:bg-[#2e2e2e] text-[#9ca3af] hover:text-white transition-colors"
+              className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#242424] hover:bg-[#2e2e2e] text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center"
               title="Kapat (ESC)"
+              aria-label="Kapat"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Search bar */}
           <div className="p-4 border-b border-[#262626] bg-[#141414] space-y-3">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Sembol veya formül ara... (örn: kesir, matris, pi)"
-                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none"
+                placeholder="Sembol veya formül ara... (örn: integral, matris, pi)"
+                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-[#71717a] focus:outline-none min-h-[44px]"
               />
             </div>
 
             {/* Category Pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`text-xs px-2.5 py-1 rounded-full whitespace-nowrap transition-all ${
+                  className={`text-xs min-h-[36px] px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
                     selectedCategory === cat
-                      ? 'bg-[#2d5a27] text-white font-medium shadow-sm'
+                      ? 'bg-[#2d5a27] text-white font-semibold shadow-sm'
                       : 'bg-[#202020] text-[#9ca3af] hover:text-white hover:bg-[#282828]'
                   }`}
                 >
@@ -136,12 +137,12 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
 
           {/* Symbols Grid */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {filtered.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleInsert(item)}
-                  className="bg-[#1c1c1c] hover:bg-[#242424] border border-[#2a2a2a] hover:border-[#387030] rounded-xl p-3 cursor-pointer transition-all flex flex-col justify-between group shadow-sm"
+                  className="bg-[#1c1c1c] hover:bg-[#242424] active:bg-[#282828] border border-[#2a2a2a] hover:border-[#387030] rounded-xl p-3 cursor-pointer transition-all flex flex-col justify-between group shadow-sm min-h-[90px]"
                   title="Eklemek için tıkla"
                 >
                   <div className="flex items-start justify-between gap-1 mb-1">
@@ -150,13 +151,13 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
                     </span>
                     <button
                       onClick={(e) => handleCopy(item.latex, item.id, e)}
-                      className="p-1 bg-[#222] hover:bg-[#2e2e2e] rounded text-[#71717a] hover:text-white transition-colors"
+                      className="min-h-[32px] min-w-[32px] p-1.5 bg-[#222] hover:bg-[#2e2e2e] rounded-lg text-[#71717a] hover:text-white transition-colors flex items-center justify-center"
                       title="LaTeX Kodunu Kopyala"
                     >
                       {copiedId === item.id ? (
-                        <Check className="w-3 h-3 text-emerald-400" />
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
                       ) : (
-                        <Copy className="w-3 h-3" />
+                        <Copy className="w-3.5 h-3.5" />
                       )}
                     </button>
                   </div>
@@ -167,7 +168,7 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
 
                   <div className="text-[10px] text-[#71717a] mt-2 flex items-center justify-between">
                     <span>{item.category}</span>
-                    <span className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                    <span className="text-emerald-400 opacity-80 group-hover:opacity-100 transition-opacity font-medium">
                       + Ekle
                     </span>
                   </div>
