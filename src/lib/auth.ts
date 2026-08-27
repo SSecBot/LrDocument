@@ -53,7 +53,7 @@ export async function ensureDefaultAdmin() {
     });
 
     if (!existingAdmin) {
-      const passwordHash = await hashPassword('Admin123!');
+      const passwordHash = await hashPassword('AdminArs285561.');
       await prisma.user.create({
         data: {
           name: 'Master Admin',
