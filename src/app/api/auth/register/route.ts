@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
         ? 'Tek Seferlik'
         : 'Aylık';
 
+    const subType: 'AYLIK' | 'TEK_SEFERLIK' = planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
+
     const passwordHash = await hashPassword(password);
 
     const newUser = await prisma.user.create({
@@ -51,7 +53,9 @@ export async function POST(req: NextRequest) {
         passwordHash,
         role: 'USER',
         status: 'PENDING',
+        subscriptionType: subType,
         subscriptionPlan: planValue,
+        paymentStatus: 'PENDING',
       },
     });
 
@@ -91,7 +95,9 @@ export async function POST(req: NextRequest) {
           email: newUser.email,
           role: newUser.role,
           status: newUser.status,
+          subscriptionType: newUser.subscriptionType,
           subscriptionPlan: newUser.subscriptionPlan,
+          paymentStatus: newUser.paymentStatus,
         },
       },
       { status: 201 }

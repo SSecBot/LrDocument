@@ -24,9 +24,12 @@ import {
   ArrowUpDown,
   RefreshCw,
   Coins,
+  DollarSign,
+  Sparkles,
 } from 'lucide-react';
 import { formatTurkishDate, formatCurrencyTRY } from '@/lib/utils';
 import { formatCurrencyWithCode } from '@/lib/exchangeRates';
+import { getTransactionsForMonth, calculateMRRSummary } from '@/lib/recurringFinance';
 
 export const FinanceWorkspace: React.FC = () => {
   const {
@@ -51,11 +54,18 @@ export const FinanceWorkspace: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null);
   const [isRefreshingRates, setIsRefreshingRates] = useState(false);
 
-  // Period filtering calculation
-  const currentMonthPrefix = `2026-08`; // Reference month
-  const lastMonthPrefix = `2026-07`;
+  // Dynamic reference months
+  const now = new Date();
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const targetYear = periodFilter === 'last_month' ? lastMonthDate.getFullYear() : now.getFullYear();
+  const targetMonth = periodFilter === 'last_month' ? lastMonthDate.getMonth() : now.getMonth();
 
-  const filteredTransactions = transactions.filter((t) => {
+  // Get base transactions (projected onto pinned days for target month)
+  const baseTransactions = periodFilter === 'all'
+    ? transactions
+    : getTransactionsForMonth(transactions, targetYear, targetMonth).projectedTransactions;
+
+  const filteredTransactions = baseTransactions.filter((t) => {
     // Type filter
     if (typeFilter !== 'all' && t.type !== typeFilter) return false;
 
@@ -71,10 +81,6 @@ export const FinanceWorkspace: React.FC = () => {
     // Currency filter
     const trCurrency = t.currency || 'TRY';
     if (currencyFilter !== 'all' && trCurrency !== currencyFilter) return false;
-
-    // Period filter
-    if (periodFilter === 'this_month' && !t.date.startsWith(currentMonthPrefix)) return false;
-    if (periodFilter === 'last_month' && !t.date.startsWith(lastMonthPrefix)) return false;
 
     // Search query
     if (searchQuery.trim()) {
@@ -115,6 +121,11 @@ export const FinanceWorkspace: React.FC = () => {
   const netBalance = totalIncome - totalExpense;
   const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
 
+  // Calculate MRR with day-of-month pinning & live exchange rate conversions
+  const mrrSummary = calculateMRRSummary(transactions, exchangeRates);
+  const recurringIncomeMonthly = mrrSummary.monthlyRecurringIncomeTRY;
+  const recurringExpenseMonthly = mrrSummary.monthlyRecurringExpenseTRY;
+
   const pendingConfirmationCount = transactions.filter(t => !t.isConfirmed).length;
   const overdueCount = transactions.filter(t => isTransactionOverdue(t)).length;
 
@@ -122,6 +133,11 @@ export const FinanceWorkspace: React.FC = () => {
     setIsRefreshingRates(true);
     await fetchExchangeRates();
     setIsRefreshingRates(false);
+    addToast({
+      type: 'success',
+      title: 'Kurlar Güncellendi',
+      message: 'Canlı döviz kurları başarıyla güncellendi.',
+    });
   };
 
   const handleExportCSV = () => {
@@ -130,7 +146,7 @@ export const FinanceWorkspace: React.FC = () => {
       return;
     }
 
-    const headers = ['ID', 'Baslik', 'Tur', 'Kategori', 'Para_Birimi', 'Orijinal_Tutar', 'Uygulanan_Kur', 'Toplam_TL_Tutar', 'Tarih', 'Oncelik', 'Onay_Durumu', 'Aciklama'];
+    const headers = ['ID', 'Baslik', 'Tur', 'Kategori', 'Para_Birimi', 'Orijinal_Tutar', 'Uygulanan_Kur', 'Toplam_TL_Tutar', 'Tarih', 'Oncelik', 'Tekrarlayan', 'Onay_Durumu', 'Aciklama'];
     const rows = filteredTransactions.map(t => [
       t.id,
       `"${t.title.replace(/"/g, '""')}"`,
@@ -142,6 +158,7 @@ export const FinanceWorkspace: React.FC = () => {
       t.amount,
       t.date,
       getEffectiveTransactionPriority(t),
+      t.isRecurring ? `Evet (${t.recurringFrequency || 'aylik'})` : 'Hayir',
       t.isConfirmed ? 'Onaylandi' : 'Beklemede',
       `"${(t.description || '').replace(/"/g, '""')}"`
     ]);
@@ -156,7 +173,7 @@ export const FinanceWorkspace: React.FC = () => {
     link.click();
     document.body.removeChild(link);
 
-    addToast({ type: 'success', title: 'CSV İndirildi', message: 'Finansal rapor döviz detaylarıyla dışa aktarıldı.' });
+    addToast({ type: 'success', title: 'CSV İndirildi', message: 'Finansal rapor döviz ve düzenli gelir detaylarıyla dışa aktarıldı.' });
   };
 
   const getPriorityBadge = (tr: FinanceTransaction) => {
@@ -211,7 +228,7 @@ export const FinanceWorkspace: React.FC = () => {
                 Gelir ve Gider Yönetimi
               </h1>
               <p className="text-[11px] sm:text-xs text-[#71717a] hidden sm:block">
-                Çoklu para birimi (TRY, USD, EUR), canlı kur marjı (+2.50 TL) ve bütçe planlaması
+                Çoklu para birimi (TRY, USD, EUR), düzenli gelir/gider otomasyonu ve canlı kur marjı (+{exchangeRates.markupTRY.toFixed(2)} TL)
               </p>
             </div>
           </div>
@@ -219,7 +236,7 @@ export const FinanceWorkspace: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="min-h-[40px] flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-[#202020] hover:bg-[#282828] active:bg-[#303030] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors"
+              className="min-h-[44px] flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-[#202020] hover:bg-[#282828] active:bg-[#303030] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Kategoriler</span>
@@ -227,7 +244,7 @@ export const FinanceWorkspace: React.FC = () => {
 
             <button
               onClick={handleExportCSV}
-              className="min-h-[40px] flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-[#202020] hover:bg-[#282828] active:bg-[#303030] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors"
+              className="min-h-[44px] flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-[#202020] hover:bg-[#282828] active:bg-[#303030] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
               <span>CSV</span>
@@ -238,7 +255,7 @@ export const FinanceWorkspace: React.FC = () => {
                 setEditingTransaction(null);
                 setIsModalOpen(true);
               }}
-              className="min-h-[40px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/50 transition-all"
+              className="min-h-[44px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>İşlem Ekle</span>
@@ -290,7 +307,7 @@ export const FinanceWorkspace: React.FC = () => {
             <button
               onClick={handleRefreshRates}
               disabled={isRefreshingRates}
-              className="min-h-[36px] p-2 rounded-xl bg-[#202020] hover:bg-[#2a2a2a] text-[#a1a1aa] hover:text-white border border-[#333] transition-all flex items-center gap-1 text-xs"
+              className="min-h-[44px] px-3 py-2 rounded-xl bg-[#202020] hover:bg-[#2a2a2a] text-[#a1a1aa] hover:text-white border border-[#333] transition-all flex items-center gap-1.5 text-xs cursor-pointer"
               title="Döviz kurlarını güncelle"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshingRates ? 'animate-spin' : ''}`} />
@@ -316,7 +333,7 @@ export const FinanceWorkspace: React.FC = () => {
 
             <button
               onClick={() => setStatusFilter('unconfirmed')}
-              className="min-h-[38px] px-3.5 py-1.5 bg-rose-900/80 hover:bg-rose-800 text-white text-xs font-bold rounded-xl shrink-0 transition-colors self-start sm:self-auto"
+              className="min-h-[44px] px-3.5 py-2 bg-rose-900/80 hover:bg-rose-800 text-white text-xs font-bold rounded-xl shrink-0 transition-colors self-start sm:self-auto cursor-pointer"
             >
               Gecikenleri Göster ({overdueCount})
             </button>
@@ -377,109 +394,141 @@ export const FinanceWorkspace: React.FC = () => {
             </div>
           </div>
 
-          {/* Pending Confirmations */}
-          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#161616] border border-[#262626] shadow-sm space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-[#9ca3af]">
-              <span className="font-semibold">Onay Bekleyen İşlemler</span>
-              <div className="w-7 h-7 rounded-xl bg-amber-950/60 border border-amber-800/50 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
+          {/* Recurring Income (MRR) Summary Card */}
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#162216] to-[#121a12] border border-[#2d5a27]/60 shadow-sm space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-emerald-300">
+              <span className="font-semibold flex items-center gap-1.5">
+                <Repeat className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Aylık Düzenli Gelir (MRR)</span>
+              </span>
+              <div className="w-7 h-7 rounded-xl bg-emerald-900/60 border border-emerald-700/50 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-emerald-300" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-extrabold text-amber-300 font-mono">
-              {pendingConfirmationCount}
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono">
+              {formatCurrencyTRY(recurringIncomeMonthly)}
             </div>
-            <div className="text-[11px] text-[#71717a]">
-              {overdueCount > 0 ? `⚠️ ${overdueCount} tanesi vadesi geçmiş durumda` : 'Tüm işlemler plan dahilinde'}
+            <div className="text-[11px] text-[#9ca3af] flex items-center justify-between">
+              <span>Düzenli Gider: {formatCurrencyTRY(recurringExpenseMonthly)}</span>
+              <span className="text-emerald-300 font-bold">
+                Net: {formatCurrencyTRY(recurringIncomeMonthly - recurringExpenseMonthly)}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Filters Toolbar */}
-        <div className="bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex items-center justify-between gap-3 flex-wrap shadow-sm">
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
-            {/* Type filter buttons */}
-            <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
-              {[
-                { id: 'all', label: 'Tümü' },
-                { id: 'gelir', label: '🟢 Gelir' },
-                { id: 'gider', label: '🔴 Gider' },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTypeFilter(t.id as FinanceTransactionType | 'all')}
-                  className={`min-h-[34px] px-2.5 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                    typeFilter === t.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+        <div className="bg-[#161616] border border-[#262626] rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-sm">
+          {/* Top Row Filters */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+              {/* Type filter buttons */}
+              <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'all', label: 'Tümü' },
+                  { id: 'gelir', label: '🟢 Gelir' },
+                  { id: 'gider', label: '🔴 Gider' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTypeFilter(t.id as FinanceTransactionType | 'all')}
+                    className={`min-h-[38px] px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      typeFilter === t.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status / Recurring Filter Buttons */}
+              <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'all', label: 'Tüm Durumlar' },
+                  { id: 'recurring', label: '🔄 Düzenli / Tekrarlayan' },
+                  { id: 'unconfirmed', label: '⏳ Onay Bekleyen' },
+                  { id: 'confirmed', label: '✓ Onaylanan' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setStatusFilter(s.id as any)}
+                    className={`min-h-[38px] px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      statusFilter === s.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Currency Filter Buttons */}
+              <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'all', label: 'Tüm Kurlar' },
+                  { id: 'TRY', label: '₺ TRY' },
+                  { id: 'USD', label: '$ USD' },
+                  { id: 'EUR', label: '€ EUR' },
+                ].map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCurrencyFilter(c.id as CurrencyCode | 'all')}
+                    className={`min-h-[38px] px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      currencyFilter === c.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Currency Filter Buttons */}
-            <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
-              {[
-                { id: 'all', label: 'Tüm Kurlar' },
-                { id: 'TRY', label: '₺ TRY' },
-                { id: 'USD', label: '$ USD' },
-                { id: 'EUR', label: '€ EUR' },
-              ].map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCurrencyFilter(c.id as CurrencyCode | 'all')}
-                  className={`min-h-[34px] px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                    currencyFilter === c.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+            <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+              {/* Priority Filter */}
+              <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'all', label: 'Tüm Öncelikler' },
+                  { id: 'yuksek', label: '🔴 Yüksek' },
+                  { id: 'orta', label: '🟡 Orta' },
+                  { id: 'dusuk', label: '🟢 Düşük' },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPriorityFilter(p.id as TaskPriority | 'all')}
+                    className={`min-h-[38px] px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      priorityFilter === p.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
 
-            {/* Priority Filter Buttons */}
-            <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
-              {[
-                { id: 'all', label: 'Tüm Öncelikler' },
-                { id: 'yuksek', label: '🔴 Yüksek' },
-                { id: 'orta', label: '🟡 Orta' },
-                { id: 'dusuk', label: '🟢 Düşük' },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setPriorityFilter(p.id as TaskPriority | 'all')}
-                  className={`min-h-[34px] px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                    priorityFilter === p.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Period select */}
-            <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
-              {[
-                { id: 'this_month', label: 'Ağustos 2026' },
-                { id: 'last_month', label: 'Temmuz 2026' },
-                { id: 'all', label: 'Tüm Zamanlar' },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setPeriodFilter(p.id as 'this_month' | 'last_month' | 'all')}
-                  className={`min-h-[34px] px-2.5 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                    periodFilter === p.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+              {/* Period select */}
+              <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'this_month', label: 'Bu Ay' },
+                  { id: 'last_month', label: 'Geçen Ay' },
+                  { id: 'all', label: 'Tüm Zamanlar' },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPeriodFilter(p.id as 'this_month' | 'last_month' | 'all')}
+                    className={`min-h-[38px] px-3 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      periodFilter === p.id ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+          {/* Bottom Row Search & Sort */}
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-1 border-t border-[#222]">
             {/* Sort Select */}
-            <div className="flex items-center gap-1.5 bg-[#202020] px-2.5 py-1.5 rounded-xl border border-[#333] min-h-[40px] flex-1 sm:flex-initial">
-              <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-1.5 bg-[#202020] px-3 py-2 rounded-xl border border-[#333] min-h-[44px] flex-1 sm:flex-initial">
+              <ArrowUpDown className="w-4 h-4 text-emerald-400 shrink-0" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'priority' | 'date' | 'amount')}
@@ -492,14 +541,14 @@ export const FinanceWorkspace: React.FC = () => {
             </div>
 
             {/* Search Box */}
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="w-3.5 h-3.5 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative flex-1 sm:flex-initial min-w-[220px]">
+              <Search className="w-4 h-4 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="İşlemlerde ara..."
-                className="bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none w-full sm:w-44 min-h-[40px]"
+                className="bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-[#71717a] focus:outline-none w-full min-h-[44px]"
               />
             </div>
           </div>
@@ -535,7 +584,7 @@ export const FinanceWorkspace: React.FC = () => {
                     setEditingTransaction(null);
                     setIsModalOpen(true);
                   }}
-                  className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 inline-flex items-center gap-2 transition-all min-h-[44px]"
+                  className="mt-2 px-5 py-2.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-950/50 inline-flex items-center gap-2 transition-all min-h-[44px] cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>İlk Finans Kaydını Ekle</span>
@@ -589,9 +638,9 @@ export const FinanceWorkspace: React.FC = () => {
                           {getPriorityBadge(tr)}
 
                           {tr.isRecurring && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-950/60 text-sky-300 border border-sky-800/50 flex items-center gap-1">
-                              <Repeat className="w-2.5 h-2.5" />
-                              <span>{tr.recurringFrequency === 'gunluk' ? 'Günlük' : tr.recurringFrequency === 'haftalik' ? 'Haftalık' : 'Aylık'}</span>
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center gap-1 font-semibold">
+                              <Repeat className="w-3 h-3 text-emerald-400" />
+                              <span>{tr.recurringFrequency === 'gunluk' ? 'Günlük Düzenli' : tr.recurringFrequency === 'haftalik' ? 'Haftalık Düzenli' : 'Aylık Düzenli'}</span>
                             </span>
                           )}
                         </div>
@@ -648,7 +697,7 @@ export const FinanceWorkspace: React.FC = () => {
                             e.stopPropagation();
                             toggleTransactionConfirmation(tr.id);
                           }}
-                          className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all ${
+                          className={`min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
                             tr.isConfirmed
                               ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/50'
                               : isOverdue
@@ -672,8 +721,9 @@ export const FinanceWorkspace: React.FC = () => {
                             e.stopPropagation();
                             deleteTransaction(tr.id);
                           }}
-                          className="min-h-[38px] min-w-[38px] p-2 hover:bg-rose-950/40 active:bg-rose-900/60 text-[#71717a] hover:text-rose-400 rounded-xl transition-colors flex items-center justify-center"
+                          className="min-h-[44px] min-w-[44px] p-2.5 hover:bg-rose-950/40 active:bg-rose-900/60 text-[#71717a] hover:text-rose-400 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
                           title="İşlemi Sil"
+                          aria-label="Sil"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

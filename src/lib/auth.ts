@@ -14,6 +14,8 @@ export interface UserJWTPayload {
   role: 'ADMIN' | 'USER';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   subscriptionPlan?: 'Aylık' | 'Tek Seferlik';
+  subscriptionType?: 'AYLIK' | 'TEK_SEFERLIK';
+  paymentStatus?: 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -61,7 +63,9 @@ export async function ensureDefaultAdmin() {
           passwordHash,
           role: 'ADMIN',
           status: 'APPROVED',
+          subscriptionType: 'TEK_SEFERLIK',
           subscriptionPlan: 'Tek Seferlik',
+          paymentStatus: 'SUCCESSFUL',
         },
       });
     }
@@ -81,7 +85,16 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, email: true, name: true, role: true, status: true, subscriptionPlan: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        subscriptionPlan: true,
+        subscriptionType: true,
+        paymentStatus: true,
+      },
     });
 
     if (!user || user.status !== 'APPROVED') {
@@ -95,6 +108,8 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
       role: user.role as 'ADMIN' | 'USER',
       status: user.status as 'APPROVED',
       subscriptionPlan: (user.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
+      subscriptionType: (user.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
+      paymentStatus: (user.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
     };
   } catch {
     return null;

@@ -16,11 +16,20 @@ import {
   Clock,
   Sparkles,
   Zap,
+  Save,
+  AtSign,
 } from 'lucide-react';
 
 export function SettingsView() {
-  const { currentUser, addToast } = useAppStore();
+  const { currentUser, checkAuth, addToast } = useAppStore();
 
+  // Email update state
+  const [newEmail, setNewEmail] = useState('');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+
+  // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,26 +37,76 @@ export function SettingsView() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  const handleEmailUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    setEmailSuccess(null);
+
+    const trimmedEmail = newEmail.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setEmailError('Lütfen yeni bir e-posta adresi giriniz.');
+      return;
+    }
+
+    if (trimmedEmail === currentUser?.email?.toLowerCase()) {
+      setEmailError('Girdiğiniz e-posta adresi mevcut adresinizle aynı.');
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+
+    try {
+      const res = await fetch('/api/auth/update-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail: trimmedEmail }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setEmailError(data.error || 'E-posta adresi güncellenirken bir hata oluştu.');
+        setIsUpdatingEmail(false);
+        return;
+      }
+
+      setEmailSuccess('E-posta adresiniz başarıyla güncellendi.');
+      setNewEmail('');
+      addToast({
+        type: 'success',
+        title: 'E-Posta Güncellendi',
+        message: `Yeni e-posta adresiniz (${trimmedEmail}) kaydedildi.`,
+      });
+
+      // Refresh store state
+      await checkAuth(true);
+      setIsUpdatingEmail(false);
+    } catch {
+      setEmailError('Sunucu bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
+      setIsUpdatingEmail(false);
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    setPasswordError(null);
+    setPasswordSuccess(null);
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Yeni şifreler birbiriyle eşleşmiyor.');
+      setPasswordError('Yeni şifreler birbiriyle eşleşmiyor.');
       return;
     }
 
     if (newPassword.length < 6) {
-      setErrorMessage('Yeni şifre en az 6 karakter olmalıdır.');
+      setPasswordError('Yeni şifre en az 6 karakter olmalıdır.');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsSubmittingPassword(true);
 
     try {
       const res = await fetch('/api/auth/change-password', {
@@ -59,12 +118,12 @@ export function SettingsView() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error || 'Şifre güncellenirken bir hata oluştu.');
-        setIsSubmitting(false);
+        setPasswordError(data.error || 'Şifre güncellenirken bir hata oluştu.');
+        setIsSubmittingPassword(false);
         return;
       }
 
-      setSuccessMessage('Şifreniz başarıyla güncellendi.');
+      setPasswordSuccess('Şifreniz başarıyla güncellendi.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -73,10 +132,10 @@ export function SettingsView() {
         title: 'Güvenlik Güncellendi',
         message: 'Hesap şifreniz başarıyla değiştirildi.',
       });
-      setIsSubmitting(false);
+      setIsSubmittingPassword(false);
     } catch {
-      setErrorMessage('Bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
-      setIsSubmitting(false);
+      setPasswordError('Bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
+      setIsSubmittingPassword(false);
     }
   };
 
@@ -93,7 +152,7 @@ export function SettingsView() {
               Hesap & Güvenlik Ayarları
             </h1>
             <p className="text-xs text-neutral-400">
-              Kişisel profilinizi, abonelik paketinizi ve hesap şifrenizi yönetin
+              Kişisel profilinizi, kayıtlı e-posta adresinizi ve hesap şifrenizi yönetin
             </p>
           </div>
         </div>
@@ -172,7 +231,86 @@ export function SettingsView() {
           </div>
         </div>
 
-        {/* Security & Password Change Box */}
+        {/* Section 1: Email Address Self-Service Modification */}
+        <div className="p-7 sm:p-8 rounded-3xl bg-[#151720] border border-neutral-800/80 shadow-2xl space-y-6">
+          <div className="flex items-start justify-between border-b border-neutral-800/80 pb-5">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <AtSign className="w-5 h-5 text-emerald-400" />
+                E-Posta Adresi Güncelleme
+              </h2>
+              <p className="text-xs text-neutral-400 mt-1">
+                Giriş yaptığınız ve bildirimleri aldığınız e-posta adresinizi güvenle değiştirebilirsiniz.
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono">
+              <Mail className="w-3.5 h-3.5" />
+              <span>Benzersizlik Korumalı</span>
+            </div>
+          </div>
+
+          {/* Email Success Banner */}
+          {emailSuccess && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs flex items-center gap-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{emailSuccess}</span>
+            </div>
+          )}
+
+          {/* Email Error Banner */}
+          {emailError && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{emailError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleEmailUpdate} className="space-y-4 max-w-lg">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">
+                Mevcut E-Posta Adresiniz
+              </label>
+              <div className="p-3 bg-[#0d0e13] border border-neutral-800 rounded-xl text-xs text-neutral-400 font-mono flex items-center gap-2">
+                <Mail className="w-4 h-4 text-emerald-400/70" />
+                <span>{currentUser?.email || 'Bilinmiyor'}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">
+                Yeni E-Posta Adresi *
+              </label>
+              <div className="relative">
+                <AtSign className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                <input
+                  type="email"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="yeni.eposta@ornek.com"
+                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUpdatingEmail}
+              className="mt-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-700/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
+            >
+              {isUpdatingEmail ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>E-Posta Adresini Güncelle</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Section 2: Security & Password Change Box */}
         <div className="p-7 sm:p-8 rounded-3xl bg-[#151720] border border-neutral-800/80 shadow-2xl space-y-6">
           <div className="flex items-start justify-between border-b border-neutral-800/80 pb-5">
             <div>
@@ -181,7 +319,7 @@ export function SettingsView() {
                 Şifre Güncelleme
               </h2>
               <p className="text-xs text-neutral-400 mt-1">
-                Hesap güvenliğiniz için şifrenizi düzenli olarak güncelleyin. Şifreniz hiçbir yönetici veya üçüncü şahıs tarafından görülemez.
+                Hesap güvenliğiniz için şifrenizi düzenli olarak güncelleyin. Şifreniz sıfır erişim mimarisi ile hashlenir.
               </p>
             </div>
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono">
@@ -190,19 +328,19 @@ export function SettingsView() {
             </div>
           </div>
 
-          {/* Success Banner */}
-          {successMessage && (
+          {/* Password Success Banner */}
+          {passwordSuccess && (
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs flex items-center gap-3">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{successMessage}</span>
+              <span>{passwordSuccess}</span>
             </div>
           )}
 
-          {/* Error Banner */}
-          {errorMessage && (
+          {/* Password Error Banner */}
+          {passwordError && (
             <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-3">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>{errorMessage}</span>
+              <span>{passwordError}</span>
             </div>
           )}
 
@@ -220,7 +358,7 @@ export function SettingsView() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Mevcut şifrenizi giriniz"
-                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors min-h-[44px]"
                 />
                 <button
                   type="button"
@@ -245,7 +383,7 @@ export function SettingsView() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Yeni şifrenizi belirleyin"
-                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors min-h-[44px]"
                 />
                 <button
                   type="button"
@@ -270,7 +408,7 @@ export function SettingsView() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Yeni şifrenizi tekrar giriniz"
-                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-[#0d0e13] border border-neutral-800 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors min-h-[44px]"
                 />
                 <button
                   type="button"
@@ -284,10 +422,10 @@ export function SettingsView() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="mt-4 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-700/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={isSubmittingPassword}
+              className="mt-4 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-700/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
             >
-              {isSubmitting ? (
+              {isSubmittingPassword ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>

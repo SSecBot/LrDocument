@@ -36,6 +36,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
       onClose={onClose}
       title="Görevi Not veya Senaryo ile İlişkilendir"
       subtitle="Bu görevi tamamlamak için gereken dökümanı bağlayın."
+      maxWidth="max-w-md"
     >
       <div className="space-y-6">
         {/* Note selection */}

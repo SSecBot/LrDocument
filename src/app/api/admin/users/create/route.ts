@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password);
     const planValue = subscriptionPlan === 'Tek Seferlik' ? 'Tek Seferlik' : 'Aylık';
+    const subType: 'AYLIK' | 'TEK_SEFERLIK' = planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
     const roleValue = role === 'ADMIN' ? 'ADMIN' : 'USER';
     const statusValue = status === 'PENDING' || status === 'REJECTED' ? status : 'APPROVED';
+    const payStatus = statusValue === 'APPROVED' ? 'MANUAL_APPROVED' : 'PENDING';
 
     const newUser = await prisma.user.create({
       data: {
@@ -49,7 +51,9 @@ export async function POST(req: NextRequest) {
         passwordHash,
         role: roleValue,
         status: statusValue,
+        subscriptionType: subType,
         subscriptionPlan: planValue,
+        paymentStatus: payStatus,
       },
     });
 
@@ -86,7 +90,9 @@ export async function POST(req: NextRequest) {
         email: newUser.email,
         role: newUser.role,
         status: newUser.status,
+        subscriptionType: newUser.subscriptionType,
         subscriptionPlan: newUser.subscriptionPlan,
+        paymentStatus: newUser.paymentStatus,
         createdAt: newUser.createdAt.toISOString(),
       },
     });

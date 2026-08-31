@@ -135,6 +135,7 @@ export interface FinanceTransaction {
   type: FinanceTransactionType;
   category: FinanceCategory;
   date: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD (Mandatory for recurring income)
   currency?: CurrencyCode; // 'TRY' | 'USD' | 'EUR'
   originalAmount?: number; // Amount in original currency (e.g. 100 for $100)
   exchangeRate?: number; // Live base exchange rate (e.g. 34.20)
@@ -189,6 +190,8 @@ export interface KanbanCard {
 export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
+export type SubscriptionType = 'AYLIK' | 'TEK_SEFERLIK';
+export type PaymentStatus = 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
 
 export interface UserProfile {
   id: string;
@@ -197,6 +200,8 @@ export interface UserProfile {
   role: UserRole;
   status: UserStatus;
   subscriptionPlan?: SubscriptionPlan;
+  subscriptionType?: SubscriptionType;
+  paymentStatus?: PaymentStatus;
 }
 
 export interface AdminUserItem {
@@ -206,6 +211,8 @@ export interface AdminUserItem {
   role: UserRole;
   status: UserStatus;
   subscriptionPlan: SubscriptionPlan;
+  subscriptionType?: SubscriptionType;
+  paymentStatus?: PaymentStatus;
   createdAt: string;
   updatedAt: string;
   _count?: {

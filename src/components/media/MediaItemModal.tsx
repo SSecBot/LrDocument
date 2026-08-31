@@ -118,6 +118,7 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
       onClose={onClose}
       title={editItem ? 'Medya Öğesini Düzenle' : 'Yeni Medya / Çizim Ekle'}
       subtitle="Matematiksel çizim, şema, YouTube video bağlantısı veya kapak görseli kaydedin."
+      maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}

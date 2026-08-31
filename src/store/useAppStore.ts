@@ -377,7 +377,8 @@ export function useAppStore(): AppState {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
 
-    // Initial auth check only once
+    // Initial auth check and live exchange rates fetch on every site load / mount
+    fetchExchangeRates().catch(() => {});
     if (!isAuthCheckStarted) {
       isAuthCheckStarted = true;
       checkAuth();
@@ -396,6 +397,9 @@ export function useAppStore(): AppState {
         globalState.isLoadingAuth = true;
         notify();
       }
+
+      // Refresh live currency exchange rates on session start
+      fetchExchangeRates().catch(() => {});
 
       const res = await fetch('/api/auth/me');
       const data = await res.json();

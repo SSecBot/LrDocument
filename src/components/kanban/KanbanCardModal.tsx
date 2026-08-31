@@ -118,6 +118,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       onClose={onClose}
       title={editCard ? 'Kanban Kartını Düzenle' : 'Yeni Kanban Kartı Oluştur'}
       subtitle="Genel görevler, matematik araştırmaları, senaryo veya finans için kart ekleyin."
+      maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}

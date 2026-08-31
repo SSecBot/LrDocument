@@ -69,6 +69,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
       onClose={onClose}
       title="Finans Kategori Yönetimi"
       subtitle="Gelir ve gider işlemleriniz için özel kategori etiketleri oluşturun, düzenleyin veya silin."
+      maxWidth="max-w-md"
     >
       <div className="space-y-4">
         {/* Type Toggle Tabs */}

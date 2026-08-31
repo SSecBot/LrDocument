@@ -1,0 +1,37 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Apple Inc.//macOS 14.5//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Örnek Video ve Yayın Takvimi
+BEGIN:VEVENT
+UID:sample-event-1@lrdocument.app
+DTSTAMP:20260831T000000Z
+DTSTART:20260825T140000
+DTEND:20260825T153000
+SUMMARY:[YouTube] Riemann Hipotezi ve Asal Sayı Dağılımı Yayını
+DESCRIPTION:Riemann Zeta Fonksiyonu görselleştirmesi ve animasyon çekimleri.\n\nKontrol Listesi:\n- [X] Animasyon render alındı\n- [ ] Ses kaydı yapıldı
+CATEGORIES:YouTube,Yayın
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-event-2@lrdocument.app
+DTSTAMP:20260831T000000Z
+DTSTART:20260828T180000
+DTEND:20260828T190000
+SUMMARY:[TikTok] 60 Saniyede Euler Özdeşliği
+DESCRIPTION:Dikey video formatında Euler formülü ispatı ve grafik çizimleri.
+CATEGORIES:TikTok,Yayın
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-event-3@lrdocument.app
+DTSTAMP:20260831T000000Z
+DTSTART:20260905T100000
+DTEND:20260905T110000
+SUMMARY:Makale Teslimi ve Teorem Kontrolü
+DESCRIPTION:Matematik araştırma notlarının gözden geçirilmesi ve görev teslimi.
+CATEGORIES:Görev
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

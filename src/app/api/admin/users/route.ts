@@ -15,6 +15,8 @@ export async function GET() {
         role: true,
         status: true,
         subscriptionPlan: true,
+        subscriptionType: true,
+        paymentStatus: true,
         createdAt: true,
         updatedAt: true,
         _count: {

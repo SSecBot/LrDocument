@@ -384,6 +384,7 @@ export const NotesWorkspace: React.FC = () => {
         onClose={() => setIsNewFolderModalOpen(false)}
         title="Yeni Klasör Oluştur"
         subtitle="Notlarınızı kategorize etmek için bir klasör ekleyin."
+        maxWidth="max-w-md"
       >
         <form onSubmit={handleCreateFolder} className="space-y-4">
           <div>
@@ -431,6 +432,7 @@ export const NotesWorkspace: React.FC = () => {
         onClose={() => setEditingFolder(null)}
         title="Klasörü Düzenle"
         subtitle="Klasör adını ve açıklamasını güncelleyin."
+        maxWidth="max-w-md"
       >
         <form onSubmit={handleSaveEditFolder} className="space-y-4">
           <div>
@@ -476,6 +478,7 @@ export const NotesWorkspace: React.FC = () => {
         onClose={() => setDeletingFolder(null)}
         title="Klasörü Sil"
         subtitle="Bu klasörü silmek istediğinize emin misiniz? İçindeki notlar silinmez, kök dizine taşınır."
+        maxWidth="max-w-md"
       >
         <div className="space-y-4 pt-2">
           <p className="text-xs text-[#d1d5db]">

@@ -8,15 +8,17 @@ generator client {
 }
 
 model User {
-  id           String              @id @default(cuid())
-  name         String
-  email        String              @unique
-  passwordHash String
+  id               String              @id @default(cuid())
+  name             String
+  email            String              @unique
+  passwordHash     String
   role             String              @default("USER") // "USER" | "ADMIN"
   status           String              @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  subscriptionType String              @default("AYLIK") // "AYLIK" | "TEK_SEFERLIK"
   subscriptionPlan String              @default("Aylık") // "Aylık" | "Tek Seferlik"
+  paymentStatus    String              @default("PENDING") // "PENDING" | "MANUAL_APPROVED" | "SUCCESSFUL"
   createdAt        DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  updatedAt        DateTime            @updatedAt
 
   folders      Folder[]
   notes        Note[]
@@ -27,6 +29,10 @@ model User {
   transactions FinanceTransaction[]
   categories   FinanceCategory[]
   kanbanCards  KanbanCard[]
+
+  @@index([status, subscriptionType])
+  @@index([status, subscriptionPlan])
+  @@index([paymentStatus])
 }
 
 model Folder {
@@ -138,6 +144,7 @@ model FinanceTransaction {
   type               String   @default("gelir")
   category           String
   date               String
+  endDate            String?  // Mandatory end date for recurring income
   currency           String?  @default("TRY")
   originalAmount     Float?
   exchangeRate       Float?
@@ -154,6 +161,8 @@ model FinanceTransaction {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, date])
+  @@index([userId, type])
 }
 
 model FinanceCategory {

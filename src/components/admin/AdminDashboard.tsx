@@ -21,6 +21,9 @@ import {
   User,
   Shield,
   Layers,
+  Database,
+  UploadCloud,
+  Archive,
 } from 'lucide-react';
 import { AdminUserItem, AdminMetrics, SubscriptionPlan, UserRole, UserStatus } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -37,6 +40,7 @@ export function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // New User Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -58,24 +62,94 @@ export function AdminDashboard() {
       const res = await fetch('/api/admin/users');
       const data = await res.json();
 
-      if (data.success) {
-        setUsers(data.users);
-        setMetrics(data.metrics);
-      } else {
-        addToast({
-          type: 'error',
-          title: 'Hata',
-          message: data.error || 'Kullanıcı listesi alınamadı.',
-        });
+      if (!res.ok) {
+        throw new Error(data.error || 'Veriler alınamadı.');
       }
-    } catch {
+
+      setUsers(data.users || []);
+      setMetrics(data.metrics || null);
+    } catch (err: any) {
       addToast({
         type: 'error',
-        title: 'Bağlantı Hatası',
-        message: 'Sunucu ile iletişim kurulamadı.',
+        title: 'Veri Yükleme Hatası',
+        message: err.message || 'Yönetici paneli verileri alınamadı.',
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportFullBackup = async () => {
+    try {
+      setIsExporting(true);
+      const res = await fetch('/api/admin/export-data');
+      if (!res.ok) throw new Error('Veritabanı yedeği alınamadı.');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lrdocument_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      addToast({
+        type: 'success',
+        title: 'Yedekleme Tamamlandı',
+        message: 'Tüm sistem veritabanı JSON formatında başarıyla dışa aktarıldı.',
+      });
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Yedekleme Hatası',
+        message: err.message || 'Yedek indirilirken bir hata oluştu.',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportFullBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('Seçilen JSON yedekleme dosyası mevcut veritabanı ile güvenli şekilde birleştirilecektir. Devam etmek istiyor musunuz?')) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      const res = await fetch('/api/admin/import-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'İçe aktarım başarısız oldu.');
+
+      addToast({
+        type: 'success',
+        title: 'Veri İçe Aktarımı Başarılı',
+        message: `Yedekleme içeri aktarıldı. (${data.summary?.importedUsers ?? 0} kullanıcı, ${data.summary?.importedNotes ?? 0} not, ${data.summary?.importedTransactions ?? 0} finans kaydı).`,
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'İçe Aktarım Hatası',
+        message: err.message || 'Yedek dosyası işlenirken hata oluştu.',
+      });
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
     }
   };
 
@@ -367,15 +441,43 @@ export function AdminDashboard() {
             <span>Yeni Kullanıcı Ekle</span>
           </button>
 
+          {/* Full Database JSON Backup Export */}
+          <button
+            onClick={handleExportFullBackup}
+            disabled={isExporting}
+            title="Tüm Veritabanını JSON Olarak Yedekle (Kullanıcılar, Notlar, Finans, Görevler)"
+            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-950/40 border border-blue-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <Database className="w-4 h-4 text-blue-300" />
+            <span>{isExporting ? 'Yedekleniyor...' : 'Veritabanı Yedeği (.json)'}</span>
+          </button>
+
+          {/* Full Database JSON Backup Import */}
+          <label
+            title="Daha önce alınmış JSON yedeğini sisteme güvenli şekilde geri yükleyin / aktarın"
+            className={`px-3.5 py-2.5 rounded-xl bg-[#1c2230] hover:bg-[#252e42] text-xs font-semibold text-blue-300 border border-blue-800/60 flex items-center gap-1.5 transition-colors cursor-pointer ${
+              isImporting ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            <UploadCloud className="w-4 h-4 text-blue-400" />
+            <span>{isImporting ? 'İçe Aktarılıyor...' : 'Yedek Yükle'}</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportFullBackup}
+              className="hidden"
+            />
+          </label>
+
           {/* Prominent Excel Export Button */}
           <button
             onClick={handleExportExcel}
             disabled={isExporting || users.length === 0}
             title="Kullanıcı Listesini Excel Olarak İndir (.xlsx)"
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-            <span>Kullanıcı Listesini Excel Olarak İndir (.xlsx)</span>
+            <span>Excel (.xlsx)</span>
           </button>
 
           {/* CSV Export Option */}
@@ -402,6 +504,37 @@ export function AdminDashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+        {/* Database Migration & Backup Status Banner */}
+        <div className="bg-gradient-to-r from-[#141a24] to-[#121620] border border-blue-900/40 rounded-2xl p-4.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+              <Archive className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-white">Veri Koruma & Otomatik Geçiş Sistemi (Schema v2.0)</h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-semibold">
+                  Sıfır Veri Kaybı Aktif
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Mevcut veriler: {metrics?.totalUsers ?? users.length} Kullanıcı, {metrics?.totalNotes ?? 0} Not, {metrics?.totalTasks ?? 0} Görev, {metrics?.totalScripts ?? 0} Senaryo. Yapısal değişiklik öncesi tam JSON yedeği alabilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleExportFullBackup}
+              disabled={isExporting}
+              className="px-3 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Yedek İndir (.json)</span>
+            </button>
+          </div>
+        </div>
+
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
@@ -781,8 +914,8 @@ export function AdminDashboard() {
 
       {/* CREATE NEW USER MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-[#161822] border border-neutral-800 w-full max-w-md rounded-3xl p-7 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#161822] border border-neutral-800 w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl p-6 sm:p-7 shadow-2xl relative">
             <button
               onClick={() => setIsCreateModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"

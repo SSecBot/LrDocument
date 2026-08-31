@@ -432,8 +432,8 @@ export default function LandingPage() {
 
       {/* Registration Request Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-[#161822] border border-neutral-800 w-full max-w-md rounded-3xl p-7 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#161822] border border-neutral-800 w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl p-6 sm:p-7 shadow-2xl relative">
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"

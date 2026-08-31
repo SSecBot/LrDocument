@@ -13,8 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LrDocument — Matematik & İçerik Üretim Çalışma Alanı',
+  title: 'Σ LrDocument — Matematik & İçerik Üretim Çalışma Alanı',
   description: 'Matematik meraklıları, içerik üreticileri ve öğrenciler için hepsi bir arada LaTeX notları, video senaryo stüdyosu, görev yönetimi ve yayın takvimi platformu.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -25,6 +34,8 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
       <head>
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
