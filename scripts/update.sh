@@ -3,10 +3,14 @@
 # LrDocument — sunucu güncelleme betiği (VPS / PM2 / SQLite)
 #
 # Kullanım (sunucuda):
-#   bash /var/www/lrion/scripts/update.sh
+#   bash /var/www/LrDocument/scripts/update.sh
 #
 # Varsayılanlar ortam değişkenleriyle değiştirilebilir:
-#   APP_DIR=/var/www/lrion PM2_NAME=lrion BRANCH=master PORT=3000 DATA_DIR=/var/lib/lrion
+#   APP_DIR=/var/www/LrDocument PM2_NAME=<pm2 adı> BRANCH=master PORT=3000 DATA_DIR=/var/lib/lrdocument
+#
+# APP_DIR verilmezse: betiğin bulunduğu proje, o da yoksa içinde bulunulan klasör (LrDocument
+# projesiyse), o da değilse /var/www/LrDocument kullanılır. PM2_NAME verilmezse PM2'de bu klasörde
+# çalışan süreç otomatik bulunur.
 #
 # Ne yapar:
 #   1. Veritabanının zaman damgalı yedeğini alır
@@ -18,11 +22,44 @@
 # =============================================================================
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/var/www/lrion}"
-PM2_NAME="${PM2_NAME:-lrion}"
+# Sunucu betiği: geliştirme bilgisayarında (Windows/macOS) yanlışlıkla çalışmasın.
+if [ "$(uname -s)" != "Linux" ] && [ -z "${ALLOW_NON_LINUX:-}" ]; then
+  echo "Bu betik Linux sunucu içindir (ALLOW_NON_LINUX=1 ile zorlanabilir)." >&2
+  exit 1
+fi
+
+is_app_dir() { [ -f "$1/package.json" ] && grep -q '"name": "lr-document"' "$1/package.json"; }
+
+if [ -z "${APP_DIR:-}" ]; then
+  SCRIPT_PARENT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd || true)"
+  if [ -n "$SCRIPT_PARENT" ] && is_app_dir "$SCRIPT_PARENT"; then
+    APP_DIR="$SCRIPT_PARENT"
+  elif is_app_dir "$PWD"; then
+    APP_DIR="$PWD"
+  else
+    APP_DIR="/var/www/LrDocument"
+  fi
+fi
+
+# PM2'de bu klasörde (pm_cwd) çalışan süreci bul
+detect_pm2_name() {
+  pm2 jlist 2>/dev/null | node -e '
+    let d = "";
+    process.stdin.on("data", (c) => (d += c)).on("end", () => {
+      try {
+        const dir = process.argv[1].replace(/[/]$/, "");
+        // pm2 may print "[PM2] ..." notices before the JSON array
+        const list = JSON.parse(d.slice(d.search(/^\[(\{|\])/m)));
+        const p = list.find((x) => (x.pm2_env?.pm_cwd || "").replace(/[/]$/, "") === dir);
+        if (p) console.log(p.name);
+      } catch {}
+    });' "$APP_DIR" || true
+}
+PM2_NAME="${PM2_NAME:-$(detect_pm2_name)}"
+PM2_NAME="${PM2_NAME:-lrdocument}"
 BRANCH="${BRANCH:-master}"
 PORT="${PORT:-3000}"
-DATA_DIR="${DATA_DIR:-/var/lib/lrion}"
+DATA_DIR="${DATA_DIR:-/var/lib/lrdocument}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 step() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
@@ -38,6 +75,7 @@ on_error() {
 trap 'on_error $LINENO' ERR
 
 cd "$APP_DIR" || fail "$APP_DIR bulunamadı."
+echo "Proje klasörü: $APP_DIR | PM2 süreci: $PM2_NAME | Veri klasörü: $DATA_DIR"
 [ -f .env ] || fail ".env dosyası bulunamadı ($APP_DIR/.env)."
 
 # ---------------------------------------------------------------------------

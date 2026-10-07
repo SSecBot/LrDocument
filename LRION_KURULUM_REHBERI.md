@@ -76,9 +76,9 @@ sudo npm install -g pm2
 
 ### 3.1. Proje Dizinini Oluşturun
 ```bash
-sudo mkdir -p /var/www/lrion
-sudo chown -R $USER:$USER /var/www/lrion
-cd /var/www/lrion
+sudo mkdir -p /var/www/LrDocument
+sudo chown -R $USER:$USER /var/www/LrDocument
+cd /var/www/LrDocument
 ```
 
 ### 3.2. Kodları Sunucuya Yükleyin
@@ -92,11 +92,11 @@ git clone https://github.com/KULLANICI_ADI/REPO_ADI.git .
 Kendi bilgisayarınızda PowerShell veya Terminal açarak proje klasörünüzü sunucuya kopyalayın:
 ```powershell
 # Kendi bilgisayarınızın terminalinde çalıştırın (node_modules ve .next hariç tutulabilir):
-scp -r "c:\Users\monster\Desktop\Yazılım\projeler\LrDocument\*" root@SUNUCU_IP_ADRESINIZ:/var/www/lrion/
+scp -r "c:\Users\monster\Desktop\Yazılım\projeler\LrDocument\*" root@SUNUCU_IP_ADRESINIZ:/var/www/LrDocument/
 ```
 
 ### 3.3. Üretim `.env` Dosyasını Oluşturun
-Sunucuda `/var/www/lrion` dizinindeyken:
+Sunucuda `/var/www/LrDocument` dizinindeyken:
 ```bash
 nano .env
 ```
@@ -127,10 +127,10 @@ NEXT_PUBLIC_APP_URL="https://lrion.com.tr"
 
 ## 4. Adım: Veritabanı (Prisma) ve Next.js Derlemesi
 
-`/var/www/lrion` dizininde aşağıdaki komutları sırasıyla çalıştırın:
+`/var/www/LrDocument` dizininde aşağıdaki komutları sırasıyla çalıştırın:
 
 ```bash
-cd /var/www/lrion
+cd /var/www/LrDocument
 
 # 1. Bağımlılıkları yükleyin
 npm install
@@ -159,7 +159,7 @@ npm run build
 Uygulamanın çökmesi durumunda otomatik yeniden başlaması ve sunucu yeniden başlatıldığında kendiliğinden açılması için PM2'yi yapılandırıyoruz:
 
 ```bash
-cd /var/www/lrion
+cd /var/www/LrDocument
 
 # Uygulamayı 3000 portunda PM2 ile başlatın
 pm2 start npm --name "lrion" -- start -- -p 3000
@@ -287,10 +287,10 @@ sudo ufw status
 ## 9. Adım: Tek Komutla Otomatik Güncelleme Scripti (update.sh)
 
 Güncelleme betiği artık depoda: `scripts/update.sh`. Yedek alır, veritabanını proje klasörü dışında
-(`/var/lib/lrion/prod.db`) tutar, kodu `master` dalından çeker, derler ve PM2'yi yeniden başlatır.
+(`/var/lib/lrdocument/prod.db`) tutar, kodu `master` dalından çeker, derler ve PM2'yi yeniden başlatır.
 
 ```bash
-bash /var/www/lrion/scripts/update.sh
+bash /var/www/LrDocument/scripts/update.sh
 ```
 
 > Eski (v1.3.0) bir kurulumu ilk kez güncelliyorsanız önce **SUNUCU_GUNCELLEME.md** dosyasındaki
@@ -313,8 +313,8 @@ bash /var/www/lrion/scripts/update.sh
 * **Neden:** `dev.db` dosyasına veya `prisma` klasörüne yazma izni verilmemiş olabilir.
 * **Çözüm:**
   ```bash
-  sudo chown -R $USER:$USER /var/www/lrion/prisma
-  chmod 664 /var/www/lrion/prisma/dev.db
+  sudo chown -R $USER:$USER /var/www/LrDocument/prisma
+  chmod 664 /var/www/LrDocument/prisma/dev.db
   ```
 
 ### ❓ 3. SSL Sertifikası Alırken Hata (Certbot Failed)
