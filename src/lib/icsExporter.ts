@@ -2,11 +2,12 @@ import { CalendarEvent } from '@/types';
 
 function formatToICSDate(dateStr: string, timeStr?: string): string {
   // dateStr is YYYY-MM-DD, timeStr is HH:mm
+  // Floating local time on both start and end (calculateEndDate also defaults to 09:00 local).
   const cleanDate = dateStr.replace(/-/g, '');
   if (!timeStr) {
-    return `${cleanDate}T090000Z`;
+    return `${cleanDate}T090000`;
   }
-  const cleanTime = timeStr.replace(/:/g, '') + '00';
+  const cleanTime = timeStr.replace(/:/g, '').slice(0, 4).padEnd(4, '0') + '00';
   return `${cleanDate}T${cleanTime}`;
 }
 
@@ -33,7 +34,7 @@ function escapeICS(str: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
-    .replace(/\n/g, '\\n');
+    .replace(/\r?\n/g, '\\n');
 }
 
 export function generateICSContent(events: CalendarEvent[]): string {
@@ -53,7 +54,7 @@ export function generateICSContent(events: CalendarEvent[]): string {
     const nowStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
     const checklistText = ev.checklist && ev.checklist.length > 0
-      ? `\\n\\nKontrol Listesi:\\n` + ev.checklist.map(c => `- [${c.done ? 'X' : ' '}] ${c.text}`).join('\\n')
+      ? `\\n\\nKontrol Listesi:\\n` + ev.checklist.map(c => `- [${c.done ? 'X' : ' '}] ${escapeICS(c.text)}`).join('\\n')
       : '';
 
     const category = ev.eventType === 'yayin' ? (ev.platform || 'Yayın') : ev.eventType === 'gorev' ? 'Görev Teslimi' : 'Özel Gün';
@@ -85,12 +86,14 @@ export function generateICSContent(events: CalendarEvent[]): string {
 export function downloadICSFile(events: CalendarEvent[], filename: string = 'lrdocument-yayin-takvimi.ics'): void {
   const icsData = generateICSContent(events);
   const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = window.URL.createObjectURL(blob);
+  link.href = url;
   link.setAttribute('download', filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
 export function createGoogleCalendarUrl(event: CalendarEvent): string {

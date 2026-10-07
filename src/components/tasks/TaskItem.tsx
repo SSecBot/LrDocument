@@ -136,12 +136,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   return (
     <>
       <div
-        className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3 group ${
+        className={`p-3.5 sm:p-4 rounded-xl border transition-all space-y-3 group ${
           task.completed
-            ? 'bg-[#161616]/70 border-[#222222] opacity-75'
+            ? 'bg-surface/70 border-line opacity-75'
             : overdue
-            ? 'bg-[#221316]/70 border-rose-900/60 hover:border-rose-700/80 shadow-md shadow-rose-950/30'
-            : 'bg-[#181818] hover:bg-[#1f1f1f] border-[#282828] hover:border-[#383838]'
+            ? 'bg-[#221316]/70 border-rose-900/60 hover:border-rose-700/80'
+            : 'bg-surface hover:bg-surface-2 border-line hover:border-line-strong'
         }`}
       >
         {isEditing ? (
@@ -149,35 +149,35 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
           <form onSubmit={handleSaveEdit} className="space-y-3">
             <div className="space-y-2">
               <div>
-                <label className="block text-[11px] font-bold text-[#9ca3af] mb-1">Görev Başlığı *</label>
+                <label className="block text-[11px] font-bold text-subtle mb-1">Görev Başlığı *</label>
                 <input
                   type="text"
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full bg-[#242424] border border-[#383838] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none min-h-[44px]"
+                  className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none min-h-[44px]"
                   placeholder="Görev başlığı..."
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-[#9ca3af] mb-1">Açıklama & Detaylar</label>
+                <label className="block text-[11px] font-bold text-subtle mb-1">Açıklama & Detaylar</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={2}
-                  className="w-full bg-[#242424] border border-[#383838] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none resize-none"
+                  className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none resize-none"
                   placeholder="Görevle ilgili ayrıntılı notlar..."
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] mb-1">Öncelik</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">Öncelik</label>
                   <select
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
-                    className="w-full bg-[#242424] border border-[#383838] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
                   >
                     <option value="yuksek">🔴 Yüksek Öncelik</option>
                     <option value="orta">🟡 Orta Öncelik</option>
@@ -186,22 +186,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] mb-1">Son Teslim Tarihi</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">Son Teslim Tarihi</label>
                   <input
                     type="date"
                     value={editDueDate}
                     onChange={(e) => setEditDueDate(e.target.value)}
-                    className="w-full bg-[#242424] border border-[#383838] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2a2a2a]">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="min-h-[40px] px-3.5 py-1.5 bg-[#242424] hover:bg-[#2c2c2c] text-[#d1d5db] text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="min-h-[40px] px-3.5 py-1.5 bg-surface-2 hover:bg-surface-3 text-body text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>İptal</span>
@@ -209,7 +209,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
               <button
                 type="submit"
-                className="min-h-[40px] px-4 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                className="min-h-[40px] px-4 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Kaydet</span>
@@ -222,16 +222,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             {/* Custom Checkbox with touch-target container */}
             <button
               onClick={handleToggle}
-              className="min-h-[44px] min-w-[44px] -ml-2 -mt-2 p-2 flex items-center justify-center rounded-xl transition-all cursor-pointer"
+              className="min-h-[44px] min-w-[44px] -ml-2 -mt-2 p-2 flex items-center justify-center rounded-lg transition-all cursor-pointer"
               aria-label={task.completed ? 'Tamamlandı olarak işaretlendi' : 'Tamamla'}
             >
               <div
                 className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border ${
                   task.completed
-                    ? 'bg-[#2d5a27] border-emerald-500 text-white shadow-sm shadow-emerald-900/40'
+                    ? 'bg-brand border-emerald-500 text-white'
                     : overdue
                     ? 'bg-[#281619] border-rose-700/60 hover:border-rose-500 text-transparent'
-                    : 'bg-[#222] border-[#3e3e3e] hover:border-[#2d5a27] text-transparent'
+                    : 'bg-surface-2 border-line-strong hover:border-brand text-transparent'
                 }`}
               >
                 <Check className={`w-3.5 h-3.5 stroke-[3] ${task.completed ? 'text-white' : 'text-transparent'}`} />
@@ -243,7 +243,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               <div className="flex items-center gap-2 flex-wrap">
                 <h4
                   className={`text-xs sm:text-sm font-semibold transition-all ${
-                    task.completed ? 'line-through text-[#71717a]' : 'text-white'
+                    task.completed ? 'line-through text-muted' : 'text-white'
                   }`}
                 >
                   {task.title}
@@ -254,7 +254,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
                 {/* Overdue Auto-Priority Elevation Pill */}
                 {overdue && (
-                  <span className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-700/80 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-md animate-pulse">
+                  <span className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-700/80 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
                     <AlertTriangle className="w-3 h-3 text-rose-400" />
                     <span>Vadesi Geçti</span>
                   </span>
@@ -262,7 +262,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               </div>
 
               {task.description && (
-                <p className="text-xs text-[#9ca3af] mt-1 leading-relaxed">
+                <p className="text-xs text-subtle mt-1 leading-relaxed">
                   {task.description}
                 </p>
               )}
@@ -275,7 +275,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium min-h-[32px] ${
                       overdue
                         ? 'bg-rose-950/60 border-rose-800/60 text-rose-300'
-                        : 'bg-[#222] border-[#333] text-[#a1a1aa]'
+                        : 'bg-surface-2 border-line-strong text-subtle'
                     }`}
                   >
                     <Calendar className="w-3 h-3 text-emerald-400" />
@@ -288,7 +288,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {linkedNote && (
                   <button
                     onClick={handleJumpToNote}
-                    className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
+                    className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand/40 border border-brand/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
                     title="Bağlı Nota Git"
                   >
                     <FileText className="w-3 h-3 text-emerald-400" />
@@ -300,7 +300,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {linkedScript && (
                   <button
                     onClick={handleJumpToScript}
-                    className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202820] hover:bg-[#2d5a27]/40 border border-[#2d5a27]/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
+                    className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand/40 border border-brand/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
                     title="Bağlı Video Senaryosuna Git"
                   >
                     <Video className="w-3 h-3 text-emerald-400" />
@@ -311,17 +311,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {/* One-Click Push to Kanban button */}
                 <button
                   onClick={handleSendToKanban}
-                  className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1a251a] hover:bg-[#223522] border border-[#2d5a27]/60 text-[11px] text-emerald-300 hover:text-white font-medium transition-colors cursor-pointer"
+                  className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand-soft border border-brand/60 text-[11px] text-emerald-300 hover:text-white font-medium transition-colors cursor-pointer"
                   title="Görevi Kanban panosuna aktar"
                 >
                   <Kanban className="w-3 h-3 text-emerald-400" />
-                  <span>Kanban'a Ekle</span>
+                  <span>Kanban’a Ekle</span>
                 </button>
 
                 {/* Cross Link button */}
                 <button
                   onClick={() => setIsCrossLinkModalOpen(true)}
-                  className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] border border-[#333] text-[11px] text-[#9ca3af] hover:text-white transition-colors cursor-pointer"
+                  className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line-strong text-[11px] text-subtle hover:text-white transition-colors cursor-pointer"
                   title="Döküman bağlantılarını düzenle"
                 >
                   <Link2 className="w-3 h-3" />
@@ -334,7 +334,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => setIsEditing(true)}
-                className="min-h-[44px] min-w-[44px] p-2.5 text-[#9ca3af] hover:text-emerald-400 hover:bg-[#242424] rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+                className="min-h-[44px] min-w-[44px] p-2.5 text-subtle hover:text-emerald-400 hover:bg-surface-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                 title="Görevi Düzenle"
                 aria-label="Düzenle"
               >
@@ -343,7 +343,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
               <button
                 onClick={() => deleteTask(task.id)}
-                className="min-h-[44px] min-w-[44px] p-2.5 text-[#71717a] hover:text-rose-400 hover:bg-rose-950/30 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+                className="min-h-[44px] min-w-[44px] p-2.5 text-muted hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                 title="Görevi Sil"
                 aria-label="Sil"
               >

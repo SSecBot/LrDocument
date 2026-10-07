@@ -26,11 +26,8 @@ export async function fetchLiveExchangeRates(currentMarkup: number = 2.50): Prom
   try {
     const primaryUrl = `https://open.er-api.com/v6/latest/USD?_t=${Date.now()}`;
     const res = await fetch(primaryUrl, {
+      // No custom request headers: they would force a CORS preflight that these public APIs reject.
       cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
       signal: AbortSignal.timeout(4500),
     });
 
@@ -66,9 +63,6 @@ export async function fetchLiveExchangeRates(currentMarkup: number = 2.50): Prom
     const secondaryUrl = `https://api.frankfurter.dev/v1/latest?base=USD&symbols=TRY,EUR&_t=${Date.now()}`;
     const res = await fetch(secondaryUrl, {
       cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      },
       signal: AbortSignal.timeout(4500),
     });
 

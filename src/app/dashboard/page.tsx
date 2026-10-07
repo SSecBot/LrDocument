@@ -31,8 +31,8 @@ export default function DashboardPage() {
 
   if (isLoadingAuth) {
     return (
-      <div className="h-screen w-screen bg-[#0d0e12] flex flex-col items-center justify-center text-white space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 animate-pulse">
+      <div className="h-dvh w-full bg-app flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
           <ShieldCheck className="w-6 h-6" />
         </div>
         <div className="flex flex-col items-center gap-2">
@@ -48,7 +48,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#121212] text-[#f5f5f0]">
+    <div className="flex h-dvh w-full overflow-hidden bg-app text-fg">
       <CommandPalette />
       <ToastContainer />
       <Sidebar />

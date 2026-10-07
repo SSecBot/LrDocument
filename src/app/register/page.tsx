@@ -45,7 +45,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password, subscriptionPlan }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setErrorMessage(data.error || 'Kayıt sırasında bir hata oluştu.');
@@ -62,15 +62,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0d0e12] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-dvh w-full bg-app flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Background Glows */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md z-10">
         {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-xl shadow-emerald-500/20 mb-4 border border-emerald-400/30">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-emerald-600 text-white mb-4 border border-emerald-400/30">
             <ShieldCheck className="w-7 h-7" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight flex items-center justify-center gap-2">
@@ -82,17 +80,17 @@ export default function RegisterPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-[#16181f]/90 border border-neutral-800 backdrop-blur-xl rounded-2xl p-8 shadow-2xl relative">
+        <div className="bg-surface/90 border border-line backdrop-blur-xl rounded-xl p-6 relative">
           {isSubmitted ? (
             /* Successful Registration - Message as required */
-            <div className="text-center py-4 space-y-6 animate-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
+            <div className="text-center py-4 space-y-5 animate-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div className="space-y-2">
                 <h2 className="text-xl font-bold text-white">Başvurunuz Alındı</h2>
-                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm font-semibold">
+                <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm font-semibold">
                   Talebiniz oluşturuldu. Mail üzerinden iletişime geçilecektir.
                 </div>
               </div>
@@ -103,7 +101,7 @@ export default function RegisterPage() {
 
               <Link
                 href="/login"
-                className="w-full inline-flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-3 px-4 rounded-xl border border-neutral-700 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 bg-surface-3 hover:bg-neutral-700 text-white font-medium py-3 px-4 rounded-lg border border-line-strong transition-colors"
               >
                 <span>Giriş Sayfasına Dön</span>
                 <ArrowRight className="w-4 h-4" />
@@ -113,7 +111,7 @@ export default function RegisterPage() {
             /* Registration Form */
             <>
               {errorMessage && (
-                <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-3 text-sm animate-in fade-in">
+                <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-3 text-sm animate-in fade-in">
                   <AlertCircle className="w-5 h-5 text-rose-400 mt-0.5 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
@@ -124,12 +122,12 @@ export default function RegisterPage() {
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
                     Abonelik Tercihi
                   </label>
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-[#0d0e12] rounded-xl border border-neutral-800">
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-app rounded-lg border border-line">
                     <button
                       type="button"
                       onClick={() => setSubscriptionPlan('Aylık')}
                       className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${subscriptionPlan === 'Aylık'
-                          ? 'bg-neutral-800 text-white border border-neutral-700 shadow-sm'
+                          ? 'bg-surface-3 text-white border border-line-strong'
                           : 'text-neutral-400 hover:text-white'
                         }`}
                     >
@@ -139,7 +137,7 @@ export default function RegisterPage() {
                       type="button"
                       onClick={() => setSubscriptionPlan('Tek Seferlik')}
                       className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${subscriptionPlan === 'Tek Seferlik'
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border border-emerald-500/40 shadow-sm'
+                          ? 'bg-emerald-600 text-white border border-emerald-500/40'
                           : 'text-neutral-400 hover:text-white'
                         }`}
                     >
@@ -160,7 +158,7 @@ export default function RegisterPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Örn: Ali Yılmaz"
-                      className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                     />
                   </div>
                 </div>
@@ -173,11 +171,12 @@ export default function RegisterPage() {
                     <Mail className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="email"
+                      autoComplete="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="ornek@alanadi.com"
-                      className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                     />
                   </div>
                 </div>
@@ -190,11 +189,12 @@ export default function RegisterPage() {
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="password"
+                      autoComplete="new-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                     />
                   </div>
                 </div>
@@ -207,11 +207,12 @@ export default function RegisterPage() {
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="password"
+                      autoComplete="new-password"
                       required
                       value={passwordConfirm}
                       onChange={(e) => setPasswordConfirm(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                     />
                   </div>
                 </div>
@@ -219,7 +220,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

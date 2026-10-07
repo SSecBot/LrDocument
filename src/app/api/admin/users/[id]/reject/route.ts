@@ -1,26 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { handleRouteError } from '@/lib/apiUtils';
 
 export async function PATCH(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
     const { id } = await params;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    if (id === session.userId) {
+      return NextResponse.json({ error: 'Kendi hesabınızı reddedemezsiniz.' }, { status: 400 });
+    }
 
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
     }
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { status: 'REJECTED' },
+      // Bumping the session version immediately signs the user out everywhere.
+      data: { status: 'REJECTED', sessionVersion: { increment: 1 } },
       select: { id: true, name: true, email: true, role: true, status: true },
     });
 
@@ -29,11 +32,7 @@ export async function PATCH(
       message: `${updatedUser.name} (${updatedUser.email}) hesabı reddedildi.`,
       user: updatedUser,
     });
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message.includes('Unauthorized') || err.message.includes('Forbidden')) {
-      return NextResponse.json({ error: 'Yönetici yetkisi gereklidir.' }, { status: 403 });
-    }
-    return NextResponse.json({ error: 'Reddetme işlemi başarısız.' }, { status: 500 });
+  } catch (error) {
+    return handleRouteError(error, 'Reject user error', 'Reddetme işlemi başarısız.');
   }
 }

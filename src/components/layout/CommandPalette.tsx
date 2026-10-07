@@ -12,7 +12,6 @@ import {
   Wallet,
   Kanban,
   Plus,
-  ArrowRight,
 } from 'lucide-react';
 import { formatCurrencyTRY } from '@/lib/utils';
 
@@ -31,7 +30,6 @@ export const CommandPalette: React.FC = () => {
     setActiveScriptId,
     addNote,
     addScript,
-    addTask,
   } = useAppStore();
 
   const [query, setQuery] = useState('');
@@ -119,9 +117,9 @@ export const CommandPalette: React.FC = () => {
         onClick={() => setIsCommandPaletteOpen(false)}
       />
 
-      <div className="relative w-full max-w-2xl bg-[#181818] border border-[#2e2e2e] rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[80vh]">
+      <div className="relative w-full max-w-2xl bg-surface border border-line rounded-xl overflow-hidden z-10 flex flex-col max-h-[80vh]">
         {/* Search input header */}
-        <div className="p-4 border-b border-[#282828] flex items-center gap-3 bg-[#1e1e1e]">
+        <div className="p-4 border-b border-line flex items-center gap-3 bg-surface-2">
           <Search className="w-5 h-5 text-emerald-400 shrink-0" />
           <input
             type="text"
@@ -129,9 +127,9 @@ export const CommandPalette: React.FC = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Notlarda, senaryolarda, kanbanda veya finansta arayın..."
-            className="w-full bg-transparent text-white placeholder-[#71717a] text-sm focus:outline-none"
+            className="w-full bg-transparent text-white placeholder-muted text-sm focus:outline-none"
           />
-          <kbd className="text-[11px] font-mono bg-[#282828] text-[#71717a] px-2 py-0.5 rounded-md border border-[#383838]">
+          <kbd className="text-[11px] font-mono bg-surface-3 text-muted px-2 py-0.5 rounded-md border border-line-strong">
             ESC
           </kbd>
         </div>
@@ -140,14 +138,14 @@ export const CommandPalette: React.FC = () => {
         <div className="p-4 overflow-y-auto space-y-4 flex-1">
           {/* Quick Actions */}
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Hızlı İşlemler</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Hızlı İşlemler</span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
               <button
                 onClick={() => {
                   const id = addNote();
                   handleSelectNote(id);
                 }}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-[#222] hover:bg-[#2a2a2a] text-xs font-semibold text-white transition-colors text-left"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <Plus className="w-4 h-4 text-emerald-400" />
                 <span>Yeni Not Oluştur</span>
@@ -158,7 +156,7 @@ export const CommandPalette: React.FC = () => {
                   const id = addScript();
                   handleSelectScript(id);
                 }}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-[#222] hover:bg-[#2a2a2a] text-xs font-semibold text-white transition-colors text-left"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <Plus className="w-4 h-4 text-sky-400" />
                 <span>Yeni Senaryo Yaz</span>
@@ -166,7 +164,7 @@ export const CommandPalette: React.FC = () => {
 
               <button
                 onClick={handleSelectKanban}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-[#222] hover:bg-[#2a2a2a] text-xs font-semibold text-white transition-colors text-left"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <Kanban className="w-4 h-4 text-emerald-400" />
                 <span>Kanban Panosunu Aç</span>
@@ -177,19 +175,19 @@ export const CommandPalette: React.FC = () => {
           {/* Notes */}
           {matchingNotes.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Notlar</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Notlar</span>
               <div className="space-y-1 pt-1">
                 {matchingNotes.map((n) => (
                   <button
                     key={n.id}
                     onClick={() => handleSelectNote(n.id)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span className="truncate">{n.title}</span>
                     </div>
-                    <span className="text-[10px] text-[#71717a] bg-[#282828] px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-muted bg-surface-3 px-2 py-0.5 rounded">
                       {n.folder}
                     </span>
                   </button>
@@ -201,13 +199,13 @@ export const CommandPalette: React.FC = () => {
           {/* Kanban Cards */}
           {matchingKanban.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Kanban Kartları</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Kanban Kartları</span>
               <div className="space-y-1 pt-1">
                 {matchingKanban.map((k) => (
                   <button
                     key={k.id}
                     onClick={handleSelectKanban}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Kanban className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -225,19 +223,19 @@ export const CommandPalette: React.FC = () => {
           {/* Scripts */}
           {matchingScripts.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Video Senaryoları</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Video Senaryoları</span>
               <div className="space-y-1 pt-1">
                 {matchingScripts.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => handleSelectScript(s.id)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Video className="w-4 h-4 text-sky-400 shrink-0" />
                       <span className="truncate">{s.title}</span>
                     </div>
-                    <span className="text-[10px] text-emerald-400 bg-[#142214] px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-emerald-400 bg-surface px-2 py-0.5 rounded">
                       {s.targetPlatform}
                     </span>
                   </button>
@@ -249,13 +247,13 @@ export const CommandPalette: React.FC = () => {
           {/* Finance Records */}
           {matchingTransactions.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Finans İşlemleri</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Finans İşlemleri</span>
               <div className="space-y-1 pt-1">
                 {matchingTransactions.map((t) => (
                   <button
                     key={t.id}
                     onClick={handleSelectFinance}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Wallet className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -273,13 +271,13 @@ export const CommandPalette: React.FC = () => {
           {/* Media Items */}
           {matchingMedia.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Medya & Çizimler</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Medya & Çizimler</span>
               <div className="space-y-1 pt-1">
                 {matchingMedia.map((m) => (
                   <button
                     key={m.id}
                     onClick={handleSelectMedia}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <ImageIcon className="w-4 h-4 text-purple-400 shrink-0" />
@@ -296,11 +294,11 @@ export const CommandPalette: React.FC = () => {
 
           {/* Navigation Links */}
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] px-2">Modüllere Git</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Modüllere Git</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
               <button
                 onClick={handleSelectKanban}
-                className="flex items-center gap-1.5 p-2 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Kanban className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Kanban ({kanbanCards.length})</span>
@@ -308,7 +306,7 @@ export const CommandPalette: React.FC = () => {
 
               <button
                 onClick={handleSelectTasks}
-                className="flex items-center gap-1.5 p-2 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
                 <span>Görevler ({tasks.filter(t => !t.completed).length})</span>
@@ -316,7 +314,7 @@ export const CommandPalette: React.FC = () => {
 
               <button
                 onClick={handleSelectCalendar}
-                className="flex items-center gap-1.5 p-2 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Calendar className="w-3.5 h-3.5 text-purple-400" />
                 <span>Takvim</span>
@@ -324,7 +322,7 @@ export const CommandPalette: React.FC = () => {
 
               <button
                 onClick={handleSelectFinance}
-                className="flex items-center gap-1.5 p-2 rounded-xl bg-[#202020] hover:bg-[#282828] text-xs text-white transition-colors text-left"
+                className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Wallet className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Finans</span>
@@ -334,9 +332,9 @@ export const CommandPalette: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2.5 bg-[#141414] border-t border-[#242424] flex items-center justify-between text-[11px] text-[#71717a]">
+        <div className="px-4 py-2.5 bg-app border-t border-line flex items-center justify-between text-[11px] text-muted">
           <span>Gezinmek için arama yapın veya bir modüle tıklayın</span>
-          <span className="font-mono text-[10px] text-[#555]">ESC veya Tıkla ile Kapat</span>
+          <span className="font-mono text-[10px] text-muted">ESC veya Tıkla ile Kapat</span>
         </div>
       </div>
     </div>

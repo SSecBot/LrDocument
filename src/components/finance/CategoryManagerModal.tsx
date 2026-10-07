@@ -13,7 +13,6 @@ import {
   X,
   TrendingUp,
   TrendingDown,
-  Layers,
 } from 'lucide-react';
 
 interface CategoryManagerModalProps {
@@ -73,14 +72,14 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     >
       <div className="space-y-4">
         {/* Type Toggle Tabs */}
-        <div className="grid grid-cols-2 gap-2 bg-[#202020] p-1 rounded-xl border border-[#333]">
+        <div className="grid grid-cols-2 gap-2 bg-surface-2 p-1 rounded-lg border border-line-strong">
           <button
             type="button"
             onClick={() => setActiveTab('gelir')}
             className={`py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'gelir'
-                ? 'bg-[#182818] border border-[#2d5a27] text-emerald-300 shadow-sm'
-                : 'text-[#9ca3af] hover:text-white'
+                ? 'bg-brand-soft border border-brand text-emerald-300'
+                : 'text-subtle hover:text-white'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
@@ -92,8 +91,8 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             onClick={() => setActiveTab('gider')}
             className={`py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'gider'
-                ? 'bg-[#28181a] border border-rose-800/80 text-rose-300 shadow-sm'
-                : 'text-[#9ca3af] hover:text-white'
+                ? 'bg-[#28181a] border border-rose-800/80 text-rose-300'
+                : 'text-subtle hover:text-white'
             }`}
           >
             <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
@@ -108,12 +107,12 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder={`+ Yeni ${activeTab === 'gelir' ? 'gelir' : 'gider'} kategorisi adı...`}
-            className="flex-1 bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none"
+            className="flex-1 bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-xs text-white placeholder-muted focus:outline-none"
           />
           <button
             type="submit"
             disabled={!newCategoryName.trim()}
-            className="px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] disabled:opacity-30 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all"
+            className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-30 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Ekle</span>
@@ -121,16 +120,16 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         </form>
 
         {/* Category List */}
-        <div className="border border-[#282828] bg-[#1a1a1a] rounded-2xl p-2 max-h-64 overflow-y-auto space-y-1.5 divide-y divide-[#242424]">
+        <div className="border border-line bg-surface rounded-lg p-2 max-h-64 overflow-y-auto space-y-1.5 divide-y divide-line">
           {currentCategories.length === 0 ? (
-            <div className="py-6 text-center text-xs text-[#71717a]">
+            <div className="py-6 text-center text-xs text-muted">
               Bu türde kayıtlı kategori bulunamadı.
             </div>
           ) : (
             currentCategories.map((cat) => (
               <div
                 key={cat.id}
-                className="pt-1.5 first:pt-0 flex items-center justify-between gap-2 px-2 py-1 hover:bg-[#202020] rounded-lg transition-colors"
+                className="pt-1.5 first:pt-0 flex items-center justify-between gap-2 px-2 py-1 hover:bg-surface-2 rounded-lg transition-colors"
               >
                 {editingId === cat.id ? (
                   <div className="flex-1 flex items-center gap-1.5">
@@ -138,13 +137,13 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 bg-[#282828] border border-[#387030] rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+                      className="flex-1 bg-surface-3 border border-brand-hover rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => handleSaveEdit(cat.id)}
-                      className="p-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white rounded-lg text-xs"
+                      className="p-1.5 bg-brand hover:bg-brand-hover text-white rounded-lg text-xs"
                       title="Kaydet"
                     >
                       <Check className="w-3.5 h-3.5" />
@@ -152,7 +151,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                     <button
                       type="button"
                       onClick={handleCancelEdit}
-                      className="p-1.5 bg-[#282828] hover:bg-[#333] text-[#9ca3af] rounded-lg text-xs"
+                      className="p-1.5 bg-surface-3 hover:bg-surface-4 text-subtle rounded-lg text-xs"
                       title="İptal"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -164,7 +163,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       <Tag className={`w-3.5 h-3.5 ${activeTab === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`} />
                       <span className="text-xs font-semibold text-white">{cat.name}</span>
                       {cat.isSystem && (
-                        <span className="text-[9px] bg-[#282828] text-[#71717a] px-1.5 py-0.2 rounded font-mono">
+                        <span className="text-[9px] bg-surface-3 text-muted px-1.5 py-0.2 rounded font-mono">
                           Varsayılan
                         </span>
                       )}
@@ -174,7 +173,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleStartEdit(cat)}
-                        className="p-1.5 hover:bg-[#282828] text-[#71717a] hover:text-white rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-surface-3 text-muted hover:text-white rounded-lg transition-colors"
                         title="Düzenle"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -182,7 +181,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => deleteFinanceCategory(cat.id)}
-                        className="p-1.5 hover:bg-rose-950/50 text-[#71717a] hover:text-rose-400 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-rose-950/50 text-muted hover:text-rose-400 rounded-lg transition-colors"
                         title="Sil"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -196,11 +195,11 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-2 border-t border-[#262626]">
+        <div className="flex justify-end pt-2 border-t border-line">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-[#242424] hover:bg-[#2c2c2c] text-xs font-medium text-white rounded-xl transition-colors"
+            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-white rounded-lg transition-colors"
           >
             Tamam
           </button>

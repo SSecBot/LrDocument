@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { handleRouteError, readJsonObject } from '@/lib/apiUtils';
 
 export async function PATCH(
   req: NextRequest,
@@ -9,8 +10,7 @@ export async function PATCH(
   try {
     await requireAdmin();
     const { id } = await params;
-    const body = await req.json();
-    const { subscriptionPlan } = body;
+    const { subscriptionPlan } = await readJsonObject(req);
 
     if (subscriptionPlan !== 'Aylık' && subscriptionPlan !== 'Tek Seferlik') {
       return NextResponse.json(
@@ -19,17 +19,18 @@ export async function PATCH(
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
     }
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { subscriptionPlan },
+      data: {
+        subscriptionPlan,
+        // Keep the enum-style column in sync with the display plan.
+        subscriptionType: subscriptionPlan === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK',
+      },
       select: {
         id: true,
         name: true,
@@ -37,6 +38,7 @@ export async function PATCH(
         role: true,
         status: true,
         subscriptionPlan: true,
+        subscriptionType: true,
       },
     });
 
@@ -45,12 +47,7 @@ export async function PATCH(
       message: `${updatedUser.name} kullanıcısının abonelik planı "${subscriptionPlan}" olarak güncellendi.`,
       user: updatedUser,
     });
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message.includes('Unauthorized') || err.message.includes('Forbidden')) {
-      return NextResponse.json({ error: 'Yönetici yetkisi gereklidir.' }, { status: 403 });
-    }
-    console.error('Plan update error:', error);
-    return NextResponse.json({ error: 'Plan güncellenirken bir hata oluştu.' }, { status: 500 });
+  } catch (error) {
+    return handleRouteError(error, 'Plan update error', 'Plan güncellenirken bir hata oluştu.');
   }
 }

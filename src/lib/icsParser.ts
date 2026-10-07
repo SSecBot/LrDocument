@@ -1,5 +1,5 @@
 import { CalendarEvent, EventStatus, CalendarEventType, Platform } from '@/types';
-import { generateId } from '@/lib/utils';
+import { generateId, toLocalDateString } from '@/lib/utils';
 
 export interface ParsedICSEvent {
   title: string;
@@ -77,7 +77,7 @@ function unescapeICS(str: string): string {
 function parseICSDateTime(dtStr?: string): { date: string; time?: string; dateObj?: Date } {
   if (!dtStr) {
     const today = new Date();
-    const dStr = today.toISOString().split('T')[0];
+    const dStr = toLocalDateString(today);
     return { date: dStr, time: '09:00', dateObj: today };
   }
 
@@ -96,8 +96,15 @@ function parseICSDateTime(dtStr?: string): { date: string; time?: string; dateOb
 
     const hours = tPart.slice(0, 2);
     const minutes = tPart.slice(2, 4);
-    const time = `${hours}:${minutes}`;
 
+    // A trailing "Z" means UTC (e.g. Google Calendar exports); convert to the user's local time.
+    if (/Z$/i.test(dtStr.trim())) {
+      const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes)));
+      const localTime = `${String(utc.getHours()).padStart(2, '0')}:${String(utc.getMinutes()).padStart(2, '0')}`;
+      return { date: toLocalDateString(utc), time: localTime, dateObj: utc };
+    }
+
+    const time = `${hours}:${minutes}`;
     const dateObj = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
     return { date, time, dateObj };
   } else if (cleaned.length >= 8) {
@@ -110,7 +117,7 @@ function parseICSDateTime(dtStr?: string): { date: string; time?: string; dateOb
   }
 
   const today = new Date();
-  return { date: today.toISOString().split('T')[0], time: '09:00', dateObj: today };
+  return { date: toLocalDateString(today), time: '09:00', dateObj: today };
 }
 
 function transformVEvent(raw: Record<string, string>): Omit<CalendarEvent, 'id' | 'createdAt'> | null {

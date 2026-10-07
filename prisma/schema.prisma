@@ -17,6 +17,7 @@ model User {
   subscriptionType String              @default("AYLIK") // "AYLIK" | "TEK_SEFERLIK"
   subscriptionPlan String              @default("Aylık") // "Aylık" | "Tek Seferlik"
   paymentStatus    String              @default("PENDING") // "PENDING" | "MANUAL_APPROVED" | "SUCCESSFUL"
+  sessionVersion   Int                 @default(0)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 

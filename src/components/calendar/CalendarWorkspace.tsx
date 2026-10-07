@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useAppStore, isTransactionOverdue, isTaskOverdue, getEffectiveTaskPriority } from '@/store/useAppStore';
-import { CalendarEvent, CalendarEventType, Platform, FinanceTransaction, Task } from '@/types';
+import React, { useState, useRef } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import { CalendarEvent, CalendarEventType, Platform, FinanceTransaction } from '@/types';
 import { EventModal } from './EventModal';
 import { ExportSyncModal } from './ExportSyncModal';
 import { TransactionModal } from '@/components/finance/TransactionModal';
@@ -14,26 +14,17 @@ import {
   Plus,
   Download,
   Upload,
-  List,
   Grid,
   CalendarDays,
   Clock,
-  GripVertical,
-  TrendingUp,
-  TrendingDown,
   Check,
-  AlertTriangle,
   FileText,
-  Video,
   CheckSquare,
-  Sparkles,
   X,
-  Layers,
   ScrollText,
-  ChevronDown,
   Wallet,
 } from 'lucide-react';
-import { formatTurkishDate, formatCurrencyTRY } from '@/lib/utils';
+import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
 import { isTransactionActiveOnDate } from '@/lib/recurringFinance';
 
 export const CalendarWorkspace: React.FC = () => {
@@ -42,25 +33,26 @@ export const CalendarWorkspace: React.FC = () => {
     tasks,
     transactions,
     notes,
-    scripts,
     rescheduleEvent,
-    toggleTransactionConfirmation,
     toggleTask,
     addEvent,
     addTask,
     addToast,
     setActiveTab,
     setActiveNoteId,
-    setActiveScriptId,
   } = useAppStore();
 
   const now = new Date();
   const [currentDate, setCurrentDate] = useState<Date>(new Date(now.getFullYear(), now.getMonth(), 1));
-  const [selectedDayDate, setSelectedDayDate] = useState<string>(now.toISOString().split('T')[0]);
+  const [selectedDayDate, setSelectedDayDate] = useState<string>(toLocalDateString(now));
   const [viewMode, setViewMode] = useState<'month' | 'scroll' | 'week' | 'list'>('month');
-  const [selectedEventType, setSelectedEventType] = useState<CalendarEventType | 'all'>('all');
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform | 'all'>('all');
-  const [isDayPanelOpen, setIsDayPanelOpen] = useState(true);
+  // Type/platform filters (no filter UI yet, so they stay at 'all').
+  const selectedEventType = 'all' as CalendarEventType | 'all';
+  const selectedPlatform = 'all' as Platform | 'all';
+  // Side panel is docked on large screens; on phones/tablets it opens as an overlay only when a day is tapped.
+  const [isDayPanelOpen, setIsDayPanelOpen] = useState(
+    () => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches
+  );
 
   // Drag and Drop state
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -101,7 +93,7 @@ export const CalendarWorkspace: React.FC = () => {
   const handleToday = () => {
     const today = new Date();
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    setSelectedDayDate(today.toISOString().split('T')[0]);
+    setSelectedDayDate(toLocalDateString(today));
   };
 
   // Filtered Events
@@ -113,7 +105,7 @@ export const CalendarWorkspace: React.FC = () => {
   });
 
   // Filtered Finance Transactions
-  const filteredTransactions = transactions.filter((tr) => {
+  const filteredTransactions = transactions.filter(() => {
     if (selectedEventType !== 'all' && selectedEventType !== 'finans') return false;
     return true;
   });
@@ -152,11 +144,6 @@ export const CalendarWorkspace: React.FC = () => {
     setIsEventModalOpen(true);
   };
 
-  const handleTransactionClick = (tr: FinanceTransaction, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingTransaction(tr);
-    setIsFinanceModalOpen(true);
-  };
 
   const handleOpenExport = (ev?: CalendarEvent) => {
     setExportTargetEvent(ev);
@@ -199,7 +186,7 @@ export const CalendarWorkspace: React.FC = () => {
           setCurrentDate(new Date(firstDate.getFullYear(), firstDate.getMonth(), 1));
           setSelectedDayDate(parsed[0].date);
         }
-      } catch (err) {
+      } catch {
         addToast({
           type: 'error',
           title: 'İçe Aktarma Hatası',
@@ -257,7 +244,7 @@ export const CalendarWorkspace: React.FC = () => {
   const getEventBadgeStyle = (ev: CalendarEvent) => {
     const isOverdue = isEventOverdue(ev);
     if (isOverdue) {
-      return 'animate-pulse border-2 border-rose-500 bg-rose-950/85 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.6)] ring-1 ring-rose-400 font-bold';
+      return 'border-2 border-rose-500 bg-rose-950/85 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.6)] ring-1 ring-rose-400 font-bold';
     }
 
     const type = ev.eventType || 'yayin';
@@ -303,10 +290,10 @@ export const CalendarWorkspace: React.FC = () => {
   const selectedDayTransactions = getTransactionsForDate(selectedDayDate);
   const selectedDayNotes = getNotesForDate(selectedDayDate);
 
-  const isToday = selectedDayDate === new Date().toISOString().split('T')[0];
+  const isToday = selectedDayDate === toLocalDateString();
 
   return (
-    <div className="flex-1 flex h-full bg-[#121212] overflow-hidden select-none">
+    <div className="flex-1 flex h-full bg-app overflow-hidden select-none">
       {/* Hidden File Input for .ICS Upload */}
       <input
         type="file"
@@ -317,19 +304,19 @@ export const CalendarWorkspace: React.FC = () => {
       />
 
       {/* Main Calendar View Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-[#242424]">
+      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-line">
         {/* Top Header & Navigation Bar */}
-        <div className="px-4 sm:px-6 py-3.5 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-3 flex-wrap shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 bg-surface border-b border-line flex items-center justify-between gap-3 flex-wrap shrink-0">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-[#2d5a27] to-[#142812] border border-[#387030] flex items-center justify-center shadow-lg shadow-emerald-950/40 shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-brand border border-brand-hover flex items-center justify-center shrink-0">
                 <CalendarIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                   Takvim
                 </h2>
-                <p className="text-[10px] text-[#71717a] hidden sm:block">
+                <p className="text-[10px] text-muted hidden sm:block">
                   Akıcı zaman çizelgesi & .ICS desteği
                 </p>
               </div>
@@ -337,10 +324,10 @@ export const CalendarWorkspace: React.FC = () => {
 
             {/* Month Navigation */}
             {viewMode !== 'scroll' ? (
-              <div className="flex items-center gap-1 bg-[#222] p-1 rounded-xl border border-[#333]">
+              <div className="flex items-center gap-1 bg-surface-2 p-1 rounded-lg border border-line-strong">
                 <button
                   onClick={handlePrevMonth}
-                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-[#2c2c2c] active:bg-[#383838] rounded-lg text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-surface-3 active:bg-surface-4 rounded-lg text-subtle hover:text-white transition-colors flex items-center justify-center cursor-pointer"
                   title="Önceki Ay"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -350,14 +337,14 @@ export const CalendarWorkspace: React.FC = () => {
                 </span>
                 <button
                   onClick={handleNextMonth}
-                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-[#2c2c2c] active:bg-[#383838] rounded-lg text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-surface-3 active:bg-surface-4 rounded-lg text-subtle hover:text-white transition-colors flex items-center justify-center cursor-pointer"
                   title="Sonraki Ay"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <div className="px-3 py-1.5 bg-[#202820] border border-[#2d5a27]/60 rounded-xl text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+              <div className="px-3 py-1.5 bg-surface-2 border border-brand/60 rounded-lg text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                 <ScrollText className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Akıcı Zaman Çizelgesi Modu</span>
               </div>
@@ -365,7 +352,7 @@ export const CalendarWorkspace: React.FC = () => {
 
             <button
               onClick={handleToday}
-              className="min-h-[38px] px-3 py-1 bg-[#202020] hover:bg-[#282828] active:bg-[#303030] text-[#d1d5db] hover:text-white border border-[#333] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              className="min-h-[38px] px-3 py-1 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 text-body hover:text-white border border-line-strong text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               Bugün
             </button>
@@ -374,11 +361,11 @@ export const CalendarWorkspace: React.FC = () => {
           {/* Right Toolbar: Views, Import, Export, Add */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* View switcher */}
-            <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333]">
+            <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
               <button
                 onClick={() => setViewMode('month')}
                 className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'month' ? 'bg-[#2d5a27] text-white font-bold' : 'text-[#9ca3af] hover:text-white'
+                  viewMode === 'month' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
                 }`}
                 title="Klasik Ay Görünümü"
               >
@@ -389,7 +376,7 @@ export const CalendarWorkspace: React.FC = () => {
               <button
                 onClick={() => setViewMode('scroll')}
                 className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'scroll' ? 'bg-[#2d5a27] text-white font-bold shadow-sm' : 'text-[#9ca3af] hover:text-white'
+                  viewMode === 'scroll' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
                 }`}
                 title="Akıcı Zaman Çizelgesi Görünümü"
               >
@@ -400,7 +387,7 @@ export const CalendarWorkspace: React.FC = () => {
               <button
                 onClick={() => setViewMode('week')}
                 className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'week' ? 'bg-[#2d5a27] text-white font-bold' : 'text-[#9ca3af] hover:text-white'
+                  viewMode === 'week' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
                 }`}
                 title="Hafta Görünümü"
               >
@@ -412,7 +399,7 @@ export const CalendarWorkspace: React.FC = () => {
             {/* .ICS File Import Button */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-[#202020] hover:bg-[#282828] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               title=".ICS Takvim Dosyası Yükle ve İçe Aktar"
             >
               <Upload className="w-4 h-4 text-emerald-400" />
@@ -422,7 +409,7 @@ export const CalendarWorkspace: React.FC = () => {
             {/* Export modal trigger */}
             <button
               onClick={() => handleOpenExport()}
-              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-[#202020] hover:bg-[#282828] border border-[#333] text-[#d1d5db] hover:text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               title="Dışa Aktar / Senkronize Et"
             >
               <Download className="w-4 h-4 text-emerald-400" />
@@ -432,7 +419,7 @@ export const CalendarWorkspace: React.FC = () => {
             {/* Quick Add Event */}
             <button
               onClick={handleQuickAddEventOnSelectedDay}
-              className="min-h-[44px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+              className="min-h-[44px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-bold rounded-lg transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Etkinlik Ekle</span>
@@ -459,8 +446,8 @@ export const CalendarWorkspace: React.FC = () => {
                 const prevDays = new Date(year, month, 0).getDate();
                 const dayNum = prevDays - ((new Date(year, month, 1).getDay() + 6) % 7) + i + 1;
                 return (
-                  <div key={`prev-${i}`} className="bg-[#161616]/40 border border-[#222] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 opacity-35">
-                    <span className="text-[11px] text-[#555] font-mono">{dayNum}</span>
+                  <div key={`prev-${i}`} className="bg-surface/40 border border-line rounded-lg sm:rounded-lg p-1.5 sm:p-2 opacity-35">
+                    <span className="text-[11px] text-muted font-mono">{dayNum}</span>
                   </div>
                 );
               })}
@@ -473,7 +460,7 @@ export const CalendarWorkspace: React.FC = () => {
                 const dayTasks = getTasksForDate(dateStr);
                 const dayTrans = getTransactionsForDate(dateStr);
                 const isSelected = selectedDayDate === dateStr;
-                const isCurrentToday = dateStr === new Date().toISOString().split('T')[0];
+                const isCurrentToday = dateStr === toLocalDateString();
                 const isDragOver = dragOverDate === dateStr;
 
                 return (
@@ -483,12 +470,12 @@ export const CalendarWorkspace: React.FC = () => {
                     onDragOver={(e) => handleDragOver(e, dateStr)}
                     onDragLeave={(e) => handleDragLeave(e, dateStr)}
                     onDrop={(e) => handleDrop(e, dateStr)}
-                    className={`rounded-xl sm:rounded-2xl p-1.5 sm:p-2.5 flex flex-col justify-between transition-all cursor-pointer min-h-[85px] sm:min-h-[100px] border ${
+                    className={`rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 flex flex-col justify-between transition-all cursor-pointer min-h-[85px] sm:min-h-[100px] border ${
                       isSelected
-                        ? 'bg-[#1a2b1a] border-emerald-500 shadow-md ring-2 ring-emerald-500/40'
+                        ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
                         : isDragOver
-                        ? 'bg-[#223820] border-emerald-400 ring-2 ring-emerald-400/60'
-                        : 'bg-[#181818] hover:bg-[#202020] border-[#262626] hover:border-[#383838]'
+                        ? 'bg-brand-soft border-emerald-400 ring-2 ring-emerald-400/60'
+                        : 'bg-surface hover:bg-surface-2 border-line hover:border-line-strong'
                     }`}
                   >
                     {/* Date Header Number & Indicator count */}
@@ -496,10 +483,10 @@ export const CalendarWorkspace: React.FC = () => {
                       <span
                         className={`text-xs font-mono font-bold w-6 h-6 rounded-full flex items-center justify-center ${
                           isCurrentToday
-                            ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
+                            ? 'bg-emerald-500 text-black font-bold'
                             : isSelected
                             ? 'bg-emerald-800 text-white'
-                            : 'text-[#d1d5db]'
+                            : 'text-body'
                         }`}
                       >
                         {dayNum}
@@ -544,20 +531,20 @@ export const CalendarWorkspace: React.FC = () => {
 
         {/* View Mode 2: Continuous Smooth Scroll Timeline View */}
         {viewMode === 'scroll' && (
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth">
             {getMonthsForContinuousScroll().map((m) => (
-              <div key={`${m.year}-${m.month}`} className="space-y-3 bg-[#151515] p-4 sm:p-5 rounded-3xl border border-[#242424]">
+              <div key={`${m.year}-${m.month}`} className="space-y-3 bg-app p-4 sm:p-5 rounded-lg border border-line">
                 {/* Sticky Month Header */}
-                <div className="sticky top-0 z-10 bg-[#151515]/95 backdrop-blur-md py-2 border-b border-[#282828] flex items-center justify-between">
-                  <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+                <div className="sticky top-0 z-10 bg-app/95 backdrop-blur-md py-2 border-b border-line flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
                     <CalendarDays className="w-5 h-5 text-emerald-400" />
                     <span>{m.monthName} {m.year}</span>
                   </h3>
-                  <span className="text-xs text-[#71717a] font-mono">{m.totalDays} Gün</span>
+                  <span className="text-xs text-muted font-mono">{m.totalDays} Gün</span>
                 </div>
 
                 {/* Day Grid Header */}
-                <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[#71717a]">
+                <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-muted">
                   {dayNames.map((d, i) => (
                     <span key={d} className={i >= 5 ? 'text-emerald-400' : ''}>{d}</span>
                   ))}
@@ -567,7 +554,7 @@ export const CalendarWorkspace: React.FC = () => {
                 <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                   {/* Padding */}
                   {Array.from({ length: m.firstDay }).map((_, pi) => (
-                    <div key={`p-${pi}`} className="h-16 rounded-xl bg-transparent" />
+                    <div key={`p-${pi}`} className="h-16 rounded-lg bg-transparent" />
                   ))}
 
                   {/* Days */}
@@ -578,22 +565,22 @@ export const CalendarWorkspace: React.FC = () => {
                     const dayTasks = getTasksForDate(dateStr);
                     const dayTrans = getTransactionsForDate(dateStr);
                     const isSelected = selectedDayDate === dateStr;
-                    const isCurrentToday = dateStr === new Date().toISOString().split('T')[0];
+                    const isCurrentToday = dateStr === toLocalDateString();
 
                     return (
                       <div
                         key={dateStr}
                         onClick={() => handleCellClick(dateStr)}
-                        className={`min-h-[58px] sm:min-h-[70px] p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`min-h-[58px] sm:min-h-[70px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                           isSelected
-                            ? 'bg-[#1e301e] border-emerald-500 shadow-md ring-2 ring-emerald-500/40'
-                            : 'bg-[#1a1a1a] hover:bg-[#222] border-[#282828]'
+                            ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
+                            : 'bg-surface hover:bg-surface-2 border-line'
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span
                             className={`text-xs font-mono font-bold w-5 h-5 rounded-full flex items-center justify-center ${
-                              isCurrentToday ? 'bg-emerald-500 text-black font-extrabold' : 'text-white'
+                              isCurrentToday ? 'bg-emerald-500 text-black font-bold' : 'text-white'
                             }`}
                           >
                             {dayNum}
@@ -629,26 +616,25 @@ export const CalendarWorkspace: React.FC = () => {
                 const dayOfWeek = (base.getDay() + 6) % 7;
                 const monday = new Date(base);
                 monday.setDate(base.getDate() - dayOfWeek + i);
-                const dateStr = monday.toISOString().split('T')[0];
+                const dateStr = toLocalDateString(monday);
 
                 const dayEvents = getEventsForDate(dateStr);
                 const dayTasks = getTasksForDate(dateStr);
-                const dayTrans = getTransactionsForDate(dateStr);
                 const isSelected = selectedDayDate === dateStr;
 
                 return (
                   <div
                     key={dateStr}
                     onClick={() => handleCellClick(dateStr)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-3 ${
                       isSelected
-                        ? 'bg-[#1a2e1a] border-emerald-500 ring-2 ring-emerald-500/40'
-                        : 'bg-[#181818] hover:bg-[#202020] border-[#282828]'
+                        ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
+                        : 'bg-surface hover:bg-surface-2 border-line'
                     }`}
                   >
-                    <div className="border-b border-[#282828] pb-2">
-                      <span className="text-xs font-bold text-[#888] block">{dayNames[i]}</span>
-                      <span className="text-sm font-extrabold text-white font-mono">{formatTurkishDate(dateStr)}</span>
+                    <div className="border-b border-line pb-2">
+                      <span className="text-xs font-bold text-subtle block">{dayNames[i]}</span>
+                      <span className="text-sm font-bold text-white font-mono">{formatTurkishDate(dateStr)}</span>
                     </div>
 
                     <div className="space-y-2">
@@ -656,19 +642,19 @@ export const CalendarWorkspace: React.FC = () => {
                         <div
                           key={ev.id}
                           onClick={(e) => handleEventClick(ev, e)}
-                          className={`p-2 rounded-xl text-xs border truncate ${getEventBadgeStyle(ev)}`}
+                          className={`p-2 rounded-lg text-xs border truncate ${getEventBadgeStyle(ev)}`}
                         >
                           <p className="font-bold truncate">{ev.title}</p>
                           <span className="text-[10px] opacity-80">{ev.time || '10:00'}</span>
                         </div>
                       ))}
                       {dayTasks.map(t => (
-                        <div key={t.id} className="p-2 rounded-xl text-xs bg-amber-950/40 border border-amber-800/40 text-amber-300">
+                        <div key={t.id} className="p-2 rounded-lg text-xs bg-amber-950/40 border border-amber-800/40 text-amber-300">
                           <p className="font-bold truncate">Görev: {t.title}</p>
                         </div>
                       ))}
                       {dayEvents.length === 0 && dayTasks.length === 0 && (
-                        <p className="text-[11px] text-[#666] italic">Kayıt yok</p>
+                        <p className="text-[11px] text-muted italic">Kayıt yok</p>
                       )}
                     </div>
                   </div>
@@ -681,33 +667,41 @@ export const CalendarWorkspace: React.FC = () => {
 
       {/* Interactive Right-Side Day Details Panel */}
       {isDayPanelOpen && (
-        <div className="w-80 sm:w-96 bg-[#161616] border-l border-[#242424] flex flex-col h-full shrink-0 shadow-2xl z-20 animate-fade-in">
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsDayPanelOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {isDayPanelOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md lg:static lg:z-20 lg:max-w-none lg:w-96 bg-surface border-l border-line flex flex-col h-full shrink-0 shadow-xl animate-fade-in safe-bottom">
           {/* Day Panel Header */}
-          <div className="p-4 sm:p-5 border-b border-[#242424] bg-[#181818] space-y-2">
+          <div className="p-4 sm:p-5 border-b border-line bg-surface space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-[#2d5a27]/30 px-2 py-0.5 rounded-full border border-[#2d5a27]/50">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-brand/30 px-2 py-0.5 rounded-full border border-brand/50">
                 {isToday ? '🌟 Bugün' : 'Seçili Gün'}
               </span>
               <button
                 onClick={() => setIsDayPanelOpen(false)}
-                className="p-1 rounded-lg text-[#71717a] hover:text-white hover:bg-[#252525] transition-colors md:hidden"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-muted hover:text-white hover:bg-surface-2 transition-colors lg:hidden"
+                aria-label="Gün panelini kapat"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
                 {formatTurkishDate(selectedDayDate)}
               </h3>
-              <p className="text-xs text-[#71717a] font-mono">{selectedDayDate}</p>
+              <p className="text-xs text-muted font-mono">{selectedDayDate}</p>
             </div>
 
             {/* Quick Action Button for this day */}
             <div className="pt-2 flex items-center gap-2">
               <button
                 onClick={handleQuickAddEventOnSelectedDay}
-                className="flex-1 min-h-[38px] px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="flex-1 min-h-[38px] px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Etkinlik Ekle</span>
@@ -723,7 +717,7 @@ export const CalendarWorkspace: React.FC = () => {
                   });
                   addToast({ type: 'success', title: 'Görev Eklendi', message: `${selectedDayDate} tarihine görev kaydedildi.` });
                 }}
-                className="min-h-[38px] px-3 py-1.5 bg-[#222] hover:bg-[#2a2a2a] text-[#d1d5db] hover:text-white border border-[#333] text-xs font-semibold rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                className="min-h-[38px] px-3 py-1.5 bg-surface-2 hover:bg-surface-3 text-body hover:text-white border border-line-strong text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 title="Güne Görev Ekle"
               >
                 <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
@@ -733,7 +727,7 @@ export const CalendarWorkspace: React.FC = () => {
           </div>
 
           {/* Day Activities List Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 divide-y divide-[#222]">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 divide-y divide-line">
             {/* Scheduled Calendar Events */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-white flex items-center justify-between">
@@ -741,11 +735,11 @@ export const CalendarWorkspace: React.FC = () => {
                   <CalendarDays className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Yayınlar & Etkinlikler</span>
                 </span>
-                <span className="text-[10px] text-[#71717a] font-mono">({selectedDayEvents.length})</span>
+                <span className="text-[10px] text-muted font-mono">({selectedDayEvents.length})</span>
               </h4>
 
               {selectedDayEvents.length === 0 ? (
-                <p className="text-xs text-[#666] italic py-1">Bu güne planlanmış etkinlik yok.</p>
+                <p className="text-xs text-muted italic py-1">Bu güne planlanmış etkinlik yok.</p>
               ) : (
                 selectedDayEvents.map(ev => (
                   <div
@@ -754,7 +748,7 @@ export const CalendarWorkspace: React.FC = () => {
                       setEditingEvent(ev);
                       setIsEventModalOpen(true);
                     }}
-                    className="p-3 rounded-2xl bg-[#1d1d1d] hover:bg-[#242424] border border-[#2e2e2e] transition-all cursor-pointer space-y-1.5 group"
+                    className="p-3 rounded-lg bg-surface-2 hover:bg-surface-2 border border-line transition-all cursor-pointer space-y-1.5 group"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
@@ -765,13 +759,13 @@ export const CalendarWorkspace: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-[#71717a]">
+                    <div className="flex items-center gap-2 text-[11px] text-muted">
                       <Clock className="w-3 h-3 text-emerald-400" />
                       <span>{ev.time || '10:00'} ({ev.durationMinutes || 45} dk)</span>
                     </div>
 
                     {ev.description && (
-                      <p className="text-[11px] text-[#9ca3af] line-clamp-2">{ev.description}</p>
+                      <p className="text-[11px] text-subtle line-clamp-2">{ev.description}</p>
                     )}
                   </div>
                 ))
@@ -785,22 +779,22 @@ export const CalendarWorkspace: React.FC = () => {
                   <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
                   <span>Teslim Edilecek Görevler</span>
                 </span>
-                <span className="text-[10px] text-[#71717a] font-mono">({selectedDayTasks.length})</span>
+                <span className="text-[10px] text-muted font-mono">({selectedDayTasks.length})</span>
               </h4>
 
               {selectedDayTasks.length === 0 ? (
-                <p className="text-xs text-[#666] italic py-1">Bu gün için bekleyen görev yok.</p>
+                <p className="text-xs text-muted italic py-1">Bu gün için bekleyen görev yok.</p>
               ) : (
                 selectedDayTasks.map(t => (
                   <div
                     key={t.id}
-                    className="p-2.5 rounded-xl bg-[#1a1a1a] border border-[#282828] flex items-center justify-between gap-2"
+                    className="p-2.5 rounded-lg bg-surface border border-line flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <button
                         onClick={() => toggleTask(t.id)}
                         className={`w-4 h-4 rounded flex items-center justify-center border ${
-                          t.completed ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-[#444]'
+                          t.completed ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-line-strong'
                         }`}
                       >
                         {t.completed && <Check className="w-3 h-3" />}
@@ -809,7 +803,7 @@ export const CalendarWorkspace: React.FC = () => {
                         {t.title}
                       </span>
                     </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#242424] text-amber-300 font-bold shrink-0">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-amber-300 font-bold shrink-0">
                       {t.priority}
                     </span>
                   </div>
@@ -824,11 +818,11 @@ export const CalendarWorkspace: React.FC = () => {
                   <Wallet className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Finansal İşlemler</span>
                 </span>
-                <span className="text-[10px] text-[#71717a] font-mono">({selectedDayTransactions.length})</span>
+                <span className="text-[10px] text-muted font-mono">({selectedDayTransactions.length})</span>
               </h4>
 
               {selectedDayTransactions.length === 0 ? (
-                <p className="text-xs text-[#666] italic py-1">Bu tarihte finans kaydı yok.</p>
+                <p className="text-xs text-muted italic py-1">Bu tarihte finans kaydı yok.</p>
               ) : (
                 selectedDayTransactions.map(tr => (
                   <div
@@ -837,11 +831,11 @@ export const CalendarWorkspace: React.FC = () => {
                       setEditingTransaction(tr);
                       setIsFinanceModalOpen(true);
                     }}
-                    className="p-2.5 rounded-xl bg-[#1a1a1a] hover:bg-[#222] border border-[#282828] cursor-pointer flex items-center justify-between gap-2"
+                    className="p-2.5 rounded-lg bg-surface hover:bg-surface-2 border border-line cursor-pointer flex items-center justify-between gap-2"
                   >
                     <div className="truncate">
                       <span className="text-xs font-bold text-white block truncate">{tr.title}</span>
-                      <span className="text-[10px] text-[#71717a]">{tr.category}</span>
+                      <span className="text-[10px] text-muted">{tr.category}</span>
                     </div>
                     <span className={`text-xs font-bold font-mono ${tr.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {tr.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(tr.amount)}
@@ -859,7 +853,7 @@ export const CalendarWorkspace: React.FC = () => {
                     <FileText className="w-3.5 h-3.5 text-purple-400" />
                     <span>Günün Notları</span>
                   </span>
-                  <span className="text-[10px] text-[#71717a] font-mono">({selectedDayNotes.length})</span>
+                  <span className="text-[10px] text-muted font-mono">({selectedDayNotes.length})</span>
                 </h4>
 
                 {selectedDayNotes.map(n => (
@@ -869,7 +863,7 @@ export const CalendarWorkspace: React.FC = () => {
                       setActiveNoteId(n.id);
                       setActiveTab('notes');
                     }}
-                    className="p-2.5 rounded-xl bg-[#1a1a1a] hover:bg-[#222] border border-[#282828] cursor-pointer flex items-center justify-between"
+                    className="p-2.5 rounded-lg bg-surface hover:bg-surface-2 border border-line cursor-pointer flex items-center justify-between"
                   >
                     <span className="text-xs text-white truncate">{n.title}</span>
                     <span className="text-[10px] text-emerald-400 font-bold">Aç →</span>

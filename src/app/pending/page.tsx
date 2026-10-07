@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, ShieldCheck, ArrowLeft, LogOut, RefreshCw } from 'lucide-react';
+import { Clock, LogOut, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function PendingPage() {
@@ -11,17 +10,16 @@ export default function PendingPage() {
   const { checkAuth, logout, isLoadingAuth } = useAppStore();
 
   const handleRecheck = async () => {
-    await checkAuth();
+    await checkAuth(true);
     router.push('/');
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0d0e12] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-dvh w-full bg-app flex items-center justify-center p-4 relative overflow-hidden font-sans">
 
-      <div className="w-full max-w-md z-10 text-center space-y-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white shadow-xl shadow-amber-500/20 mb-2 border border-amber-400/30">
-          <Clock className="w-8 h-8 animate-pulse" />
+      <div className="w-full max-w-md z-10 text-center space-y-5">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-amber-500 text-white mb-2 border border-amber-400/30">
+          <Clock className="w-8 h-8" />
         </div>
 
         <div className="space-y-2">
@@ -31,8 +29,8 @@ export default function PendingPage() {
           </p>
         </div>
 
-        <div className="bg-[#16181f]/90 border border-neutral-800 backdrop-blur-xl rounded-2xl p-6 shadow-2xl space-y-4 text-left">
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm leading-relaxed">
+        <div className="bg-surface/90 border border-line backdrop-blur-xl rounded-xl p-5 space-y-4 text-left">
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm leading-relaxed">
             <p className="font-semibold text-amber-300 mb-1">Onay Bekleniyor</p>
             <p className="text-neutral-300">
               Kayıt talebiniz alındı. Yöneticinin (Admin) hesabınızı onaylaması bekleniyor.
@@ -47,7 +45,7 @@ export default function PendingPage() {
             <button
               onClick={handleRecheck}
               disabled={isLoadingAuth}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isLoadingAuth ? 'animate-spin' : ''}`} />
               <span>Onay Durumunu Tekrar Kontrol Et</span>
@@ -55,7 +53,7 @@ export default function PendingPage() {
 
             <button
               onClick={() => logout()}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-surface-3 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-line-strong transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-neutral-400" />
               <span>Çıkış Yap / Başka Hesapla Giriş</span>

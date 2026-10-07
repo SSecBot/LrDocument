@@ -22,7 +22,7 @@ import {
   Sigma,
   ChevronLeft,
 } from 'lucide-react';
-import { formatTurkishDate } from '@/lib/utils';
+import { formatTurkishDate, slugifyFilename } from '@/lib/utils';
 
 interface NoteEditorProps {
   note: Note;
@@ -101,10 +101,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
   const handleDownloadMarkdown = () => {
     const blob = new Blob([note.content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${note.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+    link.href = url;
+    link.download = `${slugifyFilename(note.title, 'not')}.md`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     addToast({ type: 'success', title: 'İndirildi', message: 'Markdown dosyası indirildi.' });
   };
 
@@ -122,14 +126,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
   const charCount = note.content.length;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#141414] overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-app overflow-hidden relative">
       {/* Top action bar */}
-      <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 border-b border-[#282828] bg-[#181818] gap-3 flex-wrap">
+      <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 border-b border-line bg-surface gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           {onBack && (
             <button
               onClick={onBack}
-              className="md:hidden min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-[#2a2a2a] active:bg-[#333] border border-[#333] rounded-xl text-[#d1d5db] flex items-center justify-center transition-colors shrink-0"
+              className="md:hidden min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 border border-line-strong rounded-lg text-body flex items-center justify-center transition-colors shrink-0"
               title="Not Listesine Dön"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -141,7 +145,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             value={note.title}
             onChange={handleTitleChange}
             placeholder="Not Başlığı..."
-            className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-[#383838] focus:border-[#2d5a27] focus:outline-none px-1 py-0.5 w-full transition-colors truncate"
+            className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-line-strong focus:border-brand focus:outline-none px-1 py-0.5 w-full transition-colors truncate"
           />
         </div>
 
@@ -150,7 +154,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           {/* Math Drawer Trigger Button */}
           <button
             onClick={() => setIsMathDrawerOpen(true)}
-            className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-[#202820] hover:bg-[#2d5a27] border border-[#2d5a27]/60 text-emerald-300 hover:text-white rounded-xl text-xs font-semibold shadow-sm transition-all group"
+            className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-brand border border-brand/60 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold transition-all group"
             title="LaTeX Sembol Çekmecesini Aç"
           >
             <Sigma className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
@@ -158,11 +162,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           </button>
 
           {/* View switches */}
-          <div className="flex bg-[#222222] p-1 rounded-xl border border-[#333]">
+          <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
             <button
               onClick={() => setViewMode('edit')}
               className={`min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors ${
-                viewMode === 'edit' ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                viewMode === 'edit' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
               title="Yalnızca Editör"
             >
@@ -172,7 +176,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <button
               onClick={() => setViewMode('split')}
               className={`hidden sm:flex min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg items-center gap-1 transition-colors ${
-                viewMode === 'split' ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                viewMode === 'split' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
               title="Bölünmüş Görünüm"
             >
@@ -182,7 +186,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <button
               onClick={() => setViewMode('preview')}
               className={`min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors ${
-                viewMode === 'preview' ? 'bg-[#2d5a27] text-white' : 'text-[#9ca3af] hover:text-white'
+                viewMode === 'preview' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
               title="Yalnızca Önizleme"
             >
@@ -197,7 +201,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             className={`min-h-[38px] min-w-[38px] p-2 rounded-xl border transition-colors flex items-center justify-center ${
               note.isPinned
                 ? 'bg-amber-950/40 border-amber-600/50 text-amber-300'
-                : 'bg-[#222] border-[#333] text-[#9ca3af] hover:text-white'
+                : 'bg-surface-2 border-line-strong text-subtle hover:text-white'
             }`}
             title={note.isPinned ? 'Sabitlemeyi Kaldır' : 'Başa Sabitle'}
           >
@@ -209,7 +213,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             className={`min-h-[38px] min-w-[38px] p-2 rounded-xl border transition-colors flex items-center justify-center ${
               note.isFavorite
                 ? 'bg-amber-950/40 border-amber-600/50 text-amber-400 fill-amber-400'
-                : 'bg-[#222] border-[#333] text-[#9ca3af] hover:text-white'
+                : 'bg-surface-2 border-line-strong text-subtle hover:text-white'
             }`}
             title={note.isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
           >
@@ -219,7 +223,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           {/* Quick Actions */}
           <button
             onClick={handleCopyMarkdown}
-            className="min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-[#2c2c2c] border border-[#333] text-[#9ca3af] hover:text-white rounded-xl transition-colors flex items-center justify-center"
+            className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center"
             title="Markdown İçeriğini Kopyala"
           >
             <Copy className="w-4 h-4" />
@@ -227,7 +231,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
           <button
             onClick={handleDownloadMarkdown}
-            className="min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-[#2c2c2c] border border-[#333] text-[#9ca3af] hover:text-white rounded-xl transition-colors flex items-center justify-center"
+            className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center"
             title="Markdown Dosyası Olarak İndir (.md)"
           >
             <Download className="w-4 h-4" />
@@ -235,7 +239,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
           <button
             onClick={handleCreateTaskFromNote}
-            className="hidden lg:flex min-h-[38px] px-2.5 py-1.5 bg-[#222] hover:bg-[#2c2c2c] border border-[#333] text-[#d1d5db] rounded-xl text-xs font-medium items-center gap-1.5 transition-colors"
+            className="hidden lg:flex min-h-[38px] px-2.5 py-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body rounded-lg text-xs font-medium items-center gap-1.5 transition-colors"
             title="Bu not için görev ekle"
           >
             <CheckSquare className="w-3.5 h-3.5" />
@@ -247,7 +251,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               deleteNote(note.id);
               if (onBack) onBack();
             }}
-            className="min-h-[38px] min-w-[38px] p-2 bg-[#222] hover:bg-rose-950/40 border border-[#333] hover:border-rose-800 text-[#9ca3af] hover:text-rose-300 rounded-xl transition-colors flex items-center justify-center"
+            className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-rose-950/40 border border-line-strong hover:border-rose-800 text-subtle hover:text-rose-300 rounded-lg transition-colors flex items-center justify-center"
             title="Notu Sil"
           >
             <Trash2 className="w-4 h-4" />
@@ -256,14 +260,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
       </div>
 
       {/* Metadata bar: Folder, Tags, Dates */}
-      <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-6 py-2 bg-[#161616] border-b border-[#242424] text-xs text-[#9ca3af] flex-wrap">
+      <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-6 py-2 bg-surface border-b border-line text-xs text-subtle flex-wrap">
         {/* Folder Select */}
         <div className="flex items-center gap-1.5">
           <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <select
             value={note.folder}
             onChange={(e) => updateNote(note.id, { folder: e.target.value })}
-            className="bg-[#202020] text-[#e5e7eb] border border-[#333] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#2d5a27] min-h-[34px]"
+            className="bg-surface-2 text-body border border-line-strong rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand min-h-[34px]"
           >
             {folders.map(f => (
               <option key={f.id} value={f.id}>
@@ -279,12 +283,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           {note.tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 bg-[#222] border border-[#333] px-2 py-0.5 rounded text-[11px] text-[#e5e7eb]"
+              className="inline-flex items-center gap-1 bg-surface-2 border border-line-strong px-2 py-0.5 rounded text-[11px] text-body"
             >
               #{tag}
               <button
                 onClick={() => handleRemoveTag(tag)}
-                className="text-[#71717a] hover:text-rose-400 ml-0.5"
+                className="text-muted hover:text-rose-400 ml-0.5"
               >
                 ×
               </button>
@@ -296,12 +300,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             onChange={(e) => setNewTagInput(e.target.value)}
             onKeyDown={handleAddTag}
             placeholder="+ Etiket ekle (Enter)"
-            className="bg-transparent border border-dashed border-[#3a3a3a] focus:border-[#2d5a27] rounded-lg px-2 py-1 text-[11px] text-[#e5e7eb] focus:outline-none w-28 min-h-[32px]"
+            className="bg-transparent border border-dashed border-line-strong focus:border-brand rounded-lg px-2 py-1 text-[11px] text-body focus:outline-none w-28 min-h-[32px]"
           />
         </div>
 
         {/* Updated Date */}
-        <div className="hidden sm:flex items-center gap-1 text-[11px] text-[#71717a]">
+        <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted">
           <Calendar className="w-3 h-3" />
           <span>Son düzenleme: {formatTurkishDate(note.updatedAt)}</span>
         </div>
@@ -311,8 +315,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Editor Column */}
         {(viewMode === 'edit' || viewMode === 'split') && (
-          <div className={`flex flex-col h-full border-r border-[#262626] ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
-            <div className="px-4 py-2 bg-[#181818] border-b border-[#262626] text-[11px] font-medium text-[#71717a] flex items-center justify-between">
+          <div className={`flex flex-col h-full border-r border-line ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
+            <div className="px-4 py-2 bg-surface border-b border-line text-[11px] font-medium text-muted flex items-center justify-between">
               <span>MARKDOWN & FORMÜL GİRDİSİ</span>
               <button
                 onClick={() => setIsMathDrawerOpen(true)}
@@ -327,28 +331,28 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               value={note.content}
               onChange={handleContentChange}
               placeholder="Notunuzu buraya yazın... Matematik formülleri için $..$ veya $$..$$ kullanın."
-              className="flex-1 w-full p-4 sm:p-6 bg-[#121212] text-[#f5f5f0] font-mono text-sm leading-relaxed resize-none focus:outline-none overflow-y-auto selection:bg-[#2d5a27] selection:text-white"
+              className="flex-1 w-full p-4 sm:p-5 bg-app text-fg font-mono text-sm leading-relaxed resize-none focus:outline-none overflow-y-auto selection:bg-brand selection:text-white"
             />
           </div>
         )}
 
         {/* Right Column: KaTeX Canlı Önizleme */}
         {(viewMode === 'preview' || viewMode === 'split') && (
-          <div className={`flex flex-col h-full bg-[#151515] overflow-hidden ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
+          <div className={`flex flex-col h-full bg-app overflow-hidden ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
             {/* Header for Right Panel */}
-            <div className="px-4 py-2 bg-[#181818] border-b border-[#262626] flex items-center justify-between sticky top-0 z-10">
+            <div className="px-4 py-2 bg-surface border-b border-line flex items-center justify-between sticky top-0 z-10">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                 <span className="text-xs font-bold text-white tracking-tight">CANLI ÖNİZLEME (KaTeX)</span>
               </div>
 
-              <span className="text-[11px] text-[#71717a]">
+              <span className="text-[11px] text-muted">
                 {wordCount} kelime • {charCount} karakter
               </span>
             </div>
 
             {/* Content view */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
               <KatexPreview content={note.content} />
             </div>
           </div>
@@ -356,13 +360,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
       </div>
 
       {/* Footer stats bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-2 border-t border-[#242424] bg-[#161616] text-xs text-[#71717a]">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-2 border-t border-line bg-surface text-xs text-muted">
         <div className="flex items-center gap-3 sm:gap-4 text-[11px]">
           <span>{wordCount} kelime</span>
           <span>{charCount} karakter</span>
         </div>
         <div className="flex items-center gap-1.5 text-emerald-400 font-medium text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>Otomatik Kaydedildi</span>
         </div>
       </div>

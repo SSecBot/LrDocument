@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, ensureDefaultAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
+import { handleRouteError } from '@/lib/apiUtils';
 
 export async function GET() {
   try {
-    await ensureDefaultAdmin();
     await requireAdmin();
 
     const [
@@ -92,12 +92,7 @@ export async function GET() {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
     });
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message.includes('Unauthorized') || err.message.includes('Forbidden')) {
-      return NextResponse.json({ error: 'Yönetici yetkisi gereklidir.' }, { status: 403 });
-    }
-    console.error('Data export error:', error);
-    return NextResponse.json({ error: 'Veritabanı yedeği alınırken bir hata oluştu.' }, { status: 500 });
+  } catch (error) {
+    return handleRouteError(error, 'Data export error', 'Veritabanı yedeği alınırken bir hata oluştu.');
   }
 }

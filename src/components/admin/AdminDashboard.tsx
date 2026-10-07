@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   UserCheck,
@@ -19,7 +19,6 @@ import {
   Lock,
   Mail,
   User,
-  Shield,
   Layers,
   Database,
   UploadCloud,
@@ -29,6 +28,18 @@ import { AdminUserItem, AdminMetrics, SubscriptionPlan, UserRole, UserStatus } f
 import { useAppStore } from '@/store/useAppStore';
 import { exportUsersToExcel, exportUsersToCSV } from '@/lib/exportExcel';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
+import { toLocalDateString } from '@/lib/utils';
+
+async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
+  const res = await fetch('/api/admin/users', { cache: 'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Veriler alınamadı.');
+  return data;
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Beklenmeyen bir hata oluştu.';
+}
 
 export function AdminDashboard() {
   const { addToast, currentUser } = useAppStore();
@@ -52,32 +63,47 @@ export function AdminDashboard() {
   const [newUserStatus, setNewUserStatus] = useState<UserStatus>('APPROVED');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  useEffect(() => {
-    fetchAdminData();
-  }, []);
-
-  const fetchAdminData = async () => {
+  // Initial load shows the full-page spinner (loading starts true); later refreshes update in place.
+  const fetchAdminData = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/admin/users');
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Veriler alınamadı.');
-      }
-
+      const data = await loadAdminData();
       setUsers(data.users || []);
       setMetrics(data.metrics || null);
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Veri Yükleme Hatası',
-        message: err.message || 'Yönetici paneli verileri alınamadı.',
+        message: errorMessage(err) || 'Yönetici paneli verileri alınamadı.',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAdminData()
+      .then((data) => {
+        if (cancelled) return;
+        setUsers(data.users || []);
+        setMetrics(data.metrics || null);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          addToast({
+            type: 'error',
+            title: 'Veri Yükleme Hatası',
+            message: errorMessage(err) || 'Yönetici paneli verileri alınamadı.',
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [addToast]);
 
   const handleExportFullBackup = async () => {
     try {
@@ -89,7 +115,7 @@ export function AdminDashboard() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `lrdocument_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `lrdocument_backup_${toLocalDateString()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -100,11 +126,11 @@ export function AdminDashboard() {
         title: 'Yedekleme Tamamlandı',
         message: 'Tüm sistem veritabanı JSON formatında başarıyla dışa aktarıldı.',
       });
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Yedekleme Hatası',
-        message: err.message || 'Yedek indirilirken bir hata oluştu.',
+        message: errorMessage(err) || 'Yedek indirilirken bir hata oluştu.',
       });
     } finally {
       setIsExporting(false);
@@ -141,11 +167,11 @@ export function AdminDashboard() {
       });
 
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'İçe Aktarım Hatası',
-        message: err.message || 'Yedek dosyası işlenirken hata oluştu.',
+        message: errorMessage(err) || 'Yedek dosyası işlenirken hata oluştu.',
       });
     } finally {
       setIsImporting(false);
@@ -156,17 +182,17 @@ export function AdminDashboard() {
   const handleExportExcel = () => {
     try {
       setIsExporting(true);
-      exportUsersToExcel(users, `lrdocument_kullanicilar_${new Date().toISOString().slice(0, 10)}`);
+      exportUsersToExcel(users, `lrdocument_kullanicilar_${toLocalDateString()}`);
       addToast({
         type: 'success',
         title: 'Dışa Aktarma Başarılı',
         message: 'Kullanıcı listesi Excel (.xlsx) formatında indirildi.',
       });
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Excel Dışa Aktarma Hatası',
-        message: err.message || 'Dosya oluşturulurken hata meydana geldi.',
+        message: errorMessage(err) || 'Dosya oluşturulurken hata meydana geldi.',
       });
     } finally {
       setIsExporting(false);
@@ -176,17 +202,17 @@ export function AdminDashboard() {
   const handleExportCSV = () => {
     try {
       setIsExporting(true);
-      exportUsersToCSV(users, `lrdocument_kullanicilar_${new Date().toISOString().slice(0, 10)}`);
+      exportUsersToCSV(users, `lrdocument_kullanicilar_${toLocalDateString()}`);
       addToast({
         type: 'success',
         title: 'Dışa Aktarma Başarılı',
         message: 'Kullanıcı listesi CSV formatında indirildi.',
       });
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'CSV Dışa Aktarma Hatası',
-        message: err.message || 'Dosya oluşturulurken hata meydana geldi.',
+        message: errorMessage(err) || 'Dosya oluşturulurken hata meydana geldi.',
       });
     } finally {
       setIsExporting(false);
@@ -208,11 +234,11 @@ export function AdminDashboard() {
         message: `${user.name} (${user.email}) hesabı başarıyla onaylandı.`,
       });
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'İşlem Başarısız',
-        message: err.message,
+        message: errorMessage(err),
       });
     } finally {
       setActionLoadingId(null);
@@ -234,11 +260,11 @@ export function AdminDashboard() {
         message: `${user.name} kullanıcısının erişim talebi reddedildi.`,
       });
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'İşlem Başarısız',
-        message: err.message,
+        message: errorMessage(err),
       });
     } finally {
       setActionLoadingId(null);
@@ -262,11 +288,11 @@ export function AdminDashboard() {
         message: `${user.name} kullanıcısının paketi "${newPlan}" olarak ayarlandı.`,
       });
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Hata',
-        message: err.message,
+        message: errorMessage(err),
       });
     } finally {
       setActionLoadingId(null);
@@ -300,11 +326,11 @@ export function AdminDashboard() {
         message: `${user.name} kullanıcısının rolü "${newRole}" yapıldı.`,
       });
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Hata',
-        message: err.message,
+        message: errorMessage(err),
       });
     } finally {
       setActionLoadingId(null);
@@ -330,11 +356,11 @@ export function AdminDashboard() {
         message: `${user.name} kullanıcısı sistemden tamamen kaldırıldı.`,
       });
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Hata',
-        message: err.message,
+        message: errorMessage(err),
       });
     } finally {
       setActionLoadingId(null);
@@ -391,11 +417,11 @@ export function AdminDashboard() {
       setNewUserEmail('');
       setNewUserPassword('');
       await fetchAdminData();
-    } catch (err: any) {
+    } catch (err) {
       addToast({
         type: 'error',
         title: 'Oluşturma Hatası',
-        message: err.message || 'Kullanıcı eklenemedi.',
+        message: errorMessage(err) || 'Kullanıcı eklenemedi.',
       });
     } finally {
       setIsCreatingUser(false);
@@ -413,15 +439,15 @@ export function AdminDashboard() {
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#121318] text-[#f5f5f0] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-app text-fg overflow-y-auto md:overflow-hidden">
       {/* Header */}
-      <div className="border-b border-neutral-800 bg-[#161820]/80 backdrop-blur-md px-6 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+      <div className="border-b border-line bg-surface/80 backdrop-blur-md px-4 sm:px-6 py-4 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <SigmaLogo size="md" />
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2 flex-wrap">
               Yönetici Kontrol Paneli
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-medium">
+              <span className="whitespace-nowrap text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-medium">
                 Admin Panel
               </span>
             </h1>
@@ -435,7 +461,7 @@ export function AdminDashboard() {
           {/* New User Modal Trigger */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Yeni Kullanıcı Ekle</span>
@@ -446,7 +472,7 @@ export function AdminDashboard() {
             onClick={handleExportFullBackup}
             disabled={isExporting}
             title="Tüm Veritabanını JSON Olarak Yedekle (Kullanıcılar, Notlar, Finans, Görevler)"
-            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-950/40 border border-blue-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold border border-blue-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <Database className="w-4 h-4 text-blue-300" />
             <span>{isExporting ? 'Yedekleniyor...' : 'Veritabanı Yedeği (.json)'}</span>
@@ -455,7 +481,7 @@ export function AdminDashboard() {
           {/* Full Database JSON Backup Import */}
           <label
             title="Daha önce alınmış JSON yedeğini sisteme güvenli şekilde geri yükleyin / aktarın"
-            className={`px-3.5 py-2.5 rounded-xl bg-[#1c2230] hover:bg-[#252e42] text-xs font-semibold text-blue-300 border border-blue-800/60 flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-3.5 py-2.5 rounded-lg bg-[#1c2230] hover:bg-[#252e42] text-xs font-semibold text-blue-300 border border-blue-800/60 flex items-center gap-1.5 transition-colors cursor-pointer ${
               isImporting ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
@@ -474,7 +500,7 @@ export function AdminDashboard() {
             onClick={handleExportExcel}
             disabled={isExporting || users.length === 0}
             title="Kullanıcı Listesini Excel Olarak İndir (.xlsx)"
-            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
             <span>Excel (.xlsx)</span>
@@ -485,7 +511,7 @@ export function AdminDashboard() {
             onClick={handleExportCSV}
             disabled={isExporting || users.length === 0}
             title="CSV Formatında İndir"
-            className="px-3 py-2.5 rounded-xl bg-[#1c1f2a] hover:bg-[#252a3a] text-xs font-semibold text-neutral-300 border border-neutral-700 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-3 py-2.5 rounded-lg bg-surface-2 hover:bg-[#252a3a] text-xs font-semibold text-neutral-300 border border-line-strong flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" />
             <span>.CSV</span>
@@ -494,7 +520,7 @@ export function AdminDashboard() {
           <button
             onClick={fetchAdminData}
             disabled={loading}
-            className="p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-medium text-neutral-200 border border-neutral-700 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+            className="p-2.5 rounded-lg bg-surface-3 hover:bg-neutral-700 text-xs font-medium text-neutral-200 border border-line-strong flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
             title="Yenile"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -503,17 +529,17 @@ export function AdminDashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+      <div className="flex-1 md:overflow-y-auto p-4 sm:p-5 space-y-5">
         {/* Database Migration & Backup Status Banner */}
-        <div className="bg-gradient-to-r from-[#141a24] to-[#121620] border border-blue-900/40 rounded-2xl p-4.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div className="bg-[#141a24] border border-blue-900/40 rounded-lg p-4.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
               <Archive className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold text-white">Veri Koruma & Otomatik Geçiş Sistemi (Schema v2.0)</h4>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-semibold">
+                <span className="whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-semibold">
                   Sıfır Veri Kaybı Aktif
                 </span>
               </div>
@@ -527,7 +553,7 @@ export function AdminDashboard() {
             <button
               onClick={handleExportFullBackup}
               disabled={isExporting}
-              className="px-3 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-2 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Yedek İndir (.json)</span>
@@ -539,17 +565,17 @@ export function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             onClick={() => setActiveTab('pending')}
-            className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-5 rounded-xl border transition-all cursor-pointer ${
               activeTab === 'pending'
-                ? 'bg-amber-500/10 border-amber-500/40 shadow-lg shadow-amber-500/5'
-                : 'bg-[#161820] border-neutral-800 hover:border-neutral-700'
+                ? 'bg-amber-500/10 border-amber-500/40'
+                : 'bg-surface border-line hover:border-line-strong'
             }`}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Bekleyen Onaylar
               </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
                 <Clock className="w-4 h-4" />
               </div>
             </div>
@@ -562,17 +588,17 @@ export function AdminDashboard() {
               setActiveTab('all');
               setStatusFilter('APPROVED');
             }}
-            className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-5 rounded-xl border transition-all cursor-pointer ${
               activeTab === 'all' && statusFilter === 'APPROVED'
-                ? 'bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5'
-                : 'bg-[#161820] border-neutral-800 hover:border-neutral-700'
+                ? 'bg-emerald-500/10 border-emerald-500/40'
+                : 'bg-surface border-line hover:border-line-strong'
             }`}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Aktif Kullanıcılar
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <UserCheck className="w-4 h-4" />
               </div>
             </div>
@@ -585,17 +611,17 @@ export function AdminDashboard() {
               setActiveTab('all');
               setStatusFilter('ALL');
             }}
-            className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-5 rounded-xl border transition-all cursor-pointer ${
               activeTab === 'all' && statusFilter === 'ALL'
-                ? 'bg-neutral-800/40 border-neutral-600'
-                : 'bg-[#161820] border-neutral-800 hover:border-neutral-700'
+                ? 'bg-surface-3/40 border-neutral-600'
+                : 'bg-surface border-line hover:border-line-strong'
             }`}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Toplam Kayıt
               </span>
-              <div className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-surface-3 text-neutral-300 flex items-center justify-center">
                 <Users className="w-4 h-4" />
               </div>
             </div>
@@ -603,12 +629,12 @@ export function AdminDashboard() {
             <p className="text-[11px] text-neutral-400 mt-1 font-medium">Veritabanındaki toplam kullanıcı</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#161820] border border-neutral-800 flex flex-col justify-between">
+          <div className="p-5 rounded-lg bg-surface border border-line flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Üretim Verileri
               </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
                 <Layers className="w-4 h-4" />
               </div>
             </div>
@@ -620,13 +646,13 @@ export function AdminDashboard() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex items-center gap-2 border-b border-neutral-800 pb-2">
+        <div className="flex items-center gap-2 border-b border-line pb-2">
           <button
             onClick={() => setActiveTab('pending')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'pending'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -637,8 +663,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab('all')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'all'
-                ? 'bg-neutral-800 text-white border border-neutral-700'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                ? 'bg-surface-3 text-white border border-line-strong'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -650,7 +676,7 @@ export function AdminDashboard() {
         {activeTab === 'pending' && (
           <div className="space-y-4">
             {pendingUsers.length === 0 ? (
-              <div className="text-center py-16 bg-[#161820] border border-neutral-800 rounded-2xl">
+              <div className="text-center py-16 bg-surface border border-line rounded-lg">
                 <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 mx-auto flex items-center justify-center mb-3">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
@@ -664,7 +690,7 @@ export function AdminDashboard() {
                 {pendingUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="p-5 rounded-2xl bg-[#161820] border border-amber-500/30 hover:border-amber-500/50 transition-all flex flex-col justify-between space-y-4 shadow-lg shadow-black/20"
+                    className="p-5 rounded-lg bg-surface border border-amber-500/30 hover:border-amber-500/50 transition-all flex flex-col justify-between space-y-4"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -685,7 +711,7 @@ export function AdminDashboard() {
                       <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.email}</p>
 
                       {/* Subscription Plan Tag & Modifier */}
-                      <div className="mt-3 flex items-center justify-between gap-2 p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+                      <div className="mt-3 flex items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-2/90 border border-line">
                         <span className="text-[11px] text-neutral-400 flex items-center gap-1.5">
                           <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
                           <span>Talep Edilen Plan:</span>
@@ -693,7 +719,7 @@ export function AdminDashboard() {
                         <select
                           value={user.subscriptionPlan || 'Aylık'}
                           onChange={(e) => handleUpdatePlan(user, e.target.value as SubscriptionPlan)}
-                          className="bg-[#161820] border border-neutral-700 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 focus:outline-none"
+                          className="bg-surface border border-line-strong rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 focus:outline-none"
                         >
                           <option value="Aylık">Aylık (100 TL)</option>
                           <option value="Tek Seferlik">Tek Seferlik (1999 TL)</option>
@@ -701,11 +727,11 @@ export function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-neutral-800/80 flex items-center gap-2">
+                    <div className="pt-4 border-t border-line/80 flex items-center gap-2">
                       <button
                         onClick={() => handleApprove(user)}
                         disabled={actionLoadingId === user.id}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-colors cursor-pointer disabled:opacity-50"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {actionLoadingId === user.id ? (
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -720,7 +746,7 @@ export function AdminDashboard() {
                       <button
                         onClick={() => handleReject(user)}
                         disabled={actionLoadingId === user.id}
-                        className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-medium py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                        className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <UserX className="w-3.5 h-3.5" />
                         <span>Reddet</span>
@@ -736,7 +762,7 @@ export function AdminDashboard() {
         {/* TAB 2: ALL USERS TABLE */}
         {activeTab === 'all' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#161820] p-4 rounded-2xl border border-neutral-800">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface p-4 rounded-lg border border-line">
               <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                 <input
@@ -744,15 +770,15 @@ export function AdminDashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="İsim veya e-posta ile ara..."
-                  className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-app border border-line rounded-lg pl-10 pr-4 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="bg-[#0d0e12] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-300 focus:outline-none focus:border-emerald-500"
+                  onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                  className="bg-app border border-line rounded-lg px-3 py-2 text-xs text-neutral-300 focus:outline-none focus:border-emerald-500"
                 >
                   <option value="ALL">Tüm Durumlar</option>
                   <option value="PENDING">Onay Bekleyenler</option>
@@ -762,10 +788,10 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-[#161820] border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-surface border border-line rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#0f1015] border-b border-neutral-800 text-neutral-400 font-semibold uppercase tracking-wider">
+                  <thead className="bg-app border-b border-line text-neutral-400 font-semibold uppercase tracking-wider">
                     <tr>
                       <th className="p-4">Kullanıcı</th>
                       <th className="p-4">Rol</th>
@@ -779,16 +805,16 @@ export function AdminDashboard() {
                   <tbody className="divide-y divide-neutral-800/60 text-neutral-300">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-neutral-500">
+                        <td colSpan={7} className="p-6 text-center text-neutral-500">
                           Aramaya uygun kullanıcı bulunamadı.
                         </td>
                       </tr>
                     ) : (
                       filteredUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-neutral-800/30 transition-colors">
+                        <tr key={user.id} className="hover:bg-surface-3/30 transition-colors">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-xl bg-neutral-800 border border-neutral-700 text-neutral-200 font-bold flex items-center justify-center text-xs">
+                              <div className="w-8 h-8 rounded-lg bg-surface-3 border border-line-strong text-neutral-200 font-bold flex items-center justify-center text-xs">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -806,7 +832,7 @@ export function AdminDashboard() {
                               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
                                 user.role === 'ADMIN'
                                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
-                                  : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'
+                                  : 'bg-surface-3 text-neutral-400 border-line-strong hover:bg-neutral-700'
                               }`}
                             >
                               {user.role}
@@ -822,7 +848,7 @@ export function AdminDashboard() {
                               className={`text-[11px] font-semibold rounded-lg px-2 py-1 border transition-colors cursor-pointer focus:outline-none ${
                                 user.subscriptionPlan === 'Tek Seferlik'
                                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
-                                  : 'bg-neutral-900 text-neutral-300 border-neutral-700'
+                                  : 'bg-surface-2 text-neutral-300 border-line-strong'
                               }`}
                             >
                               <option value="Aylık">Aylık (100 TL)</option>
@@ -837,7 +863,7 @@ export function AdminDashboard() {
                               </span>
                             )}
                             {user.status === 'PENDING' && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                 <Clock className="w-3 h-3" /> Bekliyor
                               </span>
                             )}
@@ -857,7 +883,7 @@ export function AdminDashboard() {
                           </td>
 
                           <td className="p-4 text-center">
-                            <span className="px-2 py-0.5 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400 text-[11px]">
+                            <span className="px-2 py-0.5 rounded-lg bg-surface-2 border border-line text-neutral-400 text-[11px]">
                               {(user._count?.notes ?? 0) +
                                 (user._count?.tasks ?? 0) +
                                 (user._count?.scripts ?? 0)}{' '}
@@ -915,10 +941,10 @@ export function AdminDashboard() {
       {/* CREATE NEW USER MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-[#161822] border border-neutral-800 w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl p-6 sm:p-7 shadow-2xl relative">
+          <div className="bg-surface border border-line w-full max-w-md max-h-[85vh] overflow-y-auto rounded-xl p-5 sm:p-5 relative">
             <button
               onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              className="absolute top-5 right-5 p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-surface-3 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -944,7 +970,7 @@ export function AdminDashboard() {
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
                     placeholder="Örn: Mehmet Demir"
-                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-app border border-line rounded-lg pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -959,7 +985,7 @@ export function AdminDashboard() {
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     placeholder="mehmet@alanadi.com"
-                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-app border border-line rounded-lg pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -974,7 +1000,7 @@ export function AdminDashboard() {
                     value={newUserPassword}
                     onChange={(e) => setNewUserPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-app border border-line rounded-lg pl-10 pr-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -985,7 +1011,7 @@ export function AdminDashboard() {
                   <select
                     value={newUserRole}
                     onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-app border border-line rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="USER">USER (Standart)</option>
                     <option value="ADMIN">ADMIN (Yönetici)</option>
@@ -997,7 +1023,7 @@ export function AdminDashboard() {
                   <select
                     value={newUserPlan}
                     onChange={(e) => setNewUserPlan(e.target.value as SubscriptionPlan)}
-                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-app border border-line rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="Aylık">Aylık (100 TL)</option>
                     <option value="Tek Seferlik">Tek Seferlik (1999 TL)</option>
@@ -1010,7 +1036,7 @@ export function AdminDashboard() {
                 <select
                   value={newUserStatus}
                   onChange={(e) => setNewUserStatus(e.target.value as UserStatus)}
-                  className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-app border border-line rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 >
                   <option value="APPROVED">Onaylı (Hemen Giriş Yapabilir)</option>
                   <option value="PENDING">Bekliyor (Onay Gerektirir)</option>
@@ -1021,7 +1047,7 @@ export function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={isCreatingUser}
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isCreatingUser ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

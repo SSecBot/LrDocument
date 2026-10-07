@@ -1,35 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, ensureDefaultAdmin } from '@/lib/auth';
-import { INITIAL_FOLDERS, INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
+import { hashPassword, ensureDefaultAdmin, validatePassword } from '@/lib/auth';
+import { seedDefaultUserData } from '@/lib/userSeed';
+import {
+  getClientIp,
+  handleRouteError,
+  normalizeEmail,
+  normalizeName,
+  rateLimit,
+  readJsonObject,
+  tooManyRequests,
+} from '@/lib/apiUtils';
 
 export async function POST(req: NextRequest) {
   try {
     await ensureDefaultAdmin();
 
-    const body = await req.json();
-    const { name, email, password, plan, subscriptionPlan } = body;
+    const wait = rateLimit(`register-ip:${getClientIp(req)}`, 5, 60 * 60_000);
+    if (wait) return tooManyRequests(wait);
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: 'Lütfen tüm alanları eksiksiz doldurunuz.' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(req);
+    const { plan, subscriptionPlan } = body;
+
+    if (!body.name || !body.email || !body.password) {
+      return NextResponse.json({ error: 'Lütfen tüm alanları eksiksiz doldurunuz.' }, { status: 400 });
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Şifre en az 6 karakter olmalıdır.' },
-        { status: 400 }
-      );
+    const name = normalizeName(body.name);
+    if (!name) {
+      return NextResponse.json({ error: 'İsim 2 ile 80 karakter arasında olmalıdır.' }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+    const cleanEmail = normalizeEmail(body.email);
+    if (!cleanEmail) {
+      return NextResponse.json({ error: 'Lütfen geçerli bir e-posta adresi giriniz.' }, { status: 400 });
+    }
 
+    const passwordError = validatePassword(body.password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existing) {
       return NextResponse.json(
         { error: 'Bu e-posta adresiyle kayıtlı bir hesap zaten bulunmaktadır.' },
@@ -41,48 +53,26 @@ export async function POST(req: NextRequest) {
       subscriptionPlan === 'Tek Seferlik' || plan === 'lifetime' || plan === 'Tek Seferlik'
         ? 'Tek Seferlik'
         : 'Aylık';
-
     const subType: 'AYLIK' | 'TEK_SEFERLIK' = planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
 
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(body.password as string);
 
-    const newUser = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: cleanEmail,
-        passwordHash,
-        role: 'USER',
-        status: 'PENDING',
-        subscriptionType: subType,
-        subscriptionPlan: planValue,
-        paymentStatus: 'PENDING',
-      },
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email: cleanEmail,
+          passwordHash,
+          role: 'USER',
+          status: 'PENDING',
+          subscriptionType: subType,
+          subscriptionPlan: planValue,
+          paymentStatus: 'PENDING',
+        },
+      });
+      await seedDefaultUserData(tx, user.id);
+      return user;
     });
-
-    for (const folder of INITIAL_FOLDERS) {
-      await prisma.folder.create({
-        data: {
-          id: `${newUser.id}_${folder.id}`,
-          userId: newUser.id,
-          name: folder.name,
-          description: folder.description,
-          iconName: folder.iconName,
-          isSystem: folder.isSystem || false,
-        },
-      });
-    }
-
-    for (const cat of INITIAL_FINANCE_CATEGORIES) {
-      await prisma.financeCategory.create({
-        data: {
-          id: `${newUser.id}_${cat.id}`,
-          userId: newUser.id,
-          name: cat.name,
-          type: cat.type,
-          isSystem: cat.isSystem || false,
-        },
-      });
-    }
 
     return NextResponse.json(
       {
@@ -103,10 +93,6 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Kayıt işlemi sırasında bir sunucu hatası oluştu.' },
-      { status: 500 }
-    );
+    return handleRouteError(error, 'Registration error', 'Kayıt işlemi sırasında bir sunucu hatası oluştu.');
   }
 }

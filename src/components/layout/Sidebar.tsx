@@ -13,13 +13,19 @@ import {
   Wallet,
   Kanban,
   Sigma,
-  Command,
+  Search,
   X,
-  ShieldAlert,
+  ShieldCheck,
   LogOut,
-  User as UserIcon,
+  Settings,
 } from 'lucide-react';
-import Link from 'next/link';
+
+interface NavItem {
+  id: ActiveTab;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}
 
 export const Sidebar: React.FC = () => {
   const {
@@ -31,114 +37,81 @@ export const Sidebar: React.FC = () => {
     scripts,
     tasks,
     kanbanCards,
-    events,
-    mediaItems,
-    transactions,
     setIsCommandPaletteOpen,
     currentUser,
     logout,
   } = useAppStore();
 
-  const navItems: {
-    id: ActiveTab;
-    label: string;
-    icon: React.ReactNode;
-    badge?: number;
-    badgeColor?: string;
-  }[] = [
-      {
-        id: 'dashboard',
-        label: 'Genel Bakış',
-        icon: <LayoutDashboard className="w-4 h-4" />,
-      },
-      {
-        id: 'notes',
-        label: 'Notlar',
-        icon: <FileText className="w-4 h-4" />,
-        badge: notes.length,
-        badgeColor: 'bg-[#242424] text-[#d1d5db]',
-      },
-      {
-        id: 'scripts',
-        label: 'Video Senaryoları',
-        icon: <Video className="w-4 h-4" />,
-        badge: scripts.length,
-        badgeColor: 'bg-[#242424] text-[#d1d5db]',
-      },
-      {
-        id: 'kanban',
-        label: 'Kanban',
-        icon: <Kanban className="w-4 h-4" />,
-        badge: kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length,
-        badgeColor: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40',
-      },
-      {
-        id: 'media',
-        label: 'Medya Deposu',
-        icon: <ImageIcon className="w-4 h-4" />,
-        badge: mediaItems.length,
-        badgeColor: 'bg-purple-950/60 text-purple-300 border border-purple-800/40',
-      },
-      {
-        id: 'tasks',
-        label: 'Görevler & Plan',
-        icon: <CheckSquare className="w-4 h-4" />,
-        badge: tasks.filter((t) => !t.completed).length,
-        badgeColor: 'bg-amber-950/60 text-amber-300 border border-amber-800/40',
-      },
-      {
-        id: 'calendar',
-        label: 'Takvim',
-        icon: <Calendar className="w-4 h-4" />,
-        badge: events.length,
-        badgeColor: 'bg-[#2d5a27]/30 text-emerald-300 border border-[#2d5a27]/50',
-      },
-      {
-        id: 'finance',
-        label: 'Gelir ve Gider',
-        icon: <Wallet className="w-4 h-4" />,
-        badge: transactions.length,
-        badgeColor: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40',
-      },
-      {
-        id: 'settings',
-        label: 'Hesap & Güvenlik',
-        icon: <UserIcon className="w-4 h-4" />,
-      },
-    ];
+  const groups: { title: string; items: NavItem[] }[] = [
+    {
+      title: 'Çalışma alanı',
+      items: [
+        { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
+        { id: 'notes', label: 'Notlar', icon: FileText, badge: notes.length },
+        { id: 'scripts', label: 'Video Senaryoları', icon: Video, badge: scripts.length },
+        { id: 'tasks', label: 'Görevler', icon: CheckSquare, badge: tasks.filter((t) => !t.completed).length },
+        { id: 'kanban', label: 'Kanban', icon: Kanban, badge: kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length },
+        { id: 'calendar', label: 'Takvim', icon: Calendar },
+      ],
+    },
+    {
+      title: 'Kaynaklar',
+      items: [
+        { id: 'media', label: 'Medya Deposu', icon: ImageIcon },
+        { id: 'finance', label: 'Gelir ve Gider', icon: Wallet },
+      ],
+    },
+  ];
 
+  const accountItems: NavItem[] = [{ id: 'settings', label: 'Hesap & Güvenlik', icon: Settings }];
   if (currentUser?.role === 'ADMIN') {
-    navItems.push({
-      id: 'admin',
-      label: 'Yönetici Paneli',
-      icon: <ShieldAlert className="w-4 h-4 text-purple-400" />,
-      badgeColor: 'bg-purple-950/60 text-purple-300 border border-purple-800/40',
-    });
+    accountItems.push({ id: 'admin', label: 'Yönetici Paneli', icon: ShieldCheck });
   }
 
-  const renderSidebarContent = (isMobile: boolean = false) => (
-    <div className="flex flex-col h-full bg-[#141414] select-none">
-      {/* Brand Header */}
-      <div className="p-4 sm:p-5 border-b border-[#242424] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2d5a27] to-[#163013] border border-[#387030] flex items-center justify-center shadow-lg shadow-emerald-950/50">
-            <Sigma className="w-5 h-5 text-white" />
+  const renderItem = (item: NavItem, isMobile: boolean) => {
+    const isActive = activeTab === item.id;
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        onClick={() => {
+          setActiveTab(item.id);
+          if (isMobile) setIsMobileSidebarOpen(false);
+        }}
+        aria-current={isActive ? 'page' : undefined}
+        className={`relative w-full h-10 md:h-9 flex items-center gap-2.5 px-2.5 rounded-lg text-[13px] transition-colors ${
+          isActive ? 'bg-surface-3 text-fg font-medium' : 'text-subtle hover:text-fg hover:bg-surface-2'
+        }`}
+      >
+        {isActive && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-400" />}
+        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-400' : 'text-muted'}`} />
+        <span className="flex-1 text-left truncate">{item.label}</span>
+        {!!item.badge && <span className="text-[11px] tabular-nums text-muted">{item.badge}</span>}
+      </button>
+    );
+  };
+
+  const renderSidebarContent = (isMobile: boolean) => (
+    <div className="flex flex-col h-full bg-surface select-none">
+      {/* Brand */}
+      <div className="h-14 px-3 border-b border-line flex items-center justify-between shrink-0">
+        <button
+          onClick={() => {
+            setActiveTab('dashboard');
+            if (isMobile) setIsMobileSidebarOpen(false);
+          }}
+          className="flex items-center gap-2.5 px-1"
+        >
+          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
+            <Sigma className="w-4 h-4 text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-base text-white tracking-tight">LrDocument</span>
-              <span className="text-[10px] uppercase font-bold text-emerald-400 bg-[#2d5a27]/30 px-1.5 py-0.2 rounded border border-[#2d5a27]/50">
-                PRO
-              </span>
-            </div>
-            <p className="text-[11px] text-[#71717a] tracking-tight">Matematik & İçerik Stüdyosu</p>
-          </div>
-        </div>
+          <span className="font-semibold text-[15px] text-fg">LrDocument</span>
+        </button>
 
         {isMobile && (
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-[#202020] hover:bg-[#282828] text-[#9ca3af] hover:text-white transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-subtle hover:text-fg hover:bg-surface-2 transition-colors"
             aria-label="Menüyü Kapat"
           >
             <X className="w-5 h-5" />
@@ -146,127 +119,72 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
 
-      {/* Quick Search Shortcut Trigger */}
-      <div className="p-3">
+      {/* Search */}
+      <div className="p-3 pb-1">
         <button
           onClick={() => {
             if (isMobile) setIsMobileSidebarOpen(false);
             setIsCommandPaletteOpen(true);
           }}
-          className="w-full min-h-[44px] flex items-center justify-between px-3.5 py-2.5 bg-[#1c1c1c] hover:bg-[#242424] active:bg-[#282828] border border-[#2a2a2a] rounded-xl text-xs text-[#9ca3af] hover:text-white transition-all group cursor-pointer"
+          className="w-full h-9 flex items-center gap-2 px-2.5 bg-surface-2 hover:bg-surface-3 border border-line rounded-lg text-[13px] text-muted hover:text-subtle transition-colors"
         >
-          <div className="flex items-center gap-2.5">
-            <Command className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-            <span className="font-medium">Hızlı Arama...</span>
-          </div>
-          <kbd className="text-[10px] font-mono bg-[#282828] text-[#71717a] px-1.5 py-0.5 rounded border border-[#333]">
-            Ctrl+K
+          <Search className="w-4 h-4" />
+          <span className="flex-1 text-left">Ara…</span>
+          <kbd className="hidden md:inline text-[10px] font-mono text-muted px-1.5 py-0.5 rounded border border-line-strong">
+            Ctrl K
           </kbd>
         </button>
       </div>
 
-      {/* Navigation Links */}
-      <div className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#666]">
-          Ana Modüller
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
+        {groups.map((group) => (
+          <div key={group.title} className="space-y-0.5">
+            <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">{group.title}</div>
+            {group.items.map((item) => renderItem(item, isMobile))}
+          </div>
+        ))}
+        <div className="space-y-0.5">
+          <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">Hesap</div>
+          {accountItems.map((item) => renderItem(item, isMobile))}
         </div>
+      </nav>
 
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                if (isMobile) setIsMobileSidebarOpen(false);
-              }}
-              className={`w-full min-h-[44px] flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isActive
-                  ? item.id === 'admin'
-                    ? 'bg-purple-900/60 text-purple-200 border border-purple-500/40 font-bold'
-                    : 'bg-[#2d5a27] text-white shadow-md shadow-emerald-950/60 font-bold'
-                  : 'text-[#9ca3af] hover:text-white hover:bg-[#1f1f1f] active:bg-[#252525]'
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={isActive ? 'text-white' : 'text-[#71717a]'}>
-                  {item.icon}
-                </span>
-                <span className="text-xs font-medium">{item.label}</span>
-              </div>
-
-              {item.badge !== undefined && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium ${item.badgeColor || 'bg-[#222] text-[#9ca3af]'}`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* User Profile & Logout Box */}
-      <div className="p-3 border-t border-[#242424] bg-[#121212]">
-        {currentUser ? (
-          <div className="p-2.5 rounded-xl bg-[#1a1a1a] border border-[#282828] flex items-center justify-between gap-2">
-            <div
-              onClick={() => {
-                setActiveTab('settings');
-                if (isMobile) setIsMobileSidebarOpen(false);
-              }}
-              className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1 group"
-              title="Hesap & Güvenlik Ayarları"
-            >
-              <div className="w-8 h-8 rounded-lg bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
-                {currentUser.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-semibold text-white truncate group-hover:text-emerald-300 transition-colors">{currentUser.name}</p>
-                  {currentUser.role === 'ADMIN' && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-bold">
-                      ADMIN
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-[#71717a] font-mono truncate">{currentUser.email}</p>
-              </div>
+      {/* User */}
+      {currentUser && (
+        <div className="p-3 border-t border-line safe-bottom">
+          <div className="flex items-center gap-2.5 px-1">
+            <div className="w-8 h-8 rounded-full bg-surface-3 text-body flex items-center justify-center text-xs font-semibold shrink-0">
+              {currentUser.name.charAt(0).toUpperCase()}
             </div>
-
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-fg truncate">{currentUser.name}</p>
+              <p className="text-[11px] text-muted truncate">{currentUser.email}</p>
+            </div>
             <button
               onClick={() => logout()}
               title="Çıkış Yap"
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+              aria-label="Çıkış Yap"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
-        ) : (
-          <Link
-            href="/login"
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
-          >
-            <UserIcon className="w-4 h-4" />
-            <span>Giriş Yap</span>
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 
   return (
     <>
-      <aside className="hidden md:flex w-64 border-r border-[#242424] flex-col h-full shrink-0 select-none">
+      <aside className="hidden md:flex w-60 border-r border-line flex-col h-full shrink-0">
         {renderSidebarContent(false)}
       </aside>
 
       {isMobileSidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex animate-fade-in">
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-          <div className="relative w-4/5 max-w-xs h-full bg-[#141414] shadow-2xl z-10 animate-slide-in">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileSidebarOpen(false)} />
+          <div className="relative w-4/5 max-w-[288px] h-full z-10 border-r border-line">
             {renderSidebarContent(true)}
           </div>
         </div>

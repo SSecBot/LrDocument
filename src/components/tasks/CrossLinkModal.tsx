@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Task } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
-import { FileText, Video, Link2, Check } from 'lucide-react';
+import { FileText, Video, Check } from 'lucide-react';
 
 interface CrossLinkModalProps {
   task: Task;
@@ -38,7 +38,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
       subtitle="Bu görevi tamamlamak için gereken dökümanı bağlayın."
       maxWidth="max-w-md"
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Note selection */}
         <div>
           <label className="block text-xs font-semibold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -48,10 +48,10 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             <div
               onClick={() => setSelectedNoteId(undefined)}
-              className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between ${
+              className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between ${
                 !selectedNoteId
-                  ? 'bg-[#202820] border-[#2d5a27] text-emerald-300 font-semibold'
-                  : 'bg-[#1e1e1e] border-[#2a2a2a] text-[#9ca3af] hover:text-white'
+                  ? 'bg-surface-2 border-brand text-emerald-300 font-semibold'
+                  : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
               <span>(Not Bağlantısı Yok)</span>
@@ -62,10 +62,10 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
               <div
                 key={n.id}
                 onClick={() => setSelectedNoteId(n.id)}
-                className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${
+                className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-colors ${
                   selectedNoteId === n.id
-                    ? 'bg-[#202820] border-[#2d5a27] text-white font-semibold'
-                    : 'bg-[#1e1e1e] border-[#2a2a2a] text-[#9ca3af] hover:text-white hover:bg-[#252525]'
+                    ? 'bg-surface-2 border-brand text-white font-semibold'
+                    : 'bg-surface-2 border-line text-subtle hover:text-white hover:bg-surface-2'
                 }`}
               >
                 <span className="truncate">{n.title}</span>
@@ -84,10 +84,10 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             <div
               onClick={() => setSelectedScriptId(undefined)}
-              className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between ${
+              className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between ${
                 !selectedScriptId
-                  ? 'bg-[#202820] border-[#2d5a27] text-emerald-300 font-semibold'
-                  : 'bg-[#1e1e1e] border-[#2a2a2a] text-[#9ca3af] hover:text-white'
+                  ? 'bg-surface-2 border-brand text-emerald-300 font-semibold'
+                  : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
               <span>(Senaryo Bağlantısı Yok)</span>
@@ -98,14 +98,14 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
               <div
                 key={s.id}
                 onClick={() => setSelectedScriptId(s.id)}
-                className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${
+                className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-colors ${
                   selectedScriptId === s.id
-                    ? 'bg-[#202820] border-[#2d5a27] text-white font-semibold'
-                    : 'bg-[#1e1e1e] border-[#2a2a2a] text-[#9ca3af] hover:text-white hover:bg-[#252525]'
+                    ? 'bg-surface-2 border-brand text-white font-semibold'
+                    : 'bg-surface-2 border-line text-subtle hover:text-white hover:bg-surface-2'
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <span className="text-[10px] text-emerald-400 bg-[#142214] px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] text-emerald-400 bg-surface px-1.5 py-0.5 rounded">
                     {s.targetPlatform}
                   </span>
                   <span className="truncate">{s.title}</span>
@@ -117,16 +117,16 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2a2a2a]">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-[#222] hover:bg-[#2c2c2c] text-xs font-medium text-[#d1d5db] rounded-lg transition-colors"
+            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
           >
             İptal
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-colors"
           >
             Bağlantıları Kaydet
           </button>

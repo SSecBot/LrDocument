@@ -87,11 +87,18 @@ Proje klasöründeyken bağımlılıkları yükleyin ve üretim derlemesini alı
 ```bash
 cd /var/www/lrdocument
 
-# .env dosyasını oluşturun
-cp .env.example .env.local
+# .env dosyasını oluşturun (Prisma yalnızca .env dosyasını okur)
+cp .env.example .env
 
-# Bağımlılıkları kurun
+# JWT_SECRET için güçlü bir anahtar üretip .env içine yazın (zorunlu)
+openssl rand -base64 48
+
+# İlk yönetici hesabı için ADMIN_EMAIL ve ADMIN_PASSWORD değerlerini .env içinde doldurun
+
+# Bağımlılıkları kurun ve veritabanı şemasını uygulayın
 npm install
+npx prisma generate
+npx prisma db push
 
 # Next.js üretim derlemesini yapın
 npm run build

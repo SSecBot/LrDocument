@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Script, ScriptStatus, Platform } from '@/types';
+import { Script, ScriptStatus } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { PlatformBadge } from '@/components/ui/Badge';
 import { calculateTiming } from '@/lib/scriptTiming';
@@ -98,20 +98,20 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-app overflow-hidden">
       {/* Top action bar with back to editor button & mobile column tabs */}
-      <div className="p-3 sm:p-4 border-b border-[#262626] bg-[#161616] flex items-center justify-between gap-3 flex-wrap">
+      <div className="p-3 sm:p-4 border-b border-line bg-surface flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           {onBackToEditor && (
             <button
               onClick={onBackToEditor}
-              className="min-h-[38px] px-3.5 py-1.5 bg-[#222] hover:bg-[#2e2e2e] active:bg-[#333] border border-[#333] rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 transition-colors"
+              className="min-h-[38px] px-3.5 py-1.5 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 border border-line-strong rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors"
             >
               <FileEdit className="w-4 h-4 text-emerald-400" />
               <span>Editöre Dön</span>
             </button>
           )}
-          <span className="text-xs text-[#71717a] hidden sm:inline">Senaryo Aşamaları Kanban Panosu</span>
+          <span className="text-xs text-muted hidden sm:inline">Senaryo Aşamaları Kanban Panosu</span>
         </div>
 
         {/* Mobile column selector */}
@@ -124,10 +124,10 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
               <button
                 key={col.id}
                 onClick={() => setActiveMobileColumn(col.id)}
-                className={`min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                className={`min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#2d5a27] text-white font-semibold shadow-sm'
-                    : 'bg-[#202020] text-[#9ca3af]'
+                    ? 'bg-surface-4 text-fg font-medium'
+                    : 'bg-surface-2 text-subtle'
                 }`}
               >
                 <span>{col.title}</span>
@@ -141,7 +141,7 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
       </div>
 
       {/* Main Kanban Content Area */}
-      <div className="flex-1 overflow-x-auto p-4 sm:p-6 bg-[#121212] snap-x snap-mandatory">
+      <div className="flex-1 overflow-x-auto p-4 sm:p-5 bg-app snap-x snap-mandatory">
         <div className="flex gap-4 min-w-full md:min-w-[1200px] h-full items-start">
           {COLUMNS.map((col) => {
             const colScripts = scripts.filter(s => s.status === col.id);
@@ -152,17 +152,17 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                 key={col.id}
                 className={`${
                   isHiddenOnMobile ? 'hidden md:flex' : 'flex'
-                } w-full md:w-80 bg-[#161616] border border-[#262626] rounded-2xl flex-col max-h-[calc(100vh-140px)] shrink-0 overflow-hidden shadow-lg snap-center`}
+                } w-full md:w-80 bg-surface border border-line rounded-xl flex-col max-h-[calc(100dvh-140px)] shrink-0 overflow-hidden snap-center`}
               >
                 {/* Column Header */}
-                <div className="p-3.5 border-b border-[#262626] bg-[#1a1a1a] flex items-center justify-between">
+                <div className="p-3.5 border-b border-line bg-surface flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded-lg border ${col.color} ${col.borderColor}`}>
                       {col.icon}
                     </div>
                     <span className="text-xs font-bold text-white tracking-tight">{col.title}</span>
                   </div>
-                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-[#242424] text-[#a1a1aa]">
+                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-surface-2 text-subtle">
                     {colScripts.length}
                   </span>
                 </div>
@@ -177,11 +177,11 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                       <div
                         key={script.id}
                         onClick={() => handleSelectScript(script.id)}
-                        className="bg-[#1e1e1e] hover:bg-[#252525] active:bg-[#282828] border border-[#2e2e2e] hover:border-[#387030] rounded-xl p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md space-y-3 group"
+                        className="bg-surface-2 hover:bg-surface-2 active:bg-surface-3 border border-line hover:border-brand-hover rounded-lg p-3.5 cursor-pointer transition-all space-y-3 group"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <PlatformBadge platform={script.targetPlatform} size="sm" />
-                          <span className="text-[10px] font-mono text-emerald-400 bg-[#142214] px-2 py-0.5 rounded border border-[#2d5a27]/30">
+                          <span className="text-[10px] font-mono text-emerald-400 bg-surface px-2 py-0.5 rounded border border-brand/30">
                             ⏱ {timing.formattedDuration}
                           </span>
                         </div>
@@ -190,7 +190,7 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                           {script.title}
                         </h4>
 
-                        <div className="flex items-center justify-between text-[11px] text-[#71717a] pt-2 border-t border-[#2a2a2a]">
+                        <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-line">
                           <span>{script.sections.length} bölüm</span>
                           {script.linkedNoteId && (
                             <span className="flex items-center gap-1 text-emerald-400/80">
@@ -205,7 +205,7 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                           <button
                             onClick={(e) => handlePrevStatus(script, e)}
                             disabled={col.id === 'fikir'}
-                            className="min-h-[34px] px-2.5 py-1 bg-[#181818] hover:bg-[#2a2a2a] active:bg-[#333] disabled:opacity-20 rounded-lg text-[11px] text-[#9ca3af] hover:text-white flex items-center gap-1 transition-colors"
+                            className="min-h-[34px] px-2.5 py-1 bg-surface hover:bg-surface-3 active:bg-surface-4 disabled:opacity-20 rounded-lg text-[11px] text-subtle hover:text-white flex items-center gap-1 transition-colors"
                             title="Önceki Aşamaya Taşı"
                           >
                             <ArrowLeft className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                           <button
                             onClick={(e) => handleNextStatus(script, e)}
                             disabled={col.id === 'yayina_hazir'}
-                            className="min-h-[34px] px-2.5 py-1 bg-[#2d5a27]/30 hover:bg-[#2d5a27] active:bg-[#244c1f] disabled:opacity-20 rounded-lg text-[11px] text-emerald-300 hover:text-white flex items-center gap-1 transition-colors font-semibold"
+                            className="min-h-[34px] px-2.5 py-1 bg-brand/30 hover:bg-brand active:bg-brand-active disabled:opacity-20 rounded-lg text-[11px] text-emerald-300 hover:text-white flex items-center gap-1 transition-colors font-semibold"
                             title="Sonraki Aşamaya İlerlet"
                           >
                             <span>İleri</span>
@@ -229,7 +229,7 @@ export const ScriptKanban: React.FC<ScriptKanbanProps> = ({ onSelectScript, onBa
                   {/* Add new in this column */}
                   <button
                     onClick={() => addScript({ status: col.id })}
-                    className="min-h-[40px] w-full py-2 bg-[#1a1a1a] hover:bg-[#222] active:bg-[#262626] border border-dashed border-[#2e2e2e] hover:border-[#2d5a27] text-xs text-[#71717a] hover:text-emerald-300 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                    className="min-h-[40px] w-full py-2 bg-surface hover:bg-surface-2 active:bg-surface-2 border border-dashed border-line hover:border-brand text-xs text-muted hover:text-emerald-300 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Bu Aşamaya Senaryo Ekle</span>

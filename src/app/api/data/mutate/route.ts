@@ -1,351 +1,262 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { BadRequestError, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
+import { isSafeMediaUrl } from '@/lib/safeUrl';
 
-export async function POST(req: NextRequest) {
+type Row = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+// Field sanitizers — every value written to the DB passes through one of these.
+// ---------------------------------------------------------------------------
+const MAX_ID = 128;
+const MAX_TITLE = 500;
+const MAX_TEXT = 200_000; // long notes / script sections
+const MAX_SHORT = 5_000;
+
+function text(v: unknown, max: number, fallback = ''): string {
+  if (typeof v !== 'string') return fallback;
+  return v.length > max ? v.slice(0, max) : v;
+}
+function optText(v: unknown, max: number): string | null {
+  return typeof v === 'string' && v !== '' ? text(v, max) : null;
+}
+function oneOf<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(v as T) ? (v as T) : fallback;
+}
+function int(v: unknown, fallback: number, min: number, max: number): number {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+function float(v: unknown, fallback: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+function optFloat(v: unknown): number | null {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function optDate(v: unknown): Date | null {
+  if (!v) return null;
+  const d = new Date(v as string);
+  return isNaN(d.getTime()) ? null : d;
+}
+function jsonArray(v: unknown, maxLength = MAX_TEXT): string {
+  const json = JSON.stringify(Array.isArray(v) ? v : []);
+  if (json.length > maxLength) throw new BadRequestError('Gönderilen veri çok büyük.');
+  return json;
+}
+function tags(v: unknown): string {
+  const list = Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string').slice(0, 50) : [];
+  return JSON.stringify(list.map((t) => t.slice(0, 64)));
+}
+function ref(v: unknown): string | null {
+  return typeof v === 'string' && v !== '' && v.length <= MAX_ID ? v : null;
+}
+
+const PRIORITIES = ['yuksek', 'orta', 'dusuk'] as const;
+
+// ---------------------------------------------------------------------------
+// Entity definitions. `fields` maps client data to DB columns (never userId/id).
+// ---------------------------------------------------------------------------
+type Delegate = {
+  findUnique: (args: { where: { id: string }; select: { userId: true } }) => Promise<{ userId: string } | null>;
+  upsert: (args: { where: { id: string }; update: Row; create: Row }) => Promise<Row>;
+  deleteMany: (args: { where: { id: string; userId: string } }) => Promise<unknown>;
+};
+
+interface EntityDef {
+  delegate: () => Delegate;
+  fields: (d: Row) => Row;
+  /** Extra fields only set on creation. */
+  createOnly?: (d: Row) => Row;
+  /** Folder / category ids are namespaced per user in the DB. */
+  namespaced?: boolean;
+}
+
+const ENTITIES: Record<string, EntityDef> = {
+  note: {
+    delegate: () => prisma.note as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      content: text(d.content, MAX_TEXT),
+      folder: text(d.folder, MAX_ID, 'genel') || 'genel',
+      tags: tags(d.tags),
+      isFavorite: Boolean(d.isFavorite),
+      isPinned: Boolean(d.isPinned),
+    }),
+  },
+  script: {
+    delegate: () => prisma.script as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      targetPlatform: oneOf(d.targetPlatform, ['YouTube', 'TikTok', 'Instagram', 'Web', 'Podcast'] as const, 'YouTube'),
+      status: oneOf(d.status, ['fikir', 'senaryo_hazir', 'cekimde', 'kurguda', 'yayina_hazir'] as const, 'fikir'),
+      sections: jsonArray(d.sections),
+      speakingRateWPM: int(d.speakingRateWPM, 130, 40, 400),
+      linkedNoteId: ref(d.linkedNoteId),
+      tags: tags(d.tags),
+    }),
+  },
+  task: {
+    delegate: () => prisma.task as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      description: optText(d.description, MAX_SHORT),
+      completed: Boolean(d.completed),
+      priority: oneOf(d.priority, PRIORITIES, 'orta'),
+      dueDate: optText(d.dueDate, 40),
+      linkedNoteId: ref(d.linkedNoteId),
+      linkedScriptId: ref(d.linkedScriptId),
+      completedAt: optDate(d.completedAt),
+    }),
+  },
+  kanban: {
+    delegate: () => prisma.kanbanCard as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      description: optText(d.description, MAX_SHORT),
+      projectType: text(d.projectType, 64, 'genel') || 'genel',
+      columnId: oneOf(d.columnId, ['fikir', 'yapilacak', 'devam_ediyor', 'inceleme', 'tamamlandi'] as const, 'fikir'),
+      priority: oneOf(d.priority, PRIORITIES, 'orta'),
+      dueDate: optText(d.dueDate, 40),
+      tags: tags(d.tags),
+      linkedScriptId: ref(d.linkedScriptId),
+      linkedNoteId: ref(d.linkedNoteId),
+    }),
+  },
+  event: {
+    delegate: () => prisma.calendarEvent as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      description: optText(d.description, MAX_SHORT),
+      date: text(d.date, 40),
+      time: optText(d.time, 10),
+      durationMinutes: int(d.durationMinutes, 30, 0, 7 * 24 * 60),
+      eventType: oneOf(d.eventType, ['yayin', 'gorev', 'ozel_gun', 'finans'] as const, 'gorev'),
+      platform: optText(d.platform, 32),
+      linkedScriptId: ref(d.linkedScriptId),
+      linkedNoteId: ref(d.linkedNoteId),
+      linkedTaskId: ref(d.linkedTaskId),
+      status: oneOf(d.status, ['planlandi', 'hazirlaniyor', 'yayinlandi', 'iptal'] as const, 'planlandi'),
+      checklist: jsonArray(d.checklist, MAX_SHORT * 4),
+    }),
+  },
+  media: {
+    delegate: () => prisma.mediaItem as unknown as Delegate,
+    fields: (d) => {
+      const url = text(d.url, 2_000_000).trim();
+      if (!isSafeMediaUrl(url)) {
+        throw new BadRequestError('Geçersiz medya bağlantısı. Yalnızca http(s) veya görsel verisi kabul edilir.');
+      }
+      const thumbnailUrl = optText(d.thumbnailUrl, 2048);
+      return {
+        title: text(d.title, MAX_TITLE),
+        description: optText(d.description, MAX_SHORT),
+        type: oneOf(d.type, ['image', 'sketch', 'video_link', 'diagram'] as const, 'image'),
+        url,
+        thumbnailUrl: thumbnailUrl && isSafeMediaUrl(thumbnailUrl) ? thumbnailUrl : null,
+        linkedNoteId: ref(d.linkedNoteId),
+        linkedScriptId: ref(d.linkedScriptId),
+        tags: tags(d.tags),
+      };
+    },
+  },
+  finance: {
+    delegate: () => prisma.financeTransaction as unknown as Delegate,
+    fields: (d) => ({
+      title: text(d.title, MAX_TITLE),
+      amount: float(d.amount, 0),
+      type: oneOf(d.type, ['gelir', 'gider'] as const, 'gelir'),
+      category: text(d.category, 128, 'Genel') || 'Genel',
+      date: text(d.date, 40),
+      endDate: optText(d.endDate, 40),
+      currency: oneOf(d.currency, ['TRY', 'USD', 'EUR'] as const, 'TRY'),
+      originalAmount: optFloat(d.originalAmount),
+      exchangeRate: optFloat(d.exchangeRate),
+      markupTRY: optFloat(d.markupTRY),
+      effectiveRate: optFloat(d.effectiveRate),
+      description: optText(d.description, MAX_SHORT),
+      linkedScriptId: ref(d.linkedScriptId),
+      isRecurring: Boolean(d.isRecurring),
+      recurringFrequency: d.recurringFrequency
+        ? oneOf(d.recurringFrequency, ['gunluk', 'haftalik', 'aylik'] as const, 'aylik')
+        : null,
+      isConfirmed: Boolean(d.isConfirmed),
+      dueDate: optText(d.dueDate, 40),
+      priority: oneOf(d.priority, PRIORITIES, 'orta'),
+    }),
+  },
+  folder: {
+    namespaced: true,
+    delegate: () => prisma.folder as unknown as Delegate,
+    fields: (d) => ({
+      name: text(d.name, 128),
+      description: optText(d.description, MAX_SHORT),
+      iconName: text(d.iconName, 64, 'Folder') || 'Folder',
+    }),
+    createOnly: (d) => ({ isSystem: Boolean(d.isSystem) }),
+  },
+  category: {
+    namespaced: true,
+    delegate: () => prisma.financeCategory as unknown as Delegate,
+    fields: (d) => ({
+      name: text(d.name, 128),
+      type: oneOf(d.type, ['gelir', 'gider'] as const, 'gelir'),
+    }),
+    createOnly: (d) => ({ isSystem: Boolean(d.isSystem) }),
+  },
+};
+
+export async function POST(req: Request) {
   try {
     const session = await requireAuth();
     const userId = session.userId;
-    const body = await req.json();
-    const { entity, action, id, data } = body;
 
-    if (!entity || !action) {
-      return NextResponse.json({ error: 'Geçersiz parametreler.' }, { status: 400 });
+    const wait = rateLimit(`mutate:${userId}`, 600, 60_000);
+    if (wait) return tooManyRequests(wait);
+
+    const body = await readJsonObject(req);
+    const { entity, action } = body;
+    const data = (body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : {}) as Row;
+
+    const def = typeof entity === 'string' && Object.hasOwn(ENTITIES, entity) ? ENTITIES[entity] : undefined;
+    if (!def) {
+      return NextResponse.json({ error: 'Bilinmeyen varlık türü.' }, { status: 400 });
+    }
+    if (action !== 'create' && action !== 'upsert' && action !== 'delete') {
+      return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
     }
 
-    switch (entity) {
-      case 'note': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.note.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              content: data.content ?? '',
-              folder: data.folder ?? 'genel',
-              tags: JSON.stringify(data.tags ?? []),
-              isFavorite: Boolean(data.isFavorite),
-              isPinned: Boolean(data.isPinned),
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              content: data.content ?? '',
-              folder: data.folder ?? 'genel',
-              tags: JSON.stringify(data.tags ?? []),
-              isFavorite: Boolean(data.isFavorite),
-              isPinned: Boolean(data.isPinned),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.note.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
+    const rawId = typeof body.id === 'string' && body.id ? body.id : data.id;
+    if (typeof rawId !== 'string' || !rawId || rawId.length > MAX_ID) {
+      return NextResponse.json({ error: 'Geçersiz kayıt kimliği.' }, { status: 400 });
+    }
+    const dbId = def.namespaced ? `${userId}_${rawId}` : rawId;
+    const delegate = def.delegate();
 
-      case 'script': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.script.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              targetPlatform: data.targetPlatform ?? 'YouTube',
-              status: data.status ?? 'fikir',
-              sections: JSON.stringify(data.sections ?? []),
-              speakingRateWPM: Number(data.speakingRateWPM ?? 130),
-              linkedNoteId: data.linkedNoteId ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              targetPlatform: data.targetPlatform ?? 'YouTube',
-              status: data.status ?? 'fikir',
-              sections: JSON.stringify(data.sections ?? []),
-              speakingRateWPM: Number(data.speakingRateWPM ?? 130),
-              linkedNoteId: data.linkedNoteId ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.script.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'task': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.task.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              description: data.description ?? null,
-              completed: Boolean(data.completed),
-              priority: data.priority ?? 'orta',
-              dueDate: data.dueDate ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              completedAt: data.completedAt ? new Date(data.completedAt) : null,
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              description: data.description ?? null,
-              completed: Boolean(data.completed),
-              priority: data.priority ?? 'orta',
-              dueDate: data.dueDate ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              completedAt: data.completedAt ? new Date(data.completedAt) : null,
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.task.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'kanban': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.kanbanCard.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              description: data.description ?? null,
-              projectType: data.projectType ?? 'genel',
-              columnId: data.columnId ?? 'fikir',
-              priority: data.priority ?? 'orta',
-              dueDate: data.dueDate ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-              linkedScriptId: data.linkedScriptId ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              description: data.description ?? null,
-              projectType: data.projectType ?? 'genel',
-              columnId: data.columnId ?? 'fikir',
-              priority: data.priority ?? 'orta',
-              dueDate: data.dueDate ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-              linkedScriptId: data.linkedScriptId ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.kanbanCard.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'event': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.calendarEvent.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              description: data.description ?? null,
-              date: data.date ?? '',
-              time: data.time ?? null,
-              durationMinutes: Number(data.durationMinutes ?? 30),
-              eventType: data.eventType ?? 'gorev',
-              platform: data.platform ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedTaskId: data.linkedTaskId ?? null,
-              status: data.status ?? 'planlandi',
-              checklist: JSON.stringify(data.checklist ?? []),
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              description: data.description ?? null,
-              date: data.date ?? '',
-              time: data.time ?? null,
-              durationMinutes: Number(data.durationMinutes ?? 30),
-              eventType: data.eventType ?? 'gorev',
-              platform: data.platform ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedTaskId: data.linkedTaskId ?? null,
-              status: data.status ?? 'planlandi',
-              checklist: JSON.stringify(data.checklist ?? []),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.calendarEvent.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'media': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.mediaItem.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              description: data.description ?? null,
-              type: data.type ?? 'image',
-              url: data.url ?? '',
-              thumbnailUrl: data.thumbnailUrl ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              description: data.description ?? null,
-              type: data.type ?? 'image',
-              url: data.url ?? '',
-              thumbnailUrl: data.thumbnailUrl ?? null,
-              linkedNoteId: data.linkedNoteId ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              tags: JSON.stringify(data.tags ?? []),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.mediaItem.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'finance': {
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.financeTransaction.upsert({
-            where: { id: data.id },
-            update: {
-              title: data.title ?? '',
-              amount: Number(data.amount ?? 0),
-              type: data.type ?? 'gelir',
-              category: data.category ?? 'Genel',
-              date: data.date ?? '',
-              endDate: data.endDate ?? null,
-              currency: data.currency ?? 'TRY',
-              originalAmount: data.originalAmount ? Number(data.originalAmount) : null,
-              exchangeRate: data.exchangeRate ? Number(data.exchangeRate) : null,
-              markupTRY: data.markupTRY ? Number(data.markupTRY) : null,
-              effectiveRate: data.effectiveRate ? Number(data.effectiveRate) : null,
-              description: data.description ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              isRecurring: Boolean(data.isRecurring),
-              recurringFrequency: data.recurringFrequency ?? null,
-              isConfirmed: Boolean(data.isConfirmed),
-              dueDate: data.dueDate ?? null,
-              priority: data.priority ?? 'orta',
-            },
-            create: {
-              id: data.id,
-              userId,
-              title: data.title ?? '',
-              amount: Number(data.amount ?? 0),
-              type: data.type ?? 'gelir',
-              category: data.category ?? 'Genel',
-              date: data.date ?? '',
-              endDate: data.endDate ?? null,
-              currency: data.currency ?? 'TRY',
-              originalAmount: data.originalAmount ? Number(data.originalAmount) : null,
-              exchangeRate: data.exchangeRate ? Number(data.exchangeRate) : null,
-              markupTRY: data.markupTRY ? Number(data.markupTRY) : null,
-              effectiveRate: data.effectiveRate ? Number(data.effectiveRate) : null,
-              description: data.description ?? null,
-              linkedScriptId: data.linkedScriptId ?? null,
-              isRecurring: Boolean(data.isRecurring),
-              recurringFrequency: data.recurringFrequency ?? null,
-              isConfirmed: Boolean(data.isConfirmed),
-              dueDate: data.dueDate ?? null,
-              priority: data.priority ?? 'orta',
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.financeTransaction.deleteMany({ where: { id, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'folder': {
-        const folderDbId = `${userId}_${id || data?.id}`;
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.folder.upsert({
-            where: { id: folderDbId },
-            update: {
-              name: data.name ?? '',
-              description: data.description ?? null,
-              iconName: data.iconName ?? 'Folder',
-            },
-            create: {
-              id: folderDbId,
-              userId,
-              name: data.name ?? '',
-              description: data.description ?? null,
-              iconName: data.iconName ?? 'Folder',
-              isSystem: Boolean(data.isSystem),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.folder.deleteMany({ where: { id: folderDbId, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      case 'category': {
-        const catDbId = `${userId}_${id || data?.id}`;
-        if (action === 'create' || action === 'upsert') {
-          const res = await prisma.financeCategory.upsert({
-            where: { id: catDbId },
-            update: {
-              name: data.name ?? '',
-              type: data.type ?? 'gelir',
-            },
-            create: {
-              id: catDbId,
-              userId,
-              name: data.name ?? '',
-              type: data.type ?? 'gelir',
-              isSystem: Boolean(data.isSystem),
-            },
-          });
-          return NextResponse.json({ success: true, item: res });
-        } else if (action === 'delete') {
-          await prisma.financeCategory.deleteMany({ where: { id: catDbId, userId } });
-          return NextResponse.json({ success: true });
-        }
-        break;
-      }
-
-      default:
-        return NextResponse.json({ error: `Bilinmeyen varlık türü: ${entity}` }, { status: 400 });
+    if (action === 'delete') {
+      await delegate.deleteMany({ where: { id: dbId, userId } });
+      return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Giriş yapmanız gerekmektedir.' }, { status: 401 });
+    // Ownership check: an id that belongs to another user must never be updated.
+    const existing = await delegate.findUnique({ where: { id: dbId }, select: { userId: true } });
+    if (existing && existing.userId !== userId) {
+      return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
     }
-    console.error('Data mutate error:', error);
-    return NextResponse.json({ error: 'Veri kaydedilirken hata oluştu.' }, { status: 500 });
+
+    const fields = def.fields(data);
+    const item = await delegate.upsert({
+      where: { id: dbId },
+      update: fields,
+      create: { id: dbId, userId, ...fields, ...(def.createOnly?.(data) ?? {}) },
+    });
+
+    return NextResponse.json({ success: true, item });
+  } catch (error) {
+    return handleRouteError(error, 'Data mutate error', 'Veri kaydedilirken hata oluştu.');
   }
 }

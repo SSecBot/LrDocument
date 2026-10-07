@@ -61,3 +61,28 @@ export function formatCurrencyTRY(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+/**
+ * Returns YYYY-MM-DD in the user's local time zone.
+ * (`toISOString()` is UTC and yields yesterday's date in Türkiye between 00:00 and 03:00.)
+ */
+export function toLocalDateString(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Builds a safe ASCII file name from a (possibly Turkish) title, e.g. "Türev Notları" -> "turev-notlari". */
+export function slugifyFilename(title: string, fallback = 'dosya'): string {
+  const map: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u', â: 'a', î: 'i', û: 'u' };
+  const slug = title
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[çğıöşüâîû]/g, (ch) => map[ch] || ch)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return slug || fallback;
+}

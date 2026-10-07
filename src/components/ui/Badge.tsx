@@ -1,6 +1,6 @@
 import React from 'react';
-import { Platform, ScriptStatus, TaskPriority, EventStatus } from '@/types';
-import { Film, Globe, Mic, CheckCircle2, Clock, PlayCircle, Edit3, Flame, Play, Video, Camera } from 'lucide-react';
+import { Platform, ScriptStatus, TaskPriority } from '@/types';
+import { Film, Globe, Mic, CheckCircle2, Clock, PlayCircle, Edit3, Flame, Play, Camera } from 'lucide-react';
 
 interface BadgeProps {
   children?: React.ReactNode;
@@ -18,10 +18,10 @@ export const Badge: React.FC<BadgeProps> = ({
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs';
 
   const variantClasses = {
-    default: 'bg-[#242424] text-[#e5e7eb] border border-[#333333]',
-    forest: 'bg-[#2d5a27]/25 text-[#4ade80] border border-[#2d5a27]/50',
-    secondary: 'bg-[#181818] text-[#9ca3af] border border-[#282828]',
-    outline: 'bg-transparent text-[#e5e7eb] border border-[#3f3f46]',
+    default: 'bg-surface-2 text-body border border-line-strong',
+    forest: 'bg-brand/25 text-[#4ade80] border border-brand/50',
+    secondary: 'bg-surface text-subtle border border-line',
+    outline: 'bg-transparent text-body border border-line-strong',
     danger: 'bg-rose-950/40 text-rose-300 border border-rose-800/40',
     warning: 'bg-amber-950/40 text-amber-300 border border-amber-800/40',
   };

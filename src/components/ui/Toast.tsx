@@ -20,7 +20,7 @@ export const ToastContainer: React.FC = () => {
         };
 
         const borders = {
-          success: 'border-emerald-500/30 bg-[#162316]',
+          success: 'border-emerald-500/30 bg-surface',
           error: 'border-rose-500/30 bg-[#241416]',
           warning: 'border-amber-500/30 bg-[#242013]',
           info: 'border-blue-500/30 bg-[#141d28]',
@@ -29,18 +29,18 @@ export const ToastContainer: React.FC = () => {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all animate-fade-in ${borders[toast.type]}`}
+            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-lg border backdrop-blur-md transition-all animate-fade-in ${borders[toast.type]}`}
           >
             {icons[toast.type]}
             <div className="flex-1 text-sm min-w-0">
               <div className="font-medium text-white">{toast.title}</div>
               {toast.message && (
-                <div className="text-xs text-[#a1a1aa] mt-0.5 break-words">{toast.message}</div>
+                <div className="text-xs text-subtle mt-0.5 break-words">{toast.message}</div>
               )}
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-[#71717a] hover:text-white p-1 rounded-md transition-colors"
+              className="text-muted hover:text-white p-1 rounded-md transition-colors"
               aria-label="Kapat"
             >
               <X className="w-4 h-4" />

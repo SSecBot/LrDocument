@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FinanceTransaction, FinanceTransactionType, RecurringFrequency, TaskPriority, CurrencyCode } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { convertCurrencyToTRY } from '@/lib/exchangeRates';
 import { transactionFormSchema } from '@/lib/validations/finance';
+import { toLocalDateString } from '@/lib/utils';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [currency, setCurrency] = useState<CurrencyCode>('TRY');
   const [markupTRY, setMarkupTRY] = useState<number>(2.50);
   const [category, setCategory] = useState<string>('YouTube Geliri');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toLocalDateString());
   const [endDate, setEndDate] = useState<string>('');
   const [priority, setPriority] = useState<TaskPriority>('orta');
   const [description, setDescription] = useState('');
@@ -57,7 +58,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const availableCategories = financeCategories.filter(c => c.type === type);
 
-  useEffect(() => {
+  // Reset the form whenever the modal is (re)opened or a different record is edited.
+  // Adjusting state during render (instead of in an effect) avoids a flash of stale values.
+  const resetKey = `${isOpen}:${editTransaction?.id ?? 'new'}`;
+  const [prevResetKey, setPrevResetKey] = useState<string | null>(null);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setFormErrors({});
     if (editTransaction) {
       setType(editTransaction.type);
@@ -82,7 +88,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setMarkupTRY(exchangeRates.markupTRY || 2.50);
       const defaultCat = financeCategories.find(c => c.type === 'gelir')?.name || 'YouTube Geliri';
       setCategory(defaultCat);
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(toLocalDateString());
       setEndDate('');
       setPriority('orta');
       setDescription('');
@@ -91,7 +97,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setRecurringFrequency('aylik');
       setIsConfirmed(true);
     }
-  }, [editTransaction, isOpen, financeCategories, exchangeRates.markupTRY]);
+  }
 
   const handleTypeChange = (newType: FinanceTransactionType) => {
     setType(newType);
@@ -201,7 +207,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Top Form-Level Validation Alert */}
           {Object.keys(formErrors).length > 0 && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2 animate-fade-in shadow-md">
+            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <span className="font-bold block">Lütfen aşağıdaki form hatalarını düzeltiniz:</span>
@@ -221,8 +227,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={() => handleTypeChange('gelir')}
               className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                 type === 'gelir'
-                  ? 'bg-[#182818] border-[#2d5a27] text-emerald-300 shadow-md shadow-emerald-950/40'
-                  : 'bg-[#202020] border-[#2c2c2c] text-[#9ca3af] hover:text-white'
+                  ? 'bg-brand-soft border-brand text-emerald-300'
+                  : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
               <TrendingUp className="w-4 h-4 text-emerald-400" />
@@ -234,8 +240,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={() => handleTypeChange('gider')}
               className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                 type === 'gider'
-                  ? 'bg-[#28181a] border-rose-800/80 text-rose-300 shadow-md shadow-rose-950/40'
-                  : 'bg-[#202020] border-[#2c2c2c] text-[#9ca3af] hover:text-white'
+                  ? 'bg-[#28181a] border-rose-800/80 text-rose-300'
+                  : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
               <TrendingDown className="w-4 h-4 text-rose-400" />
@@ -255,8 +261,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 if (formErrors.title) setFormErrors((prev) => ({ ...prev, title: '' }));
               }}
               placeholder={type === 'gelir' ? 'Örn: Yurtdışı Sponsorluk Hakedişi ($ USD)' : 'Örn: Claude API + AWS Cloud Render (€ EUR)'}
-              className={`w-full bg-[#242424] border rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none ${
-                formErrors.title ? 'border-rose-500' : 'border-[#333] focus:border-[#2d5a27]'
+              className={`w-full bg-surface-2 border rounded-lg px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none ${
+                formErrors.title ? 'border-rose-500' : 'border-line-strong focus:border-brand'
               }`}
             />
             {formErrors.title && (
@@ -273,7 +279,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </label>
 
               {/* Currency Selector Tabs */}
-              <div className="flex bg-[#202020] p-0.5 rounded-lg border border-[#333]">
+              <div className="flex bg-surface-2 p-0.5 rounded-lg border border-line-strong">
                 {(['TRY', 'USD', 'EUR'] as const).map((curr) => (
                   <button
                     key={curr}
@@ -281,8 +287,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     onClick={() => setCurrency(curr)}
                     className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${
                       currency === curr
-                        ? 'bg-[#2d5a27] text-white shadow-sm'
-                        : 'text-[#9ca3af] hover:text-white'
+                        ? 'bg-surface-4 text-fg font-medium'
+                        : 'text-subtle hover:text-white'
                     }`}
                   >
                     {curr === 'TRY' ? '₺ TRY' : curr === 'USD' ? '$ USD' : '€ EUR'}
@@ -294,7 +300,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#71717a]">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted">
                     {currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€'}
                   </span>
                   <input
@@ -308,8 +314,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       if (formErrors.amount) setFormErrors((prev) => ({ ...prev, amount: '' }));
                     }}
                     placeholder="0.00"
-                    className={`w-full bg-[#242424] border rounded-xl pl-8 pr-3.5 py-2 text-xs sm:text-sm font-mono text-white focus:outline-none ${
-                      formErrors.amount ? 'border-rose-500' : 'border-[#333] focus:border-[#2d5a27]'
+                    className={`w-full bg-surface-2 border rounded-lg pl-8 pr-3.5 py-2 text-xs sm:text-sm font-mono text-white focus:outline-none ${
+                      formErrors.amount ? 'border-rose-500' : 'border-line-strong focus:border-brand'
                     }`}
                   />
                 </div>
@@ -333,7 +339,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
                 >
                   {availableCategories.map((c) => (
                     <option key={c.id} value={c.name}>
@@ -347,7 +353,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Live Exchange Rate Banner (USD & EUR) */}
           {currency !== 'TRY' && (
-            <div className="p-3 rounded-2xl bg-[#162216] border border-[#2d5a27]/60 space-y-2 animate-fade-in shadow-inner">
+            <div className="p-3 rounded-lg bg-surface border border-brand/60 space-y-2 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
                   <Coins className="w-4 h-4 text-emerald-400" />
@@ -356,7 +362,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fetchExchangeRates()}
-                  className="text-[10px] text-[#9ca3af] hover:text-white flex items-center gap-1 bg-[#202020] px-2 py-0.5 rounded-md border border-[#333]"
+                  className="text-[10px] text-subtle hover:text-white flex items-center gap-1 bg-surface-2 px-2 py-0.5 rounded-md border border-line-strong"
                   title="Canlı Kurları Yenile"
                 >
                   <RefreshCw className="w-3 h-3 text-emerald-400" />
@@ -366,15 +372,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
               {/* Rate Breakdown Grid */}
               <div className="grid grid-cols-3 gap-1.5 text-center">
-                <div className="p-1.5 rounded-xl bg-[#1a1a1a] border border-[#2c2c2c]">
-                  <span className="text-[9px] text-[#71717a] block">Canlı Kur</span>
+                <div className="p-1.5 rounded-lg bg-surface border border-line">
+                  <span className="text-[9px] text-muted block">Canlı Kur</span>
                   <span className="text-xs font-mono font-bold text-white">
                     1 {currency} = {conversion.liveRate.toFixed(2)} ₺
                   </span>
                 </div>
 
-                <div className="p-1.5 rounded-xl bg-[#1a1a1a] border border-[#2c2c2c]">
-                  <span className="text-[9px] text-[#71717a] block">Özel Marj</span>
+                <div className="p-1.5 rounded-lg bg-surface border border-line">
+                  <span className="text-[9px] text-muted block">Özel Marj</span>
                   <div className="flex items-center justify-center gap-1 font-mono font-bold text-amber-400 text-xs">
                     <span>+</span>
                     <input
@@ -390,18 +396,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-1.5 rounded-xl bg-[#1f2e1e] border border-[#387030]">
+                <div className="p-1.5 rounded-lg bg-brand-soft border border-brand-hover">
                   <span className="text-[9px] text-emerald-400 block">Uygulanan</span>
-                  <span className="text-xs font-mono font-extrabold text-emerald-300">
+                  <span className="text-xs font-mono font-bold text-emerald-300">
                     {conversion.effectiveRate.toFixed(2)} ₺
                   </span>
                 </div>
               </div>
 
               {/* Conversion Result Preview */}
-              <div className="pt-1.5 border-t border-[#263e24] flex items-center justify-between text-xs">
-                <span className="text-[#a1a1aa] text-[11px]">Hesaplanan TL Karşılığı:</span>
-                <span className="font-mono font-extrabold text-xs sm:text-sm text-emerald-400">
+              <div className="pt-1.5 border-t border-brand-line flex items-center justify-between text-xs">
+                <span className="text-subtle text-[11px]">Hesaplanan TL Karşılığı:</span>
+                <span className="font-mono font-bold text-xs sm:text-sm text-emerald-400">
                   ₺{conversion.baseAmountTRY.toLocaleString('tr-TR')} TRY
                 </span>
               </div>
@@ -422,8 +428,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   setDate(e.target.value);
                   if (formErrors.date) setFormErrors((prev) => ({ ...prev, date: '' }));
                 }}
-                className={`w-full bg-[#242424] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${
-                  formErrors.date ? 'border-rose-500' : 'border-[#333] focus:border-[#2d5a27]'
+                className={`w-full bg-surface-2 border rounded-lg px-3 py-2 text-xs text-white focus:outline-none ${
+                  formErrors.date ? 'border-rose-500' : 'border-line-strong focus:border-brand'
                 }`}
               />
               {formErrors.date && (
@@ -439,7 +445,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
               >
                 <option value="yuksek">🔴 Yüksek (Kira, Fatura, Büyük Ödemeler)</option>
                 <option value="orta">🟡 Orta (Operasyonel Masraflar, Düzenli Gelir)</option>
@@ -449,7 +455,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           {/* Recurring Transaction Support & Mandatory End Date */}
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#1a1a1a] border border-[#2e2e2e] space-y-3">
+          <div className="p-3 sm:p-3.5 rounded-lg bg-surface border border-line space-y-3">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -465,7 +471,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       });
                     }
                   }}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-[#242424] border-[#333] cursor-pointer"
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-surface-2 border-line-strong cursor-pointer"
                 />
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                   <Repeat className="w-3.5 h-3.5 text-emerald-400" />
@@ -475,9 +481,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
 
             {isRecurring && (
-              <div className="pt-2 border-t border-[#262626] space-y-3 animate-fade-in">
+              <div className="pt-2 border-t border-line space-y-3 animate-fade-in">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-[#9ca3af]">Tekrarlama Sıklığı:</span>
+                  <span className="text-xs text-subtle">Tekrarlama Sıklığı:</span>
                   {(['gunluk', 'haftalik', 'aylik'] as const).map((freq) => (
                     <label key={freq} className="flex items-center gap-1.5 text-xs text-white cursor-pointer">
                       <input
@@ -486,7 +492,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         value={freq}
                         checked={recurringFrequency === freq}
                         onChange={() => setRecurringFrequency(freq)}
-                        className="text-emerald-500 bg-[#222] border-[#333]"
+                        className="text-emerald-500 bg-surface-2 border-line-strong"
                       />
                       <span>{freq === 'gunluk' ? 'Günlük' : freq === 'haftalik' ? 'Haftalık' : 'Aylık'}</span>
                     </label>
@@ -494,7 +500,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
 
                 {/* MANDATORY END DATE FIELD FOR RECURRING INCOME */}
-                <div className="pt-2 border-t border-[#262626]">
+                <div className="pt-2 border-t border-line">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-white flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-emerald-400" />
@@ -504,7 +510,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           Zorunlu
                         </span>
                       ) : (
-                        <span className="text-[10px] text-[#71717a] font-normal">(Opsiyonel)</span>
+                        <span className="text-[10px] text-muted font-normal">(Opsiyonel)</span>
                       )}
                     </label>
                   </div>
@@ -524,8 +530,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         });
                       }
                     }}
-                    className={`w-full bg-[#242424] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${
-                      formErrors.endDate ? 'border-rose-500 focus:border-rose-500' : 'border-[#333] focus:border-[#2d5a27]'
+                    className={`w-full bg-surface-2 border rounded-lg px-3 py-2 text-xs text-white focus:outline-none ${
+                      formErrors.endDate ? 'border-rose-500 focus:border-rose-500' : 'border-line-strong focus:border-brand'
                     }`}
                   />
 
@@ -535,7 +541,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <span>{formErrors.endDate}</span>
                     </p>
                   ) : type === 'gelir' ? (
-                    <p className="text-[10px] text-[#9ca3af] mt-1">
+                    <p className="text-[10px] text-subtle mt-1">
                       * Düzenli gelir akışlarının aylık MRR ve projeksiyonlara doğru yansıtılması için bitiş tarihi zorunludur.
                     </p>
                   ) : null}
@@ -553,7 +559,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <select
               value={linkedScriptId}
               onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="">(Bağlantı Yok)</option>
               {scripts.map((s) => (
@@ -565,13 +571,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           {/* Confirmation Toggle */}
-          <div className="p-3 rounded-2xl bg-[#1c1c1c] border border-[#2c2c2c] flex items-center justify-between">
+          <div className="p-3 rounded-lg bg-surface border border-line flex items-center justify-between">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <CheckCircle2 className={`w-4 h-4 ${isConfirmed ? 'text-emerald-400' : 'text-[#71717a]'}`} />
                 {type === 'gelir' ? 'Gelir Geldi (Onayla)' : 'Gider Ödendi (Onayla)'}
               </span>
-              <p className="text-[11px] text-[#71717a]">
+              <p className="text-[11px] text-muted">
                 İşlem hesaba geçtiğinde veya ödendiğinde onaylayın.
               </p>
             </div>
@@ -583,7 +589,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onChange={(e) => setIsConfirmed(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2d5a27]"></div>
+              <div className="w-11 h-6 bg-surface-4 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
             </label>
           </div>
 
@@ -595,22 +601,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Fatura no, döviz işlem referansı veya ek ayrıntılar..."
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl p-3 text-xs text-white focus:outline-none resize-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
             />
           </div>
 
           {/* Footer Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#2a2a2a]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-line">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-[#242424] hover:bg-[#2c2c2c] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+              className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl shadow-md transition-all cursor-pointer"
+              className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all cursor-pointer"
             >
               {editTransaction ? 'Değişiklikleri Kaydet' : 'İşlemi Kaydet'}
             </button>

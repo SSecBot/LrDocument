@@ -11,7 +11,6 @@ import {
   Search,
   Kanban,
   FileEdit,
-  Sparkles,
 } from 'lucide-react';
 import { Platform, ScriptStatus } from '@/types';
 import { calculateTiming } from '@/lib/scriptTiming';
@@ -28,7 +27,7 @@ export const ScriptsWorkspace: React.FC = () => {
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | 'all'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<ScriptStatus | 'all'>('all');
+  const selectedStatus = 'all' as ScriptStatus | 'all';
 
   const filteredScripts = scripts.filter((s) => {
     if (selectedPlatform !== 'all' && s.targetPlatform !== selectedPlatform) return false;
@@ -58,16 +57,16 @@ export const ScriptsWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#121212]">
+    <div className="flex h-full w-full overflow-hidden bg-app">
       {/* Sidebar for Scripts (Visible in Editor mode) */}
       {viewMode === 'editor' && (
         <div
           className={`${
             mobileView === 'list' ? 'flex w-full' : 'hidden'
-          } md:flex md:w-80 border-r border-[#262626] bg-[#161616] flex-col h-full shrink-0`}
+          } md:flex md:w-80 border-r border-line bg-surface flex-col h-full shrink-0`}
         >
           {/* Header & New Script */}
-          <div className="p-3.5 sm:p-4 border-b border-[#262626] space-y-3">
+          <div className="p-3.5 sm:p-4 border-b border-line space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
                 <Video className="w-4 h-4 text-emerald-400" />
@@ -75,7 +74,7 @@ export const ScriptsWorkspace: React.FC = () => {
               </h2>
               <button
                 onClick={handleNewScriptMobile}
-                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-[#2d5a27] hover:bg-[#387030] active:bg-[#244c1f] text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Yeni Senaryo</span>
@@ -83,17 +82,17 @@ export const ScriptsWorkspace: React.FC = () => {
             </div>
 
             {/* View Switcher button in sidebar */}
-            <div className="flex bg-[#222] p-1 rounded-xl border border-[#333]">
+            <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
               <button
                 onClick={() => setViewMode('editor')}
-                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-[#2d5a27] text-white"
+                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-brand text-white"
               >
                 <FileEdit className="w-3.5 h-3.5" />
                 <span>Editör</span>
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors text-[#9ca3af] hover:text-white"
+                className="min-h-[34px] flex-1 py-1 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-colors text-subtle hover:text-white"
               >
                 <Kanban className="w-3.5 h-3.5" />
                 <span>Kanban Panosu</span>
@@ -102,27 +101,27 @@ export const ScriptsWorkspace: React.FC = () => {
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Senaryolarda ara..."
-                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-[#71717a] focus:outline-none min-h-[40px]"
+                className="w-full bg-surface-2 border border-line focus:border-brand rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-muted focus:outline-none min-h-[40px]"
               />
             </div>
           </div>
 
           {/* Platform Filters */}
-          <div className="px-3 py-2 border-b border-[#242424] flex gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="px-3 py-2 border-b border-line flex gap-1.5 overflow-x-auto no-scrollbar">
             {(['all', 'YouTube', 'TikTok', 'Instagram', 'Web'] as const).map((plat) => (
               <button
                 key={plat}
                 onClick={() => setSelectedPlatform(plat)}
                 className={`min-h-[28px] text-[11px] px-2.5 py-0.5 rounded-full whitespace-nowrap transition-colors ${
                   selectedPlatform === plat
-                    ? 'bg-[#2d5a27] text-white font-medium'
-                    : 'bg-[#202020] text-[#9ca3af] hover:text-white'
+                    ? 'bg-surface-4 text-fg font-medium'
+                    : 'bg-surface-2 text-subtle hover:text-white'
                 }`}
               >
                 {plat === 'all' ? 'Tümü' : plat}
@@ -133,10 +132,10 @@ export const ScriptsWorkspace: React.FC = () => {
           {/* Scripts list */}
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {filteredScripts.length === 0 ? (
-              <div className="p-6 text-center text-[#71717a] text-xs space-y-2">
+              <div className="p-5 text-center text-muted text-xs space-y-2">
                 <Video className="w-8 h-8 text-[#333] mx-auto mb-1" />
                 <p className="text-white font-medium">Henüz kayıtlı bir senaryo bulunmuyor.</p>
-                <p className="text-[11px] text-[#888]">Yeni bir video senaryosu eklemek için yukarıdaki butonu kullanın.</p>
+                <p className="text-[11px] text-subtle">Yeni bir video senaryosu eklemek için yukarıdaki butonu kullanın.</p>
               </div>
             ) : (
               filteredScripts.map((s) => {
@@ -148,15 +147,15 @@ export const ScriptsWorkspace: React.FC = () => {
                   <div
                     key={s.id}
                     onClick={() => handleSelectScriptMobile(s.id)}
-                    className={`p-3.5 rounded-xl cursor-pointer border transition-all space-y-2 ${
+                    className={`p-3.5 rounded-lg cursor-pointer border transition-all space-y-2 ${
                       isSelected
-                        ? 'bg-[#202820] border-[#2d5a27] shadow-lg'
-                        : 'bg-[#1a1a1a] hover:bg-[#222222] active:bg-[#252525] border-[#282828]'
+                        ? 'bg-surface-2 border-brand'
+                        : 'bg-surface hover:bg-surface-2 active:bg-surface-2 border-line'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <PlatformBadge platform={s.targetPlatform} size="sm" />
-                      <span className="text-[10px] font-mono text-emerald-400 bg-[#142214] px-1.5 py-0.5 rounded border border-[#2d5a27]/30">
+                      <span className="text-[10px] font-mono text-emerald-400 bg-surface px-1.5 py-0.5 rounded border border-brand/30">
                         ⏱ {timing.formattedDuration}
                       </span>
                     </div>
@@ -167,7 +166,7 @@ export const ScriptsWorkspace: React.FC = () => {
 
                     <div className="flex items-center justify-between text-[11px] pt-1">
                       <ScriptStatusBadge status={s.status} />
-                      <span className="text-[10px] text-[#71717a]">{s.sections.length} bölüm</span>
+                      <span className="text-[10px] text-muted">{s.sections.length} bölüm</span>
                     </div>
                   </div>
                 );
@@ -191,12 +190,12 @@ export const ScriptsWorkspace: React.FC = () => {
               onBack={() => setMobileView('list')}
             />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#71717a] space-y-3">
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-muted space-y-3">
               <Video className="w-12 h-12 text-emerald-400" />
               <h3 className="text-lg font-bold text-white">Senaryo Seçilmedi</h3>
               <button
                 onClick={handleNewScriptMobile}
-                className="px-4 py-2 bg-[#2d5a27] text-white text-xs font-semibold rounded-xl"
+                className="px-4 py-2 bg-brand text-white text-xs font-semibold rounded-lg"
               >
                 Yeni Senaryo Başlat
               </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Script, ScriptSection, ScriptSectionType, Platform, ScriptStatus } from '@/types';
+import { Script, ScriptSectionType, Platform, ScriptStatus } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { ScriptTimingBar } from './ScriptTimingBar';
 import { PlatformBadge, ScriptStatusBadge } from '@/components/ui/Badge';
@@ -10,20 +10,16 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
-  Sparkles,
   Camera,
-  Link2,
   Copy,
   CalendarPlus,
   FileText,
   ChevronLeft,
-  BookOpen,
   Layers,
   ScrollText,
-  Check,
-  Share2,
 } from 'lucide-react';
 import { calculateTiming } from '@/lib/scriptTiming';
+import { toLocalDateString } from '@/lib/utils';
 
 interface ScriptEditorProps {
   script: Script;
@@ -124,7 +120,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
     addEvent({
       title: `${script.title} Yayını`,
       description: `Hedef Platform: ${script.targetPlatform}\nSenaryo Hazır.`,
-      date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+      date: toLocalDateString(new Date(Date.now() + 86400000 * 3)),
       time: '18:00',
       durationMinutes: 60,
       eventType: 'yayin',
@@ -152,14 +148,14 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#121212] overflow-hidden select-none">
+    <div className="flex-1 flex flex-col h-full bg-app overflow-hidden select-none">
       {/* Top Header */}
-      <div className="px-4 sm:px-6 py-3.5 bg-[#181818] border-b border-[#282828] flex items-center justify-between gap-3 flex-wrap shrink-0">
+      <div className="px-4 sm:px-6 py-3.5 bg-surface border-b border-line flex items-center justify-between gap-3 flex-wrap shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[200px]">
           {onBack && (
             <button
               onClick={onBack}
-              className="md:hidden min-h-[44px] min-w-[44px] p-2.5 bg-[#222] hover:bg-[#2a2a2a] active:bg-[#333] border border-[#333] rounded-xl text-[#d1d5db] flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+              className="md:hidden min-h-[44px] min-w-[44px] p-2.5 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 border border-line-strong rounded-lg text-body flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               title="Senaryo Listesine Dön"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -171,18 +167,18 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
             value={script.title}
             onChange={handleTitleChange}
             placeholder="Senaryo Başlığı..."
-            className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-[#383838] focus:border-[#2d5a27] focus:outline-none px-1.5 py-0.5 w-full transition-colors truncate"
+            className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-line-strong focus:border-brand focus:outline-none px-1.5 py-0.5 w-full transition-colors truncate"
           />
         </div>
 
         {/* View Mode Switcher + Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Cards vs Unified Text View Switcher */}
-          <div className="flex bg-[#202020] p-1 rounded-xl border border-[#333]">
+          <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
             <button
               onClick={() => setEditorMode('cards')}
               className={`min-h-[36px] px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-                editorMode === 'cards' ? 'bg-[#2d5a27] text-white shadow-sm' : 'text-[#9ca3af] hover:text-white'
+                editorMode === 'cards' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -192,7 +188,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
             <button
               onClick={() => setEditorMode('unified')}
               className={`min-h-[36px] px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-                editorMode === 'unified' ? 'bg-[#2d5a27] text-white shadow-sm' : 'text-[#9ca3af] hover:text-white'
+                editorMode === 'unified' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
               <ScrollText className="w-3.5 h-3.5 text-emerald-300" />
@@ -204,7 +200,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           <select
             value={script.targetPlatform}
             onChange={(e) => handlePlatformChange(e.target.value as Platform)}
-            className="min-h-[44px] bg-[#222] text-[#e5e7eb] border border-[#333] rounded-xl px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27] cursor-pointer"
+            className="min-h-[44px] bg-surface-2 text-body border border-line-strong rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-brand cursor-pointer"
           >
             <option value="YouTube">YouTube</option>
             <option value="TikTok">TikTok</option>
@@ -217,7 +213,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           <select
             value={script.status}
             onChange={(e) => handleStatusChange(e.target.value as ScriptStatus)}
-            className="min-h-[44px] bg-[#222] text-[#e5e7eb] border border-[#333] rounded-xl px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2d5a27] cursor-pointer"
+            className="min-h-[44px] bg-surface-2 text-body border border-line-strong rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-brand cursor-pointer"
           >
             <option value="fikir">Fikir Aşamasında</option>
             <option value="senaryo_hazir">Senaryo Hazır</option>
@@ -229,7 +225,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           {/* Export to Notes Button */}
           <button
             onClick={handleExportToNotes}
-            className="min-h-[44px] px-3.5 py-2 bg-[#1a2b1a] hover:bg-[#233c23] border border-[#2d5a27] text-emerald-300 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 bg-brand-soft hover:bg-brand-soft border border-brand text-emerald-300 hover:text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Senaryoyu Notlar modülüne yeni bir belge olarak aktar"
           >
             <FileText className="w-4 h-4 text-emerald-400" />
@@ -239,7 +235,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           {/* Copy Script */}
           <button
             onClick={handleCopyFullScript}
-            className="min-h-[44px] min-w-[44px] p-2.5 bg-[#222] hover:bg-[#2c2c2c] active:bg-[#333] border border-[#333] text-[#9ca3af] hover:text-white rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+            className="min-h-[44px] min-w-[44px] p-2.5 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center cursor-pointer"
             title="Tüm Metni Kopyala"
           >
             <Copy className="w-4 h-4" />
@@ -248,7 +244,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           {/* Add to Calendar */}
           <button
             onClick={handleCreateCalendarEvent}
-            className="min-h-[44px] px-3 py-2 bg-[#202820] hover:bg-[#2d5a27] text-emerald-300 hover:text-white border border-[#2d5a27]/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="min-h-[44px] px-3 py-2 bg-surface-2 hover:bg-brand text-emerald-300 hover:text-white border border-brand/60 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Takvime Yayın Olarak Ekle"
           >
             <CalendarPlus className="w-4 h-4" />
@@ -261,7 +257,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
               deleteScript(script.id);
               if (onBack) onBack();
             }}
-            className="min-h-[44px] min-w-[44px] p-2.5 bg-[#222] hover:bg-rose-950/40 border border-[#333] text-[#9ca3af] hover:text-rose-400 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+            className="min-h-[44px] min-w-[44px] p-2.5 bg-surface-2 hover:bg-rose-950/40 border border-line-strong text-subtle hover:text-rose-400 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
             title="Senaryoyu Sil"
           >
             <Trash2 className="w-4 h-4" />
@@ -278,10 +274,10 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
 
       {/* Linked Note Info Banner (If linked) */}
       {linkedNote && (
-        <div className="px-4 sm:px-6 py-2 bg-[#182318]/50 border-b border-[#2d5a27]/40 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-[#d1d5db] truncate">
+        <div className="px-4 sm:px-6 py-2 bg-surface/50 border-b border-brand/40 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-body truncate">
             <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[#888]">Bağlı Not:</span>
+            <span className="text-subtle">Bağlı Not:</span>
             <span className="font-semibold text-emerald-300 truncate">{linkedNote.title}</span>
           </div>
           <button
@@ -299,13 +295,13 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
       {/* Main Content Area: Cards Mode OR Unified Text Mode */}
       {editorMode === 'cards' ? (
         /* Section Cards List */
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
           {script.sections.length === 0 ? (
-            <div className="p-12 text-center text-[#71717a] text-xs space-y-3">
+            <div className="p-12 text-center text-muted text-xs space-y-3">
               <p>Bu senaryoda henüz bölüm bulunmuyor.</p>
               <button
                 onClick={() => addScriptSection(script.id, { type: 'hook', title: 'Kanca / Giriş' })}
-                className="min-h-[44px] px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-semibold rounded-xl cursor-pointer"
+                className="min-h-[44px] px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg cursor-pointer"
               >
                 İlk Bölümü Ekle
               </button>
@@ -317,12 +313,12 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
               return (
                 <div
                   key={section.id}
-                  className="bg-[#181818] border border-[#282828] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm hover:border-[#383838] transition-all"
+                  className="bg-surface border border-line rounded-lg p-4 sm:p-5 space-y-3 hover:border-line-strong transition-all"
                 >
                   {/* Section Header */}
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                      <span className="text-xs font-mono font-bold text-[#666] w-5">
+                      <span className="text-xs font-mono font-bold text-muted w-5">
                         #{index + 1}
                       </span>
 
@@ -354,20 +350,20 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                           updateScriptSection(script.id, section.id, { title: e.target.value })
                         }
                         placeholder="Bölüm Başlığı..."
-                        className="flex-1 bg-transparent text-xs sm:text-sm font-bold text-white border-b border-transparent focus:border-[#2d5a27] focus:outline-none px-2 py-1"
+                        className="flex-1 bg-transparent text-xs sm:text-sm font-bold text-white border-b border-transparent focus:border-brand focus:outline-none px-2 py-1"
                       />
                     </div>
 
                     {/* Section Stats & Reorder Actions */}
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-emerald-400 bg-[#142214] px-2 py-1 rounded-lg border border-[#2d5a27]/40">
+                      <span className="text-[11px] font-mono text-emerald-400 bg-surface px-2 py-1 rounded-lg border border-brand/40">
                         ⏱ {timing.formattedDuration} ({timing.wordCount} kelime)
                       </span>
 
                       <button
                         onClick={() => handleMoveSection(index, 'up')}
                         disabled={index === 0}
-                        className="p-1.5 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] disabled:opacity-30 text-[#9ca3af] hover:text-white transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 text-subtle hover:text-white transition-colors cursor-pointer"
                         title="Yukarı Taşı"
                       >
                         <ChevronUp className="w-3.5 h-3.5" />
@@ -376,7 +372,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                       <button
                         onClick={() => handleMoveSection(index, 'down')}
                         disabled={index === script.sections.length - 1}
-                        className="p-1.5 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] disabled:opacity-30 text-[#9ca3af] hover:text-white transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 text-subtle hover:text-white transition-colors cursor-pointer"
                         title="Aşağı Taşı"
                       >
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -384,7 +380,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
 
                       <button
                         onClick={() => deleteScriptSection(script.id, section.id)}
-                        className="p-1.5 rounded-lg bg-[#202020] hover:bg-rose-950/40 text-[#9ca3af] hover:text-rose-400 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-surface-2 hover:bg-rose-950/40 text-subtle hover:text-rose-400 transition-colors cursor-pointer"
                         title="Bölümü Sil"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -393,7 +389,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                   </div>
 
                   {/* Visual Notes / Camera Cue */}
-                  <div className="bg-[#141414] border border-[#242424] rounded-xl p-2.5 flex items-start gap-2">
+                  <div className="bg-app border border-line rounded-lg p-2.5 flex items-start gap-2">
                     <Camera className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                     <input
                       type="text"
@@ -402,7 +398,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                         updateScriptSection(script.id, section.id, { visualNotes: e.target.value })
                       }
                       placeholder="Görsel / Çekim Notu (Örn: Ekranda formül animasyonu belirecek, kamera yakın plana geçecek...)"
-                      className="w-full bg-transparent text-xs text-[#9ca3af] placeholder-[#555] focus:outline-none"
+                      className="w-full bg-transparent text-xs text-subtle placeholder-muted focus:outline-none"
                     />
                   </div>
 
@@ -415,7 +411,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                       }
                       rows={4}
                       placeholder="Konuşma metnini buraya yazın..."
-                      className="w-full bg-[#1c1c1c] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl p-3 text-xs sm:text-sm text-white placeholder-[#555] focus:outline-none resize-y leading-relaxed font-sans"
+                      className="w-full bg-surface border border-line focus:border-brand rounded-lg p-3 text-xs sm:text-sm text-white placeholder-muted focus:outline-none resize-y leading-relaxed font-sans"
                     />
                   </div>
                 </div>
@@ -427,7 +423,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           <div className="pt-2">
             <button
               onClick={() => addScriptSection(script.id, { type: 'body', title: 'Yeni Bölüm' })}
-              className="min-h-[44px] w-full py-3 bg-[#181818] hover:bg-[#202020] border-2 border-dashed border-[#2d5a27]/60 hover:border-emerald-500 rounded-2xl text-xs font-bold text-emerald-400 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+              className="min-h-[44px] w-full py-3 bg-surface hover:bg-surface-2 border-2 border-dashed border-brand/60 hover:border-emerald-500 rounded-lg text-xs font-bold text-emerald-400 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>+ Yeni Senaryo Bölümü Ekle</span>
@@ -436,17 +432,17 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
         </div>
       ) : (
         /* Unified Concatenated Text View Mode */
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-4xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 max-w-4xl mx-auto w-full">
           {/* Summary Banner in Unified View */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#182318] via-[#1b2a1b] to-[#182318] border border-[#2d5a27]/70 flex items-center justify-between gap-4 flex-wrap shadow-lg">
+          <div className="p-4 sm:p-5 rounded-lg bg-surface border border-brand/70 flex items-center justify-between gap-4 flex-wrap">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <ScrollText className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm sm:text-base font-extrabold text-white">
+                <h3 className="text-sm sm:text-base font-bold text-white">
                   Birleşik Senaryo Metni
                 </h3>
               </div>
-              <p className="text-xs text-[#a1a1aa]">
+              <p className="text-xs text-subtle">
                 Tüm sahnelerin tek parça akıcı metin görünümü. Tek tıkla Notlar modülüne aktarabilir veya kopyalayabilirsiniz.
               </p>
             </div>
@@ -454,7 +450,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportToNotes}
-                className="min-h-[44px] px-4 py-2 bg-[#2d5a27] hover:bg-[#387030] text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                className="min-h-[44px] px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer"
               >
                 <FileText className="w-4 h-4" />
                 <span>Notlara Ekle (Not Yap)</span>
@@ -462,7 +458,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
 
               <button
                 onClick={handleCopyFullScript}
-                className="min-h-[44px] px-3.5 py-2 bg-[#202020] hover:bg-[#2a2a2a] text-[#d1d5db] hover:text-white border border-[#333] text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                className="min-h-[44px] px-3.5 py-2 bg-surface-2 hover:bg-surface-3 text-body hover:text-white border border-line-strong text-xs font-semibold rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Copy className="w-4 h-4 text-emerald-400" />
                 <span>Kopyala</span>
@@ -471,9 +467,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
           </div>
 
           {/* Unified Document Reader & Editor Body */}
-          <div className="bg-[#181818] border border-[#282828] rounded-3xl p-6 sm:p-8 space-y-8 shadow-xl">
+          <div className="bg-surface border border-line rounded-lg p-5 sm:p-5 space-y-6">
             {/* Script Meta Information Header */}
-            <div className="border-b border-[#2a2a2a] pb-4 space-y-2">
+            <div className="border-b border-line pb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <PlatformBadge platform={script.targetPlatform} />
                 <ScriptStatusBadge status={script.status} />
@@ -481,7 +477,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                 {script.title}
               </h1>
-              <div className="flex items-center gap-4 text-xs text-[#71717a] font-mono">
+              <div className="flex items-center gap-4 text-xs text-muted font-mono">
                 <span>Toplam Kelime: {overallTiming.wordCount}</span>
                 <span>•</span>
                 <span className="text-emerald-400 font-bold">⏱ {overallTiming.formattedDuration}</span>
@@ -491,12 +487,12 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
             </div>
 
             {/* Concatenated Sections */}
-            <div className="space-y-8 divide-y divide-[#242424]">
+            <div className="space-y-6 divide-y divide-line">
               {script.sections.map((sec, idx) => (
                 <div key={sec.id} className="pt-6 first:pt-0 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-emerald-400 bg-[#162216] px-2 py-0.5 rounded border border-[#2d5a27]/40">
+                      <span className="text-xs font-mono font-bold text-emerald-400 bg-surface px-2 py-0.5 rounded border border-brand/40">
                         Sahne #{idx + 1}
                       </span>
                       <h3 className="text-sm font-bold text-white">{sec.title}</h3>
@@ -508,7 +504,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
 
                   {/* Director / Camera Cue */}
                   {sec.visualNotes && (
-                    <div className="p-3 rounded-xl bg-[#141b22] border border-[#1e3448] text-xs text-sky-300 flex items-start gap-2">
+                    <div className="p-3 rounded-lg bg-surface border border-[#1e3448] text-xs text-sky-300 flex items-start gap-2">
                       <Camera className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold block text-[10px] uppercase text-sky-400/80">Kamera & Görsel Notu</span>
@@ -518,8 +514,8 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ script, onBack }) =>
                   )}
 
                   {/* Dialogue & Speech Text */}
-                  <div className="text-sm text-[#e5e7eb] leading-relaxed whitespace-pre-wrap font-sans bg-[#151515] p-4 rounded-2xl border border-[#242424]">
-                    {sec.content || <span className="text-[#666] italic">(Bu sahneye henüz konuşma metni yazılmadı)</span>}
+                  <div className="text-sm text-body leading-relaxed whitespace-pre-wrap font-sans bg-app p-4 rounded-xl border border-line">
+                    {sec.content || <span className="text-muted italic">(Bu sahneye henüz konuşma metni yazılmadı)</span>}
                   </div>
                 </div>
               ))}

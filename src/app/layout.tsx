@@ -1,15 +1,15 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
 });
 
 export const metadata: Metadata = {
@@ -24,6 +24,19 @@ export const metadata: Metadata = {
       { url: '/apple-touch-icon.svg', type: 'image/svg+xml' },
     ],
   },
+  appleWebApp: {
+    capable: true,
+    title: 'LrDocument',
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#101113',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({
@@ -33,16 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
-      <head>
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className="min-h-full bg-[#121212] text-[#f5f5f0] flex flex-col antialiased selection:bg-[#2d5a27] selection:text-white">
+      <body className="min-h-full bg-app text-fg flex flex-col antialiased selection:bg-brand selection:text-white">
         {children}
       </body>
     </html>

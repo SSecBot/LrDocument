@@ -15,7 +15,7 @@ export default function AdminPage() {
 
   if (isLoadingAuth) {
     return (
-      <div className="h-screen w-screen bg-[#0d0e12] flex items-center justify-center text-white">
+      <div className="h-dvh w-full bg-app flex items-center justify-center text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-neutral-400">Yönetici yetkileri kontrol ediliyor...</p>
@@ -26,8 +26,8 @@ export default function AdminPage() {
 
   if (!isAuthenticated || currentUser?.role !== 'ADMIN') {
     return (
-      <div className="h-screen w-screen bg-[#0d0e12] flex items-center justify-center p-4 text-white">
-        <div className="max-w-md w-full p-8 rounded-2xl bg-[#161820] border border-rose-500/30 text-center space-y-4 shadow-2xl">
+      <div className="h-dvh w-full bg-app flex items-center justify-center p-4 text-white">
+        <div className="max-w-md w-full p-6 rounded-xl bg-surface border border-rose-500/30 text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
             <ShieldAlert className="w-8 h-8" />
           </div>
@@ -38,7 +38,7 @@ export default function AdminPage() {
           <div className="pt-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-200 border border-neutral-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-3 hover:bg-neutral-700 text-xs text-neutral-200 border border-line-strong transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Ana Sayfaya Dön</span>
@@ -50,7 +50,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#121212] text-[#f5f5f0]">
+    <div className="flex h-dvh w-full overflow-hidden bg-app text-fg">
       <CommandPalette />
       <ToastContainer />
       <Sidebar />

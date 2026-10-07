@@ -20,23 +20,14 @@ import {
   EventStatus,
   TaskPriority,
   AppNotification,
-  NotificationType,
-  CurrencyCode,
   ExchangeRates,
   UserProfile,
 } from '@/types';
 import {
-  INITIAL_NOTES,
-  INITIAL_SCRIPTS,
-  INITIAL_TASKS,
-  INITIAL_EVENTS,
   INITIAL_FOLDERS,
-  INITIAL_MEDIA_ITEMS,
-  INITIAL_TRANSACTIONS,
   INITIAL_FINANCE_CATEGORIES,
-  INITIAL_KANBAN_CARDS,
 } from '@/data/initialData';
-import { generateId } from '@/lib/utils';
+import { generateId, toLocalDateString } from '@/lib/utils';
 import {
   DEFAULT_EXCHANGE_RATES,
   fetchLiveExchangeRates,
@@ -193,17 +184,17 @@ const globalState: {
   toasts: [],
   readNotificationIds: [],
   dismissedNotificationIds: [],
-  notes: INITIAL_NOTES,
+  notes: [],
   activeNoteId: null,
   activeFolder: 'all',
   folders: INITIAL_FOLDERS,
-  scripts: INITIAL_SCRIPTS,
+  scripts: [],
   activeScriptId: null,
-  tasks: INITIAL_TASKS,
-  kanbanCards: INITIAL_KANBAN_CARDS,
-  events: INITIAL_EVENTS,
-  mediaItems: INITIAL_MEDIA_ITEMS,
-  transactions: INITIAL_TRANSACTIONS,
+  tasks: [],
+  kanbanCards: [],
+  events: [],
+  mediaItems: [],
+  transactions: [],
   financeCategories: INITIAL_FINANCE_CATEGORIES,
   exchangeRates: DEFAULT_EXCHANGE_RATES,
 };
@@ -214,20 +205,86 @@ function notify() {
   listeners.forEach((fn) => fn());
 }
 
-async function mutateDB(entity: string, action: 'create' | 'upsert' | 'delete', id?: string, data?: any) {
+type MutationEntity = 'note' | 'script' | 'task' | 'kanban' | 'event' | 'media' | 'finance' | 'folder' | 'category';
+
+// Upserts are debounced per record so typing in an editor sends one request per pause, not per keystroke.
+const UPSERT_DEBOUNCE_MS = 500;
+const pendingUpserts = new Map<string, { timer: ReturnType<typeof setTimeout>; send: (keepalive?: boolean) => Promise<void> }>();
+let lastSyncErrorAt = 0;
+
+function reportSyncError(message: string) {
+  // Throttle so a flaky connection does not flood the screen with toasts.
+  const now = Date.now();
+  if (now - lastSyncErrorAt < 5000) return;
+  lastSyncErrorAt = now;
+  pushToast({ type: 'error', title: 'Kaydedilemedi', message });
+}
+
+async function sendMutation(
+  entity: MutationEntity,
+  action: 'create' | 'upsert' | 'delete',
+  id?: string,
+  data?: unknown,
+  keepalive = false
+) {
   try {
+    const body = JSON.stringify({ entity, action, id, data });
     const res = await fetch('/api/data/mutate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity, action, id, data }),
+      body,
+      // keepalive lets the request finish while the page unloads (browsers cap it at 64 KB).
+      keepalive: keepalive && body.length < 60_000,
     });
+    if (res.status === 401) {
+      reportSyncError('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.');
+      return;
+    }
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      console.warn('DB Mutation error:', errData.error || res.statusText);
+      reportSyncError(errData.error || 'Değişiklik sunucuya kaydedilemedi.');
     }
-  } catch (err) {
-    console.error('Failed to sync to database:', err);
+  } catch {
+    reportSyncError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.');
   }
+}
+
+function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete', id?: string, data?: unknown) {
+  const key = `${entity}:${id}`;
+  const pending = pendingUpserts.get(key);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingUpserts.delete(key);
+  }
+
+  if (action === 'upsert' && id) {
+    const send = (keepalive?: boolean) => sendMutation(entity, action, id, data, keepalive);
+    const timer = setTimeout(() => {
+      pendingUpserts.delete(key);
+      send();
+    }, UPSERT_DEBOUNCE_MS);
+    pendingUpserts.set(key, { timer, send });
+    return;
+  }
+
+  // Creates and deletes go out immediately; a pending upsert for a deleted record is simply dropped.
+  sendMutation(entity, action, id, data);
+}
+
+/** Sends all debounced writes immediately (used before leaving the page). */
+function flushPendingMutations() {
+  pendingUpserts.forEach(({ timer, send }) => {
+    clearTimeout(timer);
+    send(true);
+  });
+  pendingUpserts.clear();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushPendingMutations);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPendingMutations();
+  });
 }
 
 function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
@@ -340,10 +397,10 @@ export function getComputedNotifications(): AppNotification[] {
   });
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toLocalDateString(today);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = toLocalDateString(tomorrow);
 
   globalState.events.forEach((ev) => {
     if (ev.status !== 'yayinlandi' && ev.status !== 'iptal') {
@@ -370,6 +427,705 @@ export function getComputedNotifications(): AppNotification[] {
   return notifs.filter((n) => !globalState.dismissedNotificationIds.includes(n.id));
 }
 
+// ---------------------------------------------------------------------------
+// Store actions (module scope: they only touch the shared singleton state)
+// ---------------------------------------------------------------------------
+
+const checkAuth = async (force: boolean = false) => {
+  if (isAuthInitialized && !force) return;
+
+  try {
+    if (!isAuthInitialized) {
+      globalState.isLoadingAuth = true;
+      notify();
+    }
+
+    // Refresh live currency exchange rates on session start
+    fetchExchangeRates().catch(() => {});
+
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+
+    if (data.authenticated && data.user) {
+      globalState.currentUser = data.user;
+      globalState.isAuthenticated = true;
+      await loadUserData();
+    } else {
+      globalState.currentUser = null;
+      globalState.isAuthenticated = false;
+    }
+  } catch {
+    globalState.currentUser = null;
+    globalState.isAuthenticated = false;
+  } finally {
+    isAuthInitialized = true;
+    globalState.isLoadingAuth = false;
+    notify();
+  }
+};
+
+const loadUserData = async () => {
+  try {
+    globalState.isLoadingData = true;
+    notify();
+    const res = await fetch('/api/data');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        globalState.notes = json.data.notes || [];
+        globalState.scripts = json.data.scripts || [];
+        globalState.tasks = json.data.tasks || [];
+        globalState.kanbanCards = json.data.kanbanCards || [];
+        globalState.events = json.data.events || [];
+        globalState.mediaItems = json.data.mediaItems || [];
+        globalState.transactions = json.data.transactions || [];
+        globalState.folders = json.data.folders?.length ? json.data.folders : INITIAL_FOLDERS;
+        globalState.financeCategories = json.data.financeCategories?.length
+          ? json.data.financeCategories
+          : INITIAL_FINANCE_CATEGORIES;
+
+        if (globalState.notes.length > 0 && !globalState.activeNoteId) {
+          globalState.activeNoteId = globalState.notes[0].id;
+        }
+        if (globalState.scripts.length > 0 && !globalState.activeScriptId) {
+          globalState.activeScriptId = globalState.scripts[0].id;
+        }
+      }
+    } else {
+      pushToast({
+        type: 'error',
+        title: 'Veriler yüklenemedi',
+        message: 'Çalışma alanı verileriniz alınamadı. Lütfen sayfayı yenileyin.',
+      });
+    }
+  } catch (err) {
+    console.error('Failed to load user data from database:', err);
+    pushToast({
+      type: 'error',
+      title: 'Bağlantı hatası',
+      message: 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip sayfayı yenileyin.',
+    });
+  } finally {
+    globalState.isLoadingData = false;
+    notify();
+  }
+};
+
+const logout = async () => {
+  flushPendingMutations();
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {}
+  globalState.currentUser = null;
+  globalState.isAuthenticated = false;
+  isAuthInitialized = false;
+  isAuthCheckStarted = false;
+  globalState.notes = [];
+  globalState.scripts = [];
+  globalState.tasks = [];
+  globalState.kanbanCards = [];
+  globalState.events = [];
+  globalState.mediaItems = [];
+  globalState.transactions = [];
+  notify();
+  // Full reload on purpose: guarantees no previous user's data stays in memory.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.href = '/login';
+};
+
+const addToast = (toast: Omit<ToastMessage, 'id'>) => pushToast(toast);
+
+function pushToast(toast: Omit<ToastMessage, 'id'>) {
+  const id = generateId();
+  globalState.toasts = [...globalState.toasts, { ...toast, id }];
+  notify();
+  setTimeout(() => {
+    globalState.toasts = globalState.toasts.filter((t) => t.id !== id);
+    notify();
+  }, 4000);
+}
+
+const removeToast = (id: string) => {
+  globalState.toasts = globalState.toasts.filter((t) => t.id !== id);
+  notify();
+};
+
+const markNotificationAsRead = (id: string) => {
+  if (!globalState.readNotificationIds.includes(id)) {
+    globalState.readNotificationIds = [...globalState.readNotificationIds, id];
+    notify();
+  }
+};
+
+const markAllNotificationsAsRead = () => {
+  const allIds = getComputedNotifications().map((n) => n.id);
+  globalState.readNotificationIds = Array.from(new Set([...globalState.readNotificationIds, ...allIds]));
+  notify();
+};
+
+const deleteNotification = (id: string) => {
+  if (!globalState.dismissedNotificationIds.includes(id)) {
+    globalState.dismissedNotificationIds = [...globalState.dismissedNotificationIds, id];
+    notify();
+  }
+};
+
+const resolveNotificationAction = (notifId: string, actionType: string, targetId: string) => {
+  deleteNotification(notifId);
+
+  if (actionType === 'complete_task') {
+    const taskIndex = globalState.tasks.findIndex((t) => t.id === targetId);
+    if (taskIndex >= 0) {
+      const updatedTask = {
+        ...globalState.tasks[taskIndex],
+        completed: true,
+        completedAt: new Date().toISOString(),
+      };
+      globalState.tasks = [
+        ...globalState.tasks.slice(0, taskIndex),
+        updatedTask,
+        ...globalState.tasks.slice(taskIndex + 1),
+      ];
+      syncTaskToCalendar(updatedTask);
+      mutateDB('task', 'upsert', updatedTask.id, updatedTask);
+      addToast({
+        type: 'success',
+        title: 'Görev Tamamlandı',
+        message: `"${updatedTask.title}" tamamlandı olarak işaretlendi.`,
+      });
+    }
+  } else if (actionType === 'confirm_finance') {
+    const transIndex = globalState.transactions.findIndex((t) => t.id === targetId);
+    if (transIndex >= 0) {
+      const updatedTrans = {
+        ...globalState.transactions[transIndex],
+        isConfirmed: true,
+      };
+      globalState.transactions = [
+        ...globalState.transactions.slice(0, transIndex),
+        updatedTrans,
+        ...globalState.transactions.slice(transIndex + 1),
+      ];
+      mutateDB('finance', 'upsert', updatedTrans.id, updatedTrans);
+      addToast({
+        type: 'success',
+        title: 'Finans Onaylandı',
+        message: `"${updatedTrans.title}" işlemi onaylandı.`,
+      });
+    }
+  }
+  notify();
+};
+
+const addFolder = (name: string, description?: string): string => {
+  const id = generateId();
+  const newFolder: FolderItem = {
+    id,
+    name,
+    description,
+    iconName: 'Folder',
+    isSystem: false,
+  };
+  globalState.folders = [...globalState.folders, newFolder];
+  mutateDB('folder', 'create', id, newFolder);
+  notify();
+  return id;
+};
+
+const updateFolder = (id: string, name: string, description?: string) => {
+  globalState.folders = globalState.folders.map((f) =>
+    f.id === id ? { ...f, name, description } : f
+  );
+  const updated = globalState.folders.find((f) => f.id === id);
+  if (updated) mutateDB('folder', 'upsert', id, updated);
+  notify();
+};
+
+const deleteFolder = (id: string) => {
+  globalState.folders = globalState.folders.filter((f) => f.id !== id);
+  if (globalState.activeFolder === id) {
+    globalState.activeFolder = 'all';
+  }
+  mutateDB('folder', 'delete', id);
+  notify();
+};
+
+const addNote = (partial?: Partial<Note>): string => {
+  const id = generateId();
+  const newNote: Note = {
+    id,
+    title: partial?.title || 'Yeni Not',
+    content: partial?.content || '',
+    folder: partial?.folder || (globalState.activeFolder !== 'all' ? globalState.activeFolder : 'genel'),
+    tags: partial?.tags || [],
+    isFavorite: partial?.isFavorite || false,
+    isPinned: partial?.isPinned || false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  globalState.notes = [newNote, ...globalState.notes];
+  globalState.activeNoteId = id;
+  mutateDB('note', 'create', id, newNote);
+  notify();
+  return id;
+};
+
+const updateNote = (id: string, partial: Partial<Note>) => {
+  globalState.notes = globalState.notes.map((n) =>
+    n.id === id ? { ...n, ...partial, updatedAt: new Date().toISOString() } : n
+  );
+  const updated = globalState.notes.find((n) => n.id === id);
+  if (updated) mutateDB('note', 'upsert', id, updated);
+  notify();
+};
+
+const deleteNote = (id: string) => {
+  globalState.notes = globalState.notes.filter((n) => n.id !== id);
+  if (globalState.activeNoteId === id) {
+    globalState.activeNoteId = globalState.notes[0]?.id || null;
+  }
+  mutateDB('note', 'delete', id);
+  notify();
+};
+
+const toggleFavoriteNote = (id: string) => {
+  globalState.notes = globalState.notes.map((n) =>
+    n.id === id ? { ...n, isFavorite: !n.isFavorite, updatedAt: new Date().toISOString() } : n
+  );
+  const updated = globalState.notes.find((n) => n.id === id);
+  if (updated) mutateDB('note', 'upsert', id, updated);
+  notify();
+};
+
+const togglePinNote = (id: string) => {
+  globalState.notes = globalState.notes.map((n) =>
+    n.id === id ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() } : n
+  );
+  const updated = globalState.notes.find((n) => n.id === id);
+  if (updated) mutateDB('note', 'upsert', id, updated);
+  notify();
+};
+
+const addScript = (partial?: Partial<Script>): string => {
+  const id = generateId();
+  const newScript: Script = {
+    id,
+    title: partial?.title || 'Yeni Video Senaryosu',
+    targetPlatform: partial?.targetPlatform || 'YouTube',
+    status: partial?.status || 'fikir',
+    sections: partial?.sections || [
+      { id: generateId(), type: 'hook', title: 'Kanca (Hook)', content: '', estimatedSeconds: 5 },
+      { id: generateId(), type: 'intro', title: 'Giriş', content: '', estimatedSeconds: 15 },
+      { id: generateId(), type: 'body', title: 'Gövde (Ana Bölüm)', content: '', estimatedSeconds: 60 },
+      { id: generateId(), type: 'cta', title: 'Harekete Geçirici Mesaj (CTA)', content: '', estimatedSeconds: 10 },
+    ],
+    speakingRateWPM: partial?.speakingRateWPM || 130,
+    tags: partial?.tags || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  globalState.scripts = [newScript, ...globalState.scripts];
+  globalState.activeScriptId = id;
+  mutateDB('script', 'create', id, newScript);
+  notify();
+  return id;
+};
+
+const updateScript = (id: string, partial: Partial<Script>) => {
+  globalState.scripts = globalState.scripts.map((s) =>
+    s.id === id ? { ...s, ...partial, updatedAt: new Date().toISOString() } : s
+  );
+  const updated = globalState.scripts.find((s) => s.id === id);
+  if (updated) mutateDB('script', 'upsert', id, updated);
+  notify();
+};
+
+const deleteScript = (id: string) => {
+  globalState.scripts = globalState.scripts.filter((s) => s.id !== id);
+  if (globalState.activeScriptId === id) {
+    globalState.activeScriptId = globalState.scripts[0]?.id || null;
+  }
+  mutateDB('script', 'delete', id);
+  notify();
+};
+
+const updateScriptStatus = (id: string, status: ScriptStatus) => {
+  globalState.scripts = globalState.scripts.map((s) =>
+    s.id === id ? { ...s, status, updatedAt: new Date().toISOString() } : s
+  );
+  const updated = globalState.scripts.find((s) => s.id === id);
+  if (updated) mutateDB('script', 'upsert', id, updated);
+  notify();
+};
+
+const addScriptSection = (
+  scriptId: string,
+  section: { type: ScriptSectionType; title: string; content?: string; visualNotes?: string }
+) => {
+  const secId = generateId();
+  globalState.scripts = globalState.scripts.map((s) => {
+    if (s.id !== scriptId) return s;
+    return {
+      ...s,
+      sections: [
+        ...s.sections,
+        {
+          id: secId,
+          type: section.type,
+          title: section.title,
+          content: section.content || '',
+          visualNotes: section.visualNotes || '',
+          estimatedSeconds: 30,
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  const updated = globalState.scripts.find((s) => s.id === scriptId);
+  if (updated) mutateDB('script', 'upsert', scriptId, updated);
+  notify();
+};
+
+const updateScriptSection = (scriptId: string, sectionId: string, partial: Partial<ScriptSection>) => {
+  globalState.scripts = globalState.scripts.map((s) => {
+    if (s.id !== scriptId) return s;
+    return {
+      ...s,
+      sections: s.sections.map((sec) => (sec.id === sectionId ? { ...sec, ...partial } : sec)),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  const updated = globalState.scripts.find((s) => s.id === scriptId);
+  if (updated) mutateDB('script', 'upsert', scriptId, updated);
+  notify();
+};
+
+const deleteScriptSection = (scriptId: string, sectionId: string) => {
+  globalState.scripts = globalState.scripts.map((s) => {
+    if (s.id !== scriptId) return s;
+    return {
+      ...s,
+      sections: s.sections.filter((sec) => sec.id !== sectionId),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  const updated = globalState.scripts.find((s) => s.id === scriptId);
+  if (updated) mutateDB('script', 'upsert', scriptId, updated);
+  notify();
+};
+
+const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
+  const id = generateId();
+  const newTask: Task = {
+    ...task,
+    id,
+    createdAt: new Date().toISOString(),
+  };
+  globalState.tasks = [newTask, ...globalState.tasks];
+  syncTaskToCalendar(newTask);
+  mutateDB('task', 'create', id, newTask);
+  notify();
+  return id;
+};
+
+const updateTask = (id: string, partial: Partial<Task>) => {
+  globalState.tasks = globalState.tasks.map((t) => (t.id === id ? { ...t, ...partial } : t));
+  const updated = globalState.tasks.find((t) => t.id === id);
+  if (updated) {
+    syncTaskToCalendar(updated);
+    mutateDB('task', 'upsert', id, updated);
+  }
+  notify();
+};
+
+const toggleTask = (id: string) => {
+  globalState.tasks = globalState.tasks.map((t) => {
+    if (t.id !== id) return t;
+    const completed = !t.completed;
+    return {
+      ...t,
+      completed,
+      completedAt: completed ? new Date().toISOString() : undefined,
+    };
+  });
+  const updated = globalState.tasks.find((t) => t.id === id);
+  if (updated) {
+    syncTaskToCalendar(updated);
+    mutateDB('task', 'upsert', id, updated);
+  }
+  notify();
+};
+
+const deleteTask = (id: string) => {
+  const taskToDelete = globalState.tasks.find((t) => t.id === id);
+  if (taskToDelete) syncTaskToCalendar(taskToDelete, true);
+  globalState.tasks = globalState.tasks.filter((t) => t.id !== id);
+  mutateDB('task', 'delete', id);
+  notify();
+};
+
+const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>): string => {
+  const id = generateId();
+  const newCard: KanbanCard = {
+    ...card,
+    id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  globalState.kanbanCards = [newCard, ...globalState.kanbanCards];
+  mutateDB('kanban', 'create', id, newCard);
+  notify();
+  return id;
+};
+
+const updateKanbanCard = (id: string, partial: Partial<KanbanCard>) => {
+  globalState.kanbanCards = globalState.kanbanCards.map((c) =>
+    c.id === id ? { ...c, ...partial, updatedAt: new Date().toISOString() } : c
+  );
+  const updated = globalState.kanbanCards.find((c) => c.id === id);
+  if (updated) mutateDB('kanban', 'upsert', id, updated);
+  notify();
+};
+
+const deleteKanbanCard = (id: string) => {
+  globalState.kanbanCards = globalState.kanbanCards.filter((c) => c.id !== id);
+  mutateDB('kanban', 'delete', id);
+  notify();
+};
+
+const moveKanbanCard = (id: string, columnId: KanbanColumnId) => {
+  globalState.kanbanCards = globalState.kanbanCards.map((c) =>
+    c.id === id ? { ...c, columnId, updatedAt: new Date().toISOString() } : c
+  );
+  const updated = globalState.kanbanCards.find((c) => c.id === id);
+  if (updated) mutateDB('kanban', 'upsert', id, updated);
+  notify();
+};
+
+const addEvent = (event: Omit<CalendarEvent, 'id' | 'createdAt'>): string => {
+  const id = generateId();
+  const newEvent: CalendarEvent = {
+    ...event,
+    id,
+    createdAt: new Date().toISOString(),
+  };
+  globalState.events = [...globalState.events, newEvent];
+  mutateDB('event', 'create', id, newEvent);
+  notify();
+  return id;
+};
+
+const updateEvent = (id: string, partial: Partial<CalendarEvent>) => {
+  globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, ...partial } : e));
+  const updated = globalState.events.find((e) => e.id === id);
+  if (updated) mutateDB('event', 'upsert', id, updated);
+  notify();
+};
+
+const deleteEvent = (id: string) => {
+  globalState.events = globalState.events.filter((e) => e.id !== id);
+  mutateDB('event', 'delete', id);
+  notify();
+};
+
+const updateEventStatus = (id: string, status: EventStatus) => {
+  globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, status } : e));
+  const updated = globalState.events.find((e) => e.id === id);
+  if (updated) mutateDB('event', 'upsert', id, updated);
+  notify();
+};
+
+const rescheduleEvent = (id: string, newDate: string) => {
+  globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, date: newDate } : e));
+  const updated = globalState.events.find((e) => e.id === id);
+  if (updated) mutateDB('event', 'upsert', id, updated);
+  notify();
+};
+
+const addMediaItem = (item: Omit<MediaItem, 'id' | 'createdAt'>): string => {
+  const id = generateId();
+  const newItem: MediaItem = {
+    ...item,
+    id,
+    createdAt: new Date().toISOString(),
+  };
+  globalState.mediaItems = [newItem, ...globalState.mediaItems];
+  mutateDB('media', 'create', id, newItem);
+  notify();
+  return id;
+};
+
+const updateMediaItem = (id: string, partial: Partial<MediaItem>) => {
+  globalState.mediaItems = globalState.mediaItems.map((m) => (m.id === id ? { ...m, ...partial } : m));
+  const updated = globalState.mediaItems.find((m) => m.id === id);
+  if (updated) mutateDB('media', 'upsert', id, updated);
+  notify();
+};
+
+const deleteMediaItem = (id: string) => {
+  globalState.mediaItems = globalState.mediaItems.filter((m) => m.id !== id);
+  mutateDB('media', 'delete', id);
+  notify();
+};
+
+let exchangeRatesRequest: Promise<void> | null = null;
+
+const fetchExchangeRates = (): Promise<void> => {
+  // Share one in-flight request between all callers.
+  if (!exchangeRatesRequest) {
+    exchangeRatesRequest = fetchLiveExchangeRates(globalState.exchangeRates.markupTRY)
+      .then((rates) => {
+        globalState.exchangeRates = rates;
+        notify();
+      })
+      .catch(() => {})
+      .finally(() => {
+        exchangeRatesRequest = null;
+      });
+  }
+  return exchangeRatesRequest;
+};
+
+// USD/EUR hold the raw market rate; the markup is applied on top when converting.
+const setExchangeRateMarkup = (markup: number) => {
+  if (!Number.isFinite(markup) || markup < 0) return;
+  globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: markup };
+  notify();
+};
+
+const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string => {
+  const id = generateId();
+  const currency = transaction.currency || 'TRY';
+  let amountInTRY = transaction.amount;
+  let convertedInfo = undefined;
+
+  if (currency !== 'TRY') {
+    convertedInfo = convertCurrencyToTRY(
+      transaction.originalAmount || transaction.amount,
+      currency,
+      globalState.exchangeRates
+    );
+    amountInTRY = convertedInfo.baseAmountTRY;
+  }
+
+  const newTransaction: FinanceTransaction = {
+    ...transaction,
+    id,
+    amount: amountInTRY,
+    currency,
+    originalAmount: transaction.originalAmount || (currency !== 'TRY' ? transaction.amount : undefined),
+    effectiveRate: convertedInfo?.effectiveRate,
+    exchangeRate: convertedInfo?.liveRate,
+    markupTRY: convertedInfo?.markup,
+    createdAt: new Date().toISOString(),
+  };
+  globalState.transactions = [newTransaction, ...globalState.transactions];
+  mutateDB('finance', 'create', id, newTransaction);
+  notify();
+  return id;
+};
+
+const updateTransaction = (id: string, partial: Partial<FinanceTransaction>) => {
+  globalState.transactions = globalState.transactions.map((t) => {
+    if (t.id !== id) return t;
+    const currency = partial.currency || t.currency || 'TRY';
+    let amountInTRY = partial.amount !== undefined ? partial.amount : t.amount;
+
+    if (currency !== 'TRY' && partial.originalAmount !== undefined) {
+      const conv = convertCurrencyToTRY(
+        partial.originalAmount,
+        currency,
+        globalState.exchangeRates
+      );
+      amountInTRY = conv.baseAmountTRY;
+    }
+
+    return {
+      ...t,
+      ...partial,
+      amount: amountInTRY,
+      currency,
+    };
+  });
+  const updated = globalState.transactions.find((t) => t.id === id);
+  if (updated) mutateDB('finance', 'upsert', id, updated);
+  notify();
+};
+
+const deleteTransaction = (id: string) => {
+  globalState.transactions = globalState.transactions.filter((t) => t.id !== id);
+  mutateDB('finance', 'delete', id);
+  notify();
+};
+
+const toggleTransactionConfirmation = (id: string) => {
+  globalState.transactions = globalState.transactions.map((t) =>
+    t.id === id ? { ...t, isConfirmed: !t.isConfirmed } : t
+  );
+  const updated = globalState.transactions.find((t) => t.id === id);
+  if (updated) mutateDB('finance', 'upsert', id, updated);
+  notify();
+};
+
+const addFinanceCategory = (name: string, type: FinanceTransactionType): string => {
+  const id = generateId();
+  const newCat: FinanceCategoryItem = { id, name, type, isSystem: false };
+  globalState.financeCategories = [...globalState.financeCategories, newCat];
+  mutateDB('category', 'create', id, newCat);
+  notify();
+  return id;
+};
+
+const updateFinanceCategory = (id: string, name: string) => {
+  globalState.financeCategories = globalState.financeCategories.map((c) =>
+    c.id === id ? { ...c, name } : c
+  );
+  const updated = globalState.financeCategories.find((c) => c.id === id);
+  if (updated) mutateDB('category', 'upsert', id, updated);
+  notify();
+};
+
+const deleteFinanceCategory = (id: string) => {
+  globalState.financeCategories = globalState.financeCategories.filter((c) => c.id !== id);
+  mutateDB('category', 'delete', id);
+  notify();
+};
+
+const setActiveTab = (tab: ActiveTab) => {
+  globalState.activeTab = tab;
+  notify();
+};
+
+const setIsMobileSidebarOpen = (open: boolean) => {
+  globalState.isMobileSidebarOpen = open;
+  notify();
+};
+
+const setIsCommandPaletteOpen = (open: boolean) => {
+  globalState.isCommandPaletteOpen = open;
+  notify();
+};
+
+const setIsNotificationPanelOpen = (open: boolean) => {
+  globalState.isNotificationPanelOpen = open;
+  notify();
+};
+
+const setActiveNoteId = (id: string | null) => {
+  globalState.activeNoteId = id;
+  notify();
+};
+
+const setActiveFolder = (folder: string) => {
+  globalState.activeFolder = folder;
+  notify();
+};
+
+const setActiveScriptId = (id: string | null) => {
+  globalState.activeScriptId = id;
+  notify();
+};
+
 export function useAppStore(): AppState {
   const [, setTick] = useState(0);
 
@@ -377,8 +1133,7 @@ export function useAppStore(): AppState {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
 
-    // Initial auth check and live exchange rates fetch on every site load / mount
-    fetchExchangeRates().catch(() => {});
+    // Initial auth check (also refreshes live exchange rates) once per page load
     if (!isAuthCheckStarted) {
       isAuthCheckStarted = true;
       checkAuth();
@@ -388,647 +1143,6 @@ export function useAppStore(): AppState {
       listeners.delete(listener);
     };
   }, []);
-
-  const checkAuth = async (force: boolean = false) => {
-    if (isAuthInitialized && !force) return;
-
-    try {
-      if (!isAuthInitialized) {
-        globalState.isLoadingAuth = true;
-        notify();
-      }
-
-      // Refresh live currency exchange rates on session start
-      fetchExchangeRates().catch(() => {});
-
-      const res = await fetch('/api/auth/me');
-      const data = await res.json();
-
-      if (data.authenticated && data.user) {
-        globalState.currentUser = data.user;
-        globalState.isAuthenticated = true;
-        await loadUserData();
-      } else {
-        globalState.currentUser = null;
-        globalState.isAuthenticated = false;
-      }
-    } catch {
-      globalState.currentUser = null;
-      globalState.isAuthenticated = false;
-    } finally {
-      isAuthInitialized = true;
-      globalState.isLoadingAuth = false;
-      notify();
-    }
-  };
-
-  const loadUserData = async () => {
-    try {
-      globalState.isLoadingData = true;
-      notify();
-      const res = await fetch('/api/data');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          globalState.notes = json.data.notes || [];
-          globalState.scripts = json.data.scripts || [];
-          globalState.tasks = json.data.tasks || [];
-          globalState.kanbanCards = json.data.kanbanCards || [];
-          globalState.events = json.data.events || [];
-          globalState.mediaItems = json.data.mediaItems || [];
-          globalState.transactions = json.data.transactions || [];
-          globalState.folders = json.data.folders?.length ? json.data.folders : INITIAL_FOLDERS;
-          globalState.financeCategories = json.data.financeCategories?.length
-            ? json.data.financeCategories
-            : INITIAL_FINANCE_CATEGORIES;
-
-          if (globalState.notes.length > 0 && !globalState.activeNoteId) {
-            globalState.activeNoteId = globalState.notes[0].id;
-          }
-          if (globalState.scripts.length > 0 && !globalState.activeScriptId) {
-            globalState.activeScriptId = globalState.scripts[0].id;
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load user data from database:', err);
-    } finally {
-      globalState.isLoadingData = false;
-      notify();
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {}
-    globalState.currentUser = null;
-    globalState.isAuthenticated = false;
-    isAuthInitialized = false;
-    isAuthCheckStarted = false;
-    globalState.notes = [];
-    globalState.scripts = [];
-    globalState.tasks = [];
-    globalState.kanbanCards = [];
-    globalState.events = [];
-    globalState.mediaItems = [];
-    globalState.transactions = [];
-    notify();
-    window.location.href = '/login';
-  };
-
-  const addToast = (toast: Omit<ToastMessage, 'id'>) => {
-    const id = generateId();
-    globalState.toasts = [...globalState.toasts, { ...toast, id }];
-    notify();
-    setTimeout(() => {
-      globalState.toasts = globalState.toasts.filter((t) => t.id !== id);
-      notify();
-    }, 4000);
-  };
-
-  const removeToast = (id: string) => {
-    globalState.toasts = globalState.toasts.filter((t) => t.id !== id);
-    notify();
-  };
-
-  const markNotificationAsRead = (id: string) => {
-    if (!globalState.readNotificationIds.includes(id)) {
-      globalState.readNotificationIds = [...globalState.readNotificationIds, id];
-      notify();
-    }
-  };
-
-  const markAllNotificationsAsRead = () => {
-    const allIds = getComputedNotifications().map((n) => n.id);
-    globalState.readNotificationIds = Array.from(new Set([...globalState.readNotificationIds, ...allIds]));
-    notify();
-  };
-
-  const deleteNotification = (id: string) => {
-    if (!globalState.dismissedNotificationIds.includes(id)) {
-      globalState.dismissedNotificationIds = [...globalState.dismissedNotificationIds, id];
-      notify();
-    }
-  };
-
-  const resolveNotificationAction = (notifId: string, actionType: string, targetId: string) => {
-    deleteNotification(notifId);
-
-    if (actionType === 'complete_task') {
-      const taskIndex = globalState.tasks.findIndex((t) => t.id === targetId);
-      if (taskIndex >= 0) {
-        const updatedTask = {
-          ...globalState.tasks[taskIndex],
-          completed: true,
-          completedAt: new Date().toISOString(),
-        };
-        globalState.tasks = [
-          ...globalState.tasks.slice(0, taskIndex),
-          updatedTask,
-          ...globalState.tasks.slice(taskIndex + 1),
-        ];
-        syncTaskToCalendar(updatedTask);
-        mutateDB('task', 'upsert', updatedTask.id, updatedTask);
-        addToast({
-          type: 'success',
-          title: 'Görev Tamamlandı',
-          message: `"${updatedTask.title}" tamamlandı olarak işaretlendi.`,
-        });
-      }
-    } else if (actionType === 'confirm_finance') {
-      const transIndex = globalState.transactions.findIndex((t) => t.id === targetId);
-      if (transIndex >= 0) {
-        const updatedTrans = {
-          ...globalState.transactions[transIndex],
-          isConfirmed: true,
-        };
-        globalState.transactions = [
-          ...globalState.transactions.slice(0, transIndex),
-          updatedTrans,
-          ...globalState.transactions.slice(transIndex + 1),
-        ];
-        mutateDB('finance', 'upsert', updatedTrans.id, updatedTrans);
-        addToast({
-          type: 'success',
-          title: 'Finans Onaylandı',
-          message: `"${updatedTrans.title}" işlemi onaylandı.`,
-        });
-      }
-    }
-    notify();
-  };
-
-  const addFolder = (name: string, description?: string): string => {
-    const id = generateId();
-    const newFolder: FolderItem = {
-      id,
-      name,
-      description,
-      iconName: 'Folder',
-      isSystem: false,
-    };
-    globalState.folders = [...globalState.folders, newFolder];
-    mutateDB('folder', 'create', id, newFolder);
-    notify();
-    return id;
-  };
-
-  const updateFolder = (id: string, name: string, description?: string) => {
-    globalState.folders = globalState.folders.map((f) =>
-      f.id === id ? { ...f, name, description } : f
-    );
-    const updated = globalState.folders.find((f) => f.id === id);
-    if (updated) mutateDB('folder', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteFolder = (id: string) => {
-    globalState.folders = globalState.folders.filter((f) => f.id !== id);
-    if (globalState.activeFolder === id) {
-      globalState.activeFolder = 'all';
-    }
-    mutateDB('folder', 'delete', id);
-    notify();
-  };
-
-  const addNote = (partial?: Partial<Note>): string => {
-    const id = generateId();
-    const newNote: Note = {
-      id,
-      title: partial?.title || 'Yeni Not',
-      content: partial?.content || '',
-      folder: partial?.folder || (globalState.activeFolder !== 'all' ? globalState.activeFolder : 'genel'),
-      tags: partial?.tags || [],
-      isFavorite: partial?.isFavorite || false,
-      isPinned: partial?.isPinned || false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    globalState.notes = [newNote, ...globalState.notes];
-    globalState.activeNoteId = id;
-    mutateDB('note', 'create', id, newNote);
-    notify();
-    return id;
-  };
-
-  const updateNote = (id: string, partial: Partial<Note>) => {
-    globalState.notes = globalState.notes.map((n) =>
-      n.id === id ? { ...n, ...partial, updatedAt: new Date().toISOString() } : n
-    );
-    const updated = globalState.notes.find((n) => n.id === id);
-    if (updated) mutateDB('note', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteNote = (id: string) => {
-    globalState.notes = globalState.notes.filter((n) => n.id !== id);
-    if (globalState.activeNoteId === id) {
-      globalState.activeNoteId = globalState.notes[0]?.id || null;
-    }
-    mutateDB('note', 'delete', id);
-    notify();
-  };
-
-  const toggleFavoriteNote = (id: string) => {
-    globalState.notes = globalState.notes.map((n) =>
-      n.id === id ? { ...n, isFavorite: !n.isFavorite, updatedAt: new Date().toISOString() } : n
-    );
-    const updated = globalState.notes.find((n) => n.id === id);
-    if (updated) mutateDB('note', 'upsert', id, updated);
-    notify();
-  };
-
-  const togglePinNote = (id: string) => {
-    globalState.notes = globalState.notes.map((n) =>
-      n.id === id ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() } : n
-    );
-    const updated = globalState.notes.find((n) => n.id === id);
-    if (updated) mutateDB('note', 'upsert', id, updated);
-    notify();
-  };
-
-  const addScript = (partial?: Partial<Script>): string => {
-    const id = generateId();
-    const newScript: Script = {
-      id,
-      title: partial?.title || 'Yeni Video Senaryosu',
-      targetPlatform: partial?.targetPlatform || 'YouTube',
-      status: partial?.status || 'fikir',
-      sections: partial?.sections || [
-        { id: generateId(), type: 'hook', title: 'Kanca (Hook)', content: '', estimatedSeconds: 5 },
-        { id: generateId(), type: 'intro', title: 'Giriş', content: '', estimatedSeconds: 15 },
-        { id: generateId(), type: 'body', title: 'Gövde (Ana Bölüm)', content: '', estimatedSeconds: 60 },
-        { id: generateId(), type: 'cta', title: 'Harekete Geçirici Mesaj (CTA)', content: '', estimatedSeconds: 10 },
-      ],
-      speakingRateWPM: partial?.speakingRateWPM || 130,
-      tags: partial?.tags || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    globalState.scripts = [newScript, ...globalState.scripts];
-    globalState.activeScriptId = id;
-    mutateDB('script', 'create', id, newScript);
-    notify();
-    return id;
-  };
-
-  const updateScript = (id: string, partial: Partial<Script>) => {
-    globalState.scripts = globalState.scripts.map((s) =>
-      s.id === id ? { ...s, ...partial, updatedAt: new Date().toISOString() } : s
-    );
-    const updated = globalState.scripts.find((s) => s.id === id);
-    if (updated) mutateDB('script', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteScript = (id: string) => {
-    globalState.scripts = globalState.scripts.filter((s) => s.id !== id);
-    if (globalState.activeScriptId === id) {
-      globalState.activeScriptId = globalState.scripts[0]?.id || null;
-    }
-    mutateDB('script', 'delete', id);
-    notify();
-  };
-
-  const updateScriptStatus = (id: string, status: ScriptStatus) => {
-    globalState.scripts = globalState.scripts.map((s) =>
-      s.id === id ? { ...s, status, updatedAt: new Date().toISOString() } : s
-    );
-    const updated = globalState.scripts.find((s) => s.id === id);
-    if (updated) mutateDB('script', 'upsert', id, updated);
-    notify();
-  };
-
-  const addScriptSection = (
-    scriptId: string,
-    section: { type: ScriptSectionType; title: string; content?: string; visualNotes?: string }
-  ) => {
-    const secId = generateId();
-    globalState.scripts = globalState.scripts.map((s) => {
-      if (s.id !== scriptId) return s;
-      return {
-        ...s,
-        sections: [
-          ...s.sections,
-          {
-            id: secId,
-            type: section.type,
-            title: section.title,
-            content: section.content || '',
-            visualNotes: section.visualNotes || '',
-            estimatedSeconds: 30,
-          },
-        ],
-        updatedAt: new Date().toISOString(),
-      };
-    });
-    const updated = globalState.scripts.find((s) => s.id === scriptId);
-    if (updated) mutateDB('script', 'upsert', scriptId, updated);
-    notify();
-  };
-
-  const updateScriptSection = (scriptId: string, sectionId: string, partial: Partial<ScriptSection>) => {
-    globalState.scripts = globalState.scripts.map((s) => {
-      if (s.id !== scriptId) return s;
-      return {
-        ...s,
-        sections: s.sections.map((sec) => (sec.id === sectionId ? { ...sec, ...partial } : sec)),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-    const updated = globalState.scripts.find((s) => s.id === scriptId);
-    if (updated) mutateDB('script', 'upsert', scriptId, updated);
-    notify();
-  };
-
-  const deleteScriptSection = (scriptId: string, sectionId: string) => {
-    globalState.scripts = globalState.scripts.map((s) => {
-      if (s.id !== scriptId) return s;
-      return {
-        ...s,
-        sections: s.sections.filter((sec) => sec.id !== sectionId),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-    const updated = globalState.scripts.find((s) => s.id === scriptId);
-    if (updated) mutateDB('script', 'upsert', scriptId, updated);
-    notify();
-  };
-
-  const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
-    const id = generateId();
-    const newTask: Task = {
-      ...task,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    globalState.tasks = [newTask, ...globalState.tasks];
-    syncTaskToCalendar(newTask);
-    mutateDB('task', 'create', id, newTask);
-    notify();
-    return id;
-  };
-
-  const updateTask = (id: string, partial: Partial<Task>) => {
-    globalState.tasks = globalState.tasks.map((t) => (t.id === id ? { ...t, ...partial } : t));
-    const updated = globalState.tasks.find((t) => t.id === id);
-    if (updated) {
-      syncTaskToCalendar(updated);
-      mutateDB('task', 'upsert', id, updated);
-    }
-    notify();
-  };
-
-  const toggleTask = (id: string) => {
-    globalState.tasks = globalState.tasks.map((t) => {
-      if (t.id !== id) return t;
-      const completed = !t.completed;
-      return {
-        ...t,
-        completed,
-        completedAt: completed ? new Date().toISOString() : undefined,
-      };
-    });
-    const updated = globalState.tasks.find((t) => t.id === id);
-    if (updated) {
-      syncTaskToCalendar(updated);
-      mutateDB('task', 'upsert', id, updated);
-    }
-    notify();
-  };
-
-  const deleteTask = (id: string) => {
-    const taskToDelete = globalState.tasks.find((t) => t.id === id);
-    if (taskToDelete) syncTaskToCalendar(taskToDelete, true);
-    globalState.tasks = globalState.tasks.filter((t) => t.id !== id);
-    mutateDB('task', 'delete', id);
-    notify();
-  };
-
-  const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>): string => {
-    const id = generateId();
-    const newCard: KanbanCard = {
-      ...card,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    globalState.kanbanCards = [newCard, ...globalState.kanbanCards];
-    mutateDB('kanban', 'create', id, newCard);
-    notify();
-    return id;
-  };
-
-  const updateKanbanCard = (id: string, partial: Partial<KanbanCard>) => {
-    globalState.kanbanCards = globalState.kanbanCards.map((c) =>
-      c.id === id ? { ...c, ...partial, updatedAt: new Date().toISOString() } : c
-    );
-    const updated = globalState.kanbanCards.find((c) => c.id === id);
-    if (updated) mutateDB('kanban', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteKanbanCard = (id: string) => {
-    globalState.kanbanCards = globalState.kanbanCards.filter((c) => c.id !== id);
-    mutateDB('kanban', 'delete', id);
-    notify();
-  };
-
-  const moveKanbanCard = (id: string, columnId: KanbanColumnId) => {
-    globalState.kanbanCards = globalState.kanbanCards.map((c) =>
-      c.id === id ? { ...c, columnId, updatedAt: new Date().toISOString() } : c
-    );
-    const updated = globalState.kanbanCards.find((c) => c.id === id);
-    if (updated) mutateDB('kanban', 'upsert', id, updated);
-    notify();
-  };
-
-  const addEvent = (event: Omit<CalendarEvent, 'id' | 'createdAt'>): string => {
-    const id = generateId();
-    const newEvent: CalendarEvent = {
-      ...event,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    globalState.events = [...globalState.events, newEvent];
-    mutateDB('event', 'create', id, newEvent);
-    notify();
-    return id;
-  };
-
-  const updateEvent = (id: string, partial: Partial<CalendarEvent>) => {
-    globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, ...partial } : e));
-    const updated = globalState.events.find((e) => e.id === id);
-    if (updated) mutateDB('event', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteEvent = (id: string) => {
-    globalState.events = globalState.events.filter((e) => e.id !== id);
-    mutateDB('event', 'delete', id);
-    notify();
-  };
-
-  const updateEventStatus = (id: string, status: EventStatus) => {
-    globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, status } : e));
-    const updated = globalState.events.find((e) => e.id === id);
-    if (updated) mutateDB('event', 'upsert', id, updated);
-    notify();
-  };
-
-  const rescheduleEvent = (id: string, newDate: string) => {
-    globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, date: newDate } : e));
-    const updated = globalState.events.find((e) => e.id === id);
-    if (updated) mutateDB('event', 'upsert', id, updated);
-    notify();
-  };
-
-  const addMediaItem = (item: Omit<MediaItem, 'id' | 'createdAt'>): string => {
-    const id = generateId();
-    const newItem: MediaItem = {
-      ...item,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    globalState.mediaItems = [newItem, ...globalState.mediaItems];
-    mutateDB('media', 'create', id, newItem);
-    notify();
-    return id;
-  };
-
-  const updateMediaItem = (id: string, partial: Partial<MediaItem>) => {
-    globalState.mediaItems = globalState.mediaItems.map((m) => (m.id === id ? { ...m, ...partial } : m));
-    const updated = globalState.mediaItems.find((m) => m.id === id);
-    if (updated) mutateDB('media', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteMediaItem = (id: string) => {
-    globalState.mediaItems = globalState.mediaItems.filter((m) => m.id !== id);
-    mutateDB('media', 'delete', id);
-    notify();
-  };
-
-  const fetchExchangeRates = async () => {
-    try {
-      const rates = await fetchLiveExchangeRates(globalState.exchangeRates.markupTRY);
-      globalState.exchangeRates = rates;
-      notify();
-    } catch {}
-  };
-
-  const setExchangeRateMarkup = (markup: number) => {
-    const updatedUSD =
-      globalState.exchangeRates.USD - globalState.exchangeRates.markupTRY + markup;
-    const updatedEUR =
-      globalState.exchangeRates.EUR - globalState.exchangeRates.markupTRY + markup;
-    globalState.exchangeRates = {
-      ...globalState.exchangeRates,
-      markupTRY: markup,
-      USD: Math.max(0.01, updatedUSD),
-      EUR: Math.max(0.01, updatedEUR),
-    };
-    notify();
-  };
-
-  const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string => {
-    const id = generateId();
-    const currency = transaction.currency || 'TRY';
-    let amountInTRY = transaction.amount;
-    let convertedInfo = undefined;
-
-    if (currency !== 'TRY') {
-      convertedInfo = convertCurrencyToTRY(
-        transaction.originalAmount || transaction.amount,
-        currency,
-        globalState.exchangeRates
-      );
-      amountInTRY = convertedInfo.baseAmountTRY;
-    }
-
-    const newTransaction: FinanceTransaction = {
-      ...transaction,
-      id,
-      amount: amountInTRY,
-      currency,
-      originalAmount: transaction.originalAmount || (currency !== 'TRY' ? transaction.amount : undefined),
-      effectiveRate: convertedInfo?.effectiveRate,
-      exchangeRate: convertedInfo?.liveRate,
-      markupTRY: convertedInfo?.markup,
-      createdAt: new Date().toISOString(),
-    };
-    globalState.transactions = [newTransaction, ...globalState.transactions];
-    mutateDB('finance', 'create', id, newTransaction);
-    notify();
-    return id;
-  };
-
-  const updateTransaction = (id: string, partial: Partial<FinanceTransaction>) => {
-    globalState.transactions = globalState.transactions.map((t) => {
-      if (t.id !== id) return t;
-      const currency = partial.currency || t.currency || 'TRY';
-      let amountInTRY = partial.amount !== undefined ? partial.amount : t.amount;
-
-      if (currency !== 'TRY' && partial.originalAmount !== undefined) {
-        const conv = convertCurrencyToTRY(
-          partial.originalAmount,
-          currency,
-          globalState.exchangeRates
-        );
-        amountInTRY = conv.baseAmountTRY;
-      }
-
-      return {
-        ...t,
-        ...partial,
-        amount: amountInTRY,
-        currency,
-      };
-    });
-    const updated = globalState.transactions.find((t) => t.id === id);
-    if (updated) mutateDB('finance', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteTransaction = (id: string) => {
-    globalState.transactions = globalState.transactions.filter((t) => t.id !== id);
-    mutateDB('finance', 'delete', id);
-    notify();
-  };
-
-  const toggleTransactionConfirmation = (id: string) => {
-    globalState.transactions = globalState.transactions.map((t) =>
-      t.id === id ? { ...t, isConfirmed: !t.isConfirmed } : t
-    );
-    const updated = globalState.transactions.find((t) => t.id === id);
-    if (updated) mutateDB('finance', 'upsert', id, updated);
-    notify();
-  };
-
-  const addFinanceCategory = (name: string, type: FinanceTransactionType): string => {
-    const id = generateId();
-    const newCat: FinanceCategoryItem = { id, name, type, isSystem: false };
-    globalState.financeCategories = [...globalState.financeCategories, newCat];
-    mutateDB('category', 'create', id, newCat);
-    notify();
-    return id;
-  };
-
-  const updateFinanceCategory = (id: string, name: string) => {
-    globalState.financeCategories = globalState.financeCategories.map((c) =>
-      c.id === id ? { ...c, name } : c
-    );
-    const updated = globalState.financeCategories.find((c) => c.id === id);
-    if (updated) mutateDB('category', 'upsert', id, updated);
-    notify();
-  };
-
-  const deleteFinanceCategory = (id: string) => {
-    globalState.financeCategories = globalState.financeCategories.filter((c) => c.id !== id);
-    mutateDB('category', 'delete', id);
-    notify();
-  };
 
   const notifications = getComputedNotifications();
   const unreadNotificationCount = notifications.filter((n) => !n.isRead).length;
@@ -1043,25 +1157,13 @@ export function useAppStore(): AppState {
     loadUserData,
 
     activeTab: globalState.activeTab,
-    setActiveTab: (tab: ActiveTab) => {
-      globalState.activeTab = tab;
-      notify();
-    },
+    setActiveTab,
     isMobileSidebarOpen: globalState.isMobileSidebarOpen,
-    setIsMobileSidebarOpen: (open: boolean) => {
-      globalState.isMobileSidebarOpen = open;
-      notify();
-    },
+    setIsMobileSidebarOpen,
     isCommandPaletteOpen: globalState.isCommandPaletteOpen,
-    setIsCommandPaletteOpen: (open: boolean) => {
-      globalState.isCommandPaletteOpen = open;
-      notify();
-    },
+    setIsCommandPaletteOpen,
     isNotificationPanelOpen: globalState.isNotificationPanelOpen,
-    setIsNotificationPanelOpen: (open: boolean) => {
-      globalState.isNotificationPanelOpen = open;
-      notify();
-    },
+    setIsNotificationPanelOpen,
     toasts: globalState.toasts,
     addToast,
     removeToast,
@@ -1075,15 +1177,9 @@ export function useAppStore(): AppState {
 
     notes: globalState.notes,
     activeNoteId: globalState.activeNoteId,
-    setActiveNoteId: (id: string | null) => {
-      globalState.activeNoteId = id;
-      notify();
-    },
+    setActiveNoteId,
     activeFolder: globalState.activeFolder,
-    setActiveFolder: (folder: string) => {
-      globalState.activeFolder = folder;
-      notify();
-    },
+    setActiveFolder,
     folders: globalState.folders,
     addFolder,
     updateFolder,
@@ -1096,10 +1192,7 @@ export function useAppStore(): AppState {
 
     scripts: globalState.scripts,
     activeScriptId: globalState.activeScriptId,
-    setActiveScriptId: (id: string | null) => {
-      globalState.activeScriptId = id;
-      notify();
-    },
+    setActiveScriptId,
     addScript,
     updateScript,
     deleteScript,

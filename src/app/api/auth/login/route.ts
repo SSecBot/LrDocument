@@ -1,40 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signSessionToken, ensureDefaultAdmin, COOKIE_NAME } from '@/lib/auth';
+import { comparePassword, signSessionToken, ensureDefaultAdmin, setSessionCookie } from '@/lib/auth';
+import { getClientIp, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
+
+const INVALID_CREDENTIALS = 'Geçersiz e-posta veya şifre girdiniz.';
 
 export async function POST(req: NextRequest) {
   try {
     await ensureDefaultAdmin();
 
-    const body = await req.json();
+    const ip = getClientIp(req);
+    const ipWait = rateLimit(`login-ip:${ip}`, 20, 15 * 60_000);
+    if (ipWait) return tooManyRequests(ipWait);
+
+    const body = await readJsonObject(req);
     const { email, password } = body;
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Lütfen e-posta ve şifrenizi giriniz.' },
-        { status: 400 }
-      );
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+      return NextResponse.json({ error: 'Lütfen e-posta ve şifrenizi giriniz.' }, { status: 400 });
     }
 
-    const cleanEmail = email.toLowerCase().trim();
+    const cleanEmail = email.toLowerCase().trim().slice(0, 254);
 
-    const user = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+    const emailWait = rateLimit(`login-email:${cleanEmail}`, 8, 15 * 60_000);
+    if (emailWait) return tooManyRequests(emailWait);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Geçersiz e-posta veya şifre girdiniz.' },
-        { status: 401 }
-      );
-    }
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
 
-    const isMatch = await comparePassword(password, user.passwordHash);
-    if (!isMatch) {
-      return NextResponse.json(
-        { error: 'Geçersiz e-posta veya şifre girdiniz.' },
-        { status: 401 }
-      );
+    // Always run bcrypt so response timing does not reveal whether the account exists.
+    const isMatch = await comparePassword(password, user?.passwordHash);
+    if (!user || !isMatch) {
+      return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
     }
 
     if (user.status === 'PENDING') {
@@ -47,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (user.status === 'REJECTED') {
+    if (user.status !== 'APPROVED') {
       return NextResponse.json(
         {
           error: 'Hesap başvurunuz yönetici tarafından reddedildi. Lütfen yönetici ile iletişime geçiniz.',
@@ -61,8 +57,9 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: user.role as 'ADMIN' | 'USER',
-      status: user.status as 'APPROVED',
+      role: user.role === 'ADMIN' ? 'ADMIN' : 'USER',
+      status: 'APPROVED',
+      sv: user.sessionVersion,
     });
 
     const response = NextResponse.json({
@@ -75,23 +72,9 @@ export async function POST(req: NextRequest) {
         status: user.status,
       },
     });
-
-    response.cookies.set({
-      name: COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 30 * 24 * 60 * 60,
-    });
-
+    setSessionCookie(response, token);
     return response;
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'Giriş yapılırken bir sunucu hatası oluştu.' },
-      { status: 500 }
-    );
+    return handleRouteError(error, 'Login error', 'Giriş yapılırken bir sunucu hatası oluştu.');
   }
 }

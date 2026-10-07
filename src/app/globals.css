@@ -1,34 +1,43 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-:root {
-  --bg-main: #0d0e13;
-  --bg-surface: #13151c;
-  --bg-card: #181a24;
-  --bg-hover: #202432;
-  --bg-active: #282d3e;
-  
-  --border-subtle: #202430;
-  --border-strong: #2c3344;
+/*
+ * Design tokens — one neutral scale + one brand green.
+ * Usage: bg-app / bg-surface / bg-surface-2..4, border-line / border-line-strong,
+ * bg-brand / hover:bg-brand-hover, text-fg / text-body / text-subtle / text-muted.
+ */
+@theme {
+  --color-app: #101113;
+  --color-surface: #16171a;
+  --color-surface-2: #1c1d21;
+  --color-surface-3: #24262a;
+  --color-surface-4: #2d2f34;
+  --color-line: #26282d;
+  --color-line-strong: #33363c;
 
-  --accent-primary: #2d5a27;
-  --accent-hover: #3a7033;
-  --accent-active: #1e3f19;
-  --accent-light: #52b788;
-  --accent-sage: #84a98c;
-  --accent-muted: #2d5a2733;
+  --color-brand: #2f6b37;
+  --color-brand-hover: #377d40;
+  --color-brand-active: #275a2e;
+  --color-brand-soft: #172219;
+  --color-brand-line: #284a2d;
+  --color-brand-light: #8fbf96;
 
-  --text-primary: #ffffff;
-  --text-warm: #f4f4f0;
-  --text-secondary: #9ea3b0;
-  --text-muted: #6b7280;
+  --color-fg: #f3f4f2;
+  --color-body: #d3d5d9;
+  --color-subtle: #9a9da5;
+  --color-muted: #6f727a;
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-warm);
+  background-color: var(--color-app);
+  color: var(--color-fg);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-light);
+  outline-offset: 2px;
 }
 
 /* KaTeX custom dark styling */
@@ -40,11 +49,11 @@ body {
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.85rem 1.1rem;
-  margin: 1rem 0;
-  background: #13151d;
-  border: 1px solid #202430;
-  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
 }
 
 .katex-display > .katex {
@@ -58,16 +67,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0d0e13;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #202430;
+  background: var(--color-surface-4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2e3548;
+  background: var(--color-line-strong);
 }
 
 /* Animations */
@@ -92,4 +101,63 @@ body {
 /* Teleprompter smooth scrolling helper */
 .teleprompter-container {
   scroll-behavior: smooth;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Mobile / touch ergonomics                                                  */
+/* ------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+a,
+[role='button'],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * iOS Safari zooms the page when focusing a field whose font-size is below 16px.
+ * Unlayered rules win over Tailwind's layered utilities, so this overrides text-xs/text-sm on phones.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Respect notches / home indicator when the app runs full-screen. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Horizontal chip rows that scroll on phones without a visible scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

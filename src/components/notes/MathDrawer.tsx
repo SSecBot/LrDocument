@@ -7,10 +7,7 @@ import {
   Search,
   X,
   Copy,
-  Sparkles,
   Check,
-  ChevronRight,
-  BookOpen,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -80,22 +77,22 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
 
       {/* Drawer Container */}
       <div className="fixed inset-y-0 right-0 max-w-full flex w-full sm:w-auto">
-        <div className="w-full sm:w-screen sm:max-w-md bg-[#161616] sm:border-l border-[#2e2e2e] shadow-2xl flex flex-col h-full animate-fade-in">
+        <div className="w-full sm:w-screen sm:max-w-md bg-surface sm:border-l border-line flex flex-col h-full animate-fade-in">
           {/* Header */}
-          <div className="px-4 sm:px-6 py-4 border-b border-[#282828] bg-[#1a1a1a] flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-b border-line bg-surface flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#2d5a27]/30 border border-[#2d5a27]/50 flex items-center justify-center text-emerald-400 shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-brand/30 border border-brand/50 flex items-center justify-center text-emerald-400 shrink-0">
                 <Sigma className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white tracking-tight">LaTeX Sembol Çekmecesi</h3>
-                <p className="text-[11px] text-[#71717a]">Tıklayarak nota ekleyin veya kopyalayın</p>
+                <p className="text-[11px] text-muted">Tıklayarak nota ekleyin veya kopyalayın</p>
               </div>
             </div>
 
             <button
               onClick={onClose}
-              className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#242424] hover:bg-[#2e2e2e] text-[#9ca3af] hover:text-white transition-colors flex items-center justify-center"
+              className="min-h-[44px] min-w-[44px] p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-subtle hover:text-white transition-colors flex items-center justify-center"
               title="Kapat (ESC)"
               aria-label="Kapat"
             >
@@ -104,16 +101,16 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
           </div>
 
           {/* Search bar */}
-          <div className="p-4 border-b border-[#262626] bg-[#141414] space-y-3">
+          <div className="p-4 border-b border-line bg-app space-y-3">
             <div className="relative">
-              <Search className="w-4 h-4 text-[#71717a] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Sembol veya formül ara... (örn: integral, matris, pi)"
-                className="w-full bg-[#202020] border border-[#2e2e2e] focus:border-[#2d5a27] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-[#71717a] focus:outline-none min-h-[44px]"
+                className="w-full bg-surface-2 border border-line focus:border-brand rounded-lg pl-9 pr-3 py-2.5 text-xs text-white placeholder-muted focus:outline-none min-h-[44px]"
               />
             </div>
 
@@ -125,8 +122,8 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
                   onClick={() => setSelectedCategory(cat)}
                   className={`text-xs min-h-[36px] px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
                     selectedCategory === cat
-                      ? 'bg-[#2d5a27] text-white font-semibold shadow-sm'
-                      : 'bg-[#202020] text-[#9ca3af] hover:text-white hover:bg-[#282828]'
+                      ? 'bg-surface-4 text-fg font-medium'
+                      : 'bg-surface-2 text-subtle hover:text-white hover:bg-surface-3'
                   }`}
                 >
                   {cat}
@@ -142,7 +139,7 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
                 <div
                   key={item.id}
                   onClick={() => handleInsert(item)}
-                  className="bg-[#1c1c1c] hover:bg-[#242424] active:bg-[#282828] border border-[#2a2a2a] hover:border-[#387030] rounded-xl p-3 cursor-pointer transition-all flex flex-col justify-between group shadow-sm min-h-[90px]"
+                  className="bg-surface hover:bg-surface-2 active:bg-surface-3 border border-line hover:border-brand-hover rounded-lg p-3 cursor-pointer transition-all flex flex-col justify-between group min-h-[90px]"
                   title="Eklemek için tıkla"
                 >
                   <div className="flex items-start justify-between gap-1 mb-1">
@@ -151,7 +148,7 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
                     </span>
                     <button
                       onClick={(e) => handleCopy(item.latex, item.id, e)}
-                      className="min-h-[32px] min-w-[32px] p-1.5 bg-[#222] hover:bg-[#2e2e2e] rounded-lg text-[#71717a] hover:text-white transition-colors flex items-center justify-center"
+                      className="min-h-[32px] min-w-[32px] p-1.5 bg-surface-2 hover:bg-surface-3 rounded-lg text-muted hover:text-white transition-colors flex items-center justify-center"
                       title="LaTeX Kodunu Kopyala"
                     >
                       {copiedId === item.id ? (
@@ -162,11 +159,11 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
                     </button>
                   </div>
 
-                  <div className="bg-[#141414] rounded-lg p-2 font-mono text-xs text-emerald-400 border border-[#242424] text-center overflow-x-auto truncate">
+                  <div className="bg-app rounded-lg p-2 font-mono text-xs text-emerald-400 border border-line text-center overflow-x-auto truncate">
                     {item.latex}
                   </div>
 
-                  <div className="text-[10px] text-[#71717a] mt-2 flex items-center justify-between">
+                  <div className="text-[10px] text-muted mt-2 flex items-center justify-between">
                     <span>{item.category}</span>
                     <span className="text-emerald-400 opacity-80 group-hover:opacity-100 transition-opacity font-medium">
                       + Ekle
@@ -177,14 +174,14 @@ export const MathDrawer: React.FC<MathDrawerProps> = ({
             </div>
 
             {filtered.length === 0 && (
-              <div className="p-8 text-center text-[#71717a] text-xs">
+              <div className="p-6 text-center text-muted text-xs">
                 Aramanızla eşleşen sembol bulunamadı.
               </div>
             )}
           </div>
 
           {/* Quick info footer */}
-          <div className="p-4 border-t border-[#262626] bg-[#141414] text-[11px] text-[#71717a] flex items-center justify-between">
+          <div className="p-4 border-t border-line bg-app text-[11px] text-muted flex items-center justify-between">
             <span>Seçilen formül imleç konumuna eklenir.</span>
             <span className="font-mono text-emerald-400">$ ... $ / $$ ... $$</span>
           </div>

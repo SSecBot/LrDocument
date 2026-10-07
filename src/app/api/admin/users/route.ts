@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, ensureDefaultAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
+import { handleRouteError } from '@/lib/apiUtils';
 
 export async function GET() {
   try {
-    await ensureDefaultAdmin();
     await requireAdmin();
 
     const users = await prisma.user.findMany({
@@ -41,9 +41,11 @@ export async function GET() {
     const approvedCount = users.filter((u) => u.status === 'APPROVED').length;
     const rejectedCount = users.filter((u) => u.status === 'REJECTED').length;
 
-    const totalNotes = await prisma.note.count();
-    const totalTasks = await prisma.task.count();
-    const totalScripts = await prisma.script.count();
+    const [totalNotes, totalTasks, totalScripts] = await Promise.all([
+      prisma.note.count(),
+      prisma.task.count(),
+      prisma.script.count(),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -58,12 +60,7 @@ export async function GET() {
       },
       users,
     });
-  } catch (error: unknown) {
-    const err = error as Error;
-    if (err.message.includes('Unauthorized') || err.message.includes('Forbidden')) {
-      return NextResponse.json({ error: 'Yönetici yetkisi gereklidir.' }, { status: 403 });
-    }
-    console.error('Admin fetch error:', error);
-    return NextResponse.json({ error: 'Kullanıcı listesi alınamadı.' }, { status: 500 });
+  } catch (error) {
+    return handleRouteError(error, 'Admin fetch error', 'Kullanıcı listesi alınamadı.');
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { KanbanCard, KanbanColumnId, KanbanProjectType, TaskPriority } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
@@ -50,7 +50,12 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
   const [linkedNoteId, setLinkedNoteId] = useState('');
   const [linkedScriptId, setLinkedScriptId] = useState('');
 
-  useEffect(() => {
+  // Reset the form whenever the modal is (re)opened or a different record is edited.
+  // Adjusting state during render (instead of in an effect) avoids a flash of stale values.
+  const resetKey = `${isOpen}:${editCard?.id ?? 'new'}:${defaultColumnId}`;
+  const [prevResetKey, setPrevResetKey] = useState<string | null>(null);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     if (editCard) {
       setTitle(editCard.title);
       setDescription(editCard.description || '');
@@ -72,7 +77,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       setLinkedNoteId('');
       setLinkedScriptId('');
     }
-  }, [editCard, defaultColumnId, isOpen]);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +135,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Örn: Riemann Hipotezi için numerik hesaplama betiği yaz"
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -141,7 +146,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             <select
               value={projectType}
               onChange={(e) => setProjectType(e.target.value as KanbanProjectType)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               {PROJECT_TYPES.map((pt) => (
                 <option key={pt.id} value={pt.id}>
@@ -156,7 +161,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             <select
               value={columnId}
               onChange={(e) => setColumnId(e.target.value as KanbanColumnId)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               {COLUMNS.map((col) => (
                 <option key={col.id} value={col.id}>
@@ -174,7 +179,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="yuksek">🔴 Yüksek Öncelik</option>
               <option value="orta">🟡 Orta Öncelik</option>
@@ -188,7 +193,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             />
           </div>
         </div>
@@ -201,7 +206,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Kartın detayları, hedefler veya notlar..."
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl p-3 text-xs text-white focus:outline-none resize-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
           />
         </div>
 
@@ -213,7 +218,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             placeholder="Örn: Araştırma, Analiz, Manim, Python"
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none"
           />
         </div>
 
@@ -227,7 +232,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             <select
               value={linkedNoteId}
               onChange={(e) => setLinkedNoteId(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="">(Bağlantı Yok)</option>
               {notes.map((n) => (
@@ -246,7 +251,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             <select
               value={linkedScriptId}
               onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="">(Bağlantı Yok)</option>
               {scripts.map((s) => (
@@ -259,17 +264,17 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t border-[#2a2a2a]">
+        <div className="flex justify-end gap-2 pt-4 border-t border-line">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-[#242424] hover:bg-[#2c2c2c] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
           >
             İptal
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl shadow-md transition-all"
+            className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all"
           >
             {editCard ? 'Kartı Güncelle' : 'Kartı Kaydet'}
           </button>

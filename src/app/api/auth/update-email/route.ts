@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentSession, signSessionToken, COOKIE_NAME } from '@/lib/auth';
+import { comparePassword, requireAuth, setSessionCookie, signSessionToken } from '@/lib/auth';
+import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 import { z } from 'zod';
 
 const updateEmailSchema = z.object({
@@ -8,28 +9,27 @@ const updateEmailSchema = z.object({
     .string()
     .trim()
     .min(1, 'Lütfen yeni bir e-posta adresi giriniz.')
+    .max(254, 'E-posta adresi çok uzun.')
     .email('Lütfen geçerli bir e-posta adresi giriniz.')
     .transform((val) => val.toLowerCase()),
+  currentPassword: z.string().optional(),
 });
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const session = await getCurrentSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Yetkilendirme gerekli.' }, { status: 401 });
-    }
+    const session = await requireAuth();
 
-    const body = await req.json();
-    const parseResult = updateEmailSchema.safeParse(body);
+    const wait = rateLimit(`update-email:${session.userId}`, 10, 15 * 60_000);
+    if (wait) return tooManyRequests(wait);
 
+    const parseResult = updateEmailSchema.safeParse(await readJsonObject(req));
     if (!parseResult.success) {
       const errorMsg = parseResult.error.issues[0]?.message || 'Geçersiz e-posta adresi formatı.';
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
-    const { newEmail } = parseResult.data;
+    const { newEmail, currentPassword } = parseResult.data;
 
-    // Check if new email is identical to current
     if (newEmail === session.email.toLowerCase()) {
       return NextResponse.json(
         { error: 'Girdiğiniz e-posta adresi mevcut e-posta adresiniz ile aynıdır.' },
@@ -37,11 +37,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Database-level uniqueness check
-    const existingUser = await prisma.user.findUnique({
-      where: { email: newEmail },
-    });
+    const user = await prisma.user.findUnique({ where: { id: session.userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
+    }
 
+    // Changing the login e-mail is account-takeover sensitive: require the current password.
+    if (!currentPassword || !(await comparePassword(currentPassword, user.passwordHash))) {
+      return NextResponse.json(
+        { error: 'E-posta adresini değiştirmek için mevcut şifrenizi doğru giriniz.' },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: newEmail } });
     if (existingUser && existingUser.id !== session.userId) {
       return NextResponse.json(
         { error: 'Bu e-posta adresi başka bir hesap tarafından kullanılmaktadır.' },
@@ -49,20 +58,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Persist updated email to database
     const updatedUser = await prisma.user.update({
       where: { id: session.userId },
       data: { email: newEmail },
     });
 
-    // Re-issue JWT session token with updated email
     const token = await signSessionToken({
       userId: updatedUser.id,
       email: updatedUser.email,
       name: updatedUser.name,
-      role: updatedUser.role as 'ADMIN' | 'USER',
-      status: updatedUser.status as 'APPROVED',
+      role: updatedUser.role === 'ADMIN' ? 'ADMIN' : 'USER',
+      status: 'APPROVED',
       subscriptionPlan: (updatedUser.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
+      sv: updatedUser.sessionVersion,
     });
 
     const response = NextResponse.json({
@@ -77,23 +85,9 @@ export async function POST(req: NextRequest) {
         subscriptionPlan: updatedUser.subscriptionPlan,
       },
     });
-
-    response.cookies.set({
-      name: COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 30 * 24 * 60 * 60,
-    });
-
+    setSessionCookie(response, token);
     return response;
   } catch (error) {
-    console.error('Update email error:', error);
-    return NextResponse.json(
-      { error: 'E-posta güncellenirken sunucu hatası oluştu.' },
-      { status: 500 }
-    );
+    return handleRouteError(error, 'Update email error', 'E-posta güncellenirken sunucu hatası oluştu.');
   }
 }

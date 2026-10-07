@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MediaItem, MediaType } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
-import { extractYouTubeId, getYouTubeThumbnailUrl, isYouTubeUrl } from '@/lib/youtube';
+import { getYouTubeThumbnailUrl, isYouTubeUrl } from '@/lib/youtube';
+import { isSafeMediaUrl } from '@/lib/safeUrl';
 import {
   Image as ImageIcon,
   Video,
@@ -36,8 +37,15 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
   const [linkedScriptId, setLinkedScriptId] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Matematik', 'Görsel']);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Reset the form whenever the modal is (re)opened or a different item is edited.
+  // Adjusting state during render avoids an extra effect-driven re-render.
+  const resetKey = `${isOpen}:${editItem?.id ?? 'new'}`;
+  const [prevResetKey, setPrevResetKey] = useState<string | null>(null);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setUrlError(null);
     if (editItem) {
       setTitle(editItem.title);
       setDescription(editItem.description || '');
@@ -55,10 +63,11 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
       setLinkedScriptId('');
       setTags(['Matematik', 'Görsel']);
     }
-  }, [editItem, isOpen]);
+  }
 
   const handleUrlChange = (newUrl: string) => {
     setUrl(newUrl);
+    setUrlError(null);
     if (isYouTubeUrl(newUrl)) {
       setType('video_link');
       if (!tags.includes('YouTube')) {
@@ -84,6 +93,10 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !url.trim()) return;
+    if (!isSafeMediaUrl(url.trim())) {
+      setUrlError('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı giriniz.');
+      return;
+    }
 
     if (editItem) {
       updateMediaItem(editItem.id, {
@@ -130,7 +143,7 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Örn: Euler Formülü Karmaşık Düzlem Çizimi"
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -148,8 +161,8 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
               onClick={() => setType(t.id as MediaType)}
               className={`p-2.5 rounded-xl border text-xs font-medium flex flex-col items-center gap-1.5 transition-all ${
                 type === t.id
-                  ? 'bg-[#202820] border-[#2d5a27] text-white shadow-sm'
-                  : 'bg-[#202020] border-[#2e2e2e] text-[#9ca3af] hover:text-white'
+                  ? 'bg-surface-2 border-brand text-white'
+                  : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
               {t.icon}
@@ -173,13 +186,14 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
                 ? 'https://www.youtube.com/watch?v=... veya https://youtu.be/...'
                 : 'https://images.unsplash.com/... veya görsel bağlantısı'
             }
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-xs font-mono text-white focus:outline-none"
           />
+          {urlError && <p className="mt-1.5 text-[11px] text-rose-400">{urlError}</p>}
         </div>
 
         {/* Live YouTube Thumbnail Detection Preview */}
         {ytThumbnail && (
-          <div className="p-3 bg-[#182318] border border-emerald-800/50 rounded-xl flex items-center gap-3">
+          <div className="p-3 bg-surface border border-emerald-800/50 rounded-lg flex items-center gap-3">
             <div className="relative w-24 h-14 bg-black rounded-lg overflow-hidden shrink-0">
               <img src={ytThumbnail} alt="YouTube Preview" className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -191,7 +205,7 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                 YouTube Video Kapağı Algılandı
               </span>
-              <p className="text-[11px] text-[#a1a1aa] mt-0.5">Yüksek çözünürlüklü küçük resim otomatik olarak medyaya atanacaktır.</p>
+              <p className="text-[11px] text-subtle mt-0.5">Yüksek çözünürlüklü küçük resim otomatik olarak medyaya atanacaktır.</p>
             </div>
           </div>
         )}
@@ -204,12 +218,12 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="Görsel veya videonun matematiksel bağlamı..."
-            className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl p-3 text-xs text-white focus:outline-none resize-none"
+            className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
           />
         </div>
 
         {/* Document Linking */}
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#2a2a2a]">
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line">
           <div>
             <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
               <FileText className="w-3 h-3 text-emerald-400" />
@@ -218,7 +232,7 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
             <select
               value={linkedNoteId}
               onChange={(e) => setLinkedNoteId(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
             >
               <option value="">(Bağlı Not Yok)</option>
               {notes.map(n => (
@@ -237,7 +251,7 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
             <select
               value={linkedScriptId}
               onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-[#242424] border border-[#333] focus:border-[#2d5a27] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
+              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
             >
               <option value="">(Bağlı Senaryo Yok)</option>
               {scripts.map(s => (
@@ -252,17 +266,17 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
         {/* Tags */}
         <div>
           <label className="block text-xs font-semibold text-white mb-1">Etiketler</label>
-          <div className="flex items-center gap-1.5 flex-wrap bg-[#202020] border border-[#333] rounded-xl p-2">
+          <div className="flex items-center gap-1.5 flex-wrap bg-surface-2 border border-line-strong rounded-lg p-2">
             {tags.map((t) => (
               <span
                 key={t}
-                className="bg-[#2a2a2a] px-2 py-0.5 rounded-md text-[11px] text-[#e5e7eb] flex items-center gap-1"
+                className="bg-surface-3 px-2 py-0.5 rounded-md text-[11px] text-body flex items-center gap-1"
               >
                 #{t}
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(t)}
-                  className="text-[#71717a] hover:text-rose-400 ml-0.5"
+                  className="text-muted hover:text-rose-400 ml-0.5"
                 >
                   ×
                 </button>
@@ -274,23 +288,23 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleAddTag}
               placeholder="+ Etiket (Enter)"
-              className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none px-1 w-24"
+              className="bg-transparent text-xs text-white placeholder-muted focus:outline-none px-1 w-24"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-[#2a2a2a]">
+        <div className="flex justify-end gap-2 pt-3 border-t border-line">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-[#242424] hover:bg-[#2c2c2c] text-xs font-medium text-[#d1d5db] rounded-xl transition-colors"
+            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
           >
             İptal
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-[#2d5a27] hover:bg-[#387030] text-xs font-semibold text-white rounded-xl shadow-md transition-all"
+            className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all"
           >
             {editItem ? 'Değişiklikleri Kaydet' : 'Medyayı Kaydet'}
           </button>

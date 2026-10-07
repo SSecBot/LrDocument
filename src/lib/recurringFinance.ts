@@ -1,5 +1,6 @@
 import { FinanceTransaction, ExchangeRates } from '@/types';
 import { convertCurrencyToTRY } from './exchangeRates';
+import { toLocalDateString } from '@/lib/utils';
 
 /**
  * Calculates the projected date for a monthly recurring transaction for a given target year and month.
@@ -181,7 +182,7 @@ export function calculateMRRSummary(
   let activeRecurringIncomeCount = 0;
   let activeRecurringExpenseCount = 0;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalDateString();
 
   for (const t of transactions) {
     if (!t.isRecurring) continue;
