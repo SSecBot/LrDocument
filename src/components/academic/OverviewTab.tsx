@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, CalendarClock, CalendarDays, Check, Table2, Undo2, UserX } from 'lucide-react';
 import type { AcademicData, Course, Term } from '@/lib/academic/types';
 import {
@@ -8,18 +8,22 @@ import {
   computeCourseGrade,
   DAYS,
   daysUntil,
+  addDays,
+  dayPlan,
+  formatDayPlanEmpty,
   isAttendanceExempt,
-  isHoliday,
   newId,
   sessionHours,
   summarizeAll,
   summarizeTerm,
+  TOMORROW_FROM_HOUR,
   upcomingExams,
 } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
 import { Card, CardHeader, EmptyState, Stat, btnGhost, btnSecondary } from './ui';
 import { ExamRow } from './ExamsTab';
 import { WeekGrid } from './ScheduleTab';
+import { useNow } from './useNow';
 
 interface Props {
   data: AcademicData;
@@ -35,15 +39,15 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   const nextExam = exams[0];
   const termSummary = summarizeTerm(data, term);
   const all = summarizeAll(data);
-  const today = toLocalDateString();
-  const todayIndex = (new Date().getDay() + 6) % 7;
+  const now = useNow();
+  const today = toLocalDateString(now);
   const basisLabel = data.grading.gpaBasis === 'ects' ? 'AKTS' : 'kredi';
 
-  const holidayToday = isHoliday(today, term);
-  const todaySessions = courses
-    .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
-    .filter(({ session }) => !holidayToday?.half || session.start < '13:00')
-    .sort((a, b) => a.session.start.localeCompare(b.session.start));
+  // From 17:00 the card looks ahead to tomorrow; the user can still switch back to mark absences.
+  const [dayPick, setDayPick] = useState<'today' | 'tomorrow' | null>(null);
+  const showTomorrow = (dayPick ?? (now.getHours() >= TOMORROW_FROM_HOUR ? 'tomorrow' : 'today')) === 'tomorrow';
+  const plan = dayPlan(courses, term, showTomorrow ? addDays(today, 1) : today);
+  const empty = formatDayPlanEmpty(plan, showTomorrow, term);
 
   const attention = courses.flatMap((c) => {
     const items: { course: Course; text: string; severity: 'warn' | 'bad' }[] = [];
@@ -99,19 +103,21 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader title={`Bugün — ${DAYS[todayIndex]}`} icon={<CalendarClock className="w-4 h-4 text-subtle" />} />
+          <CardHeader
+            title={`${showTomorrow ? 'Yarın' : 'Bugün'} — ${DAYS[plan.weekday]}`}
+            icon={<CalendarClock className="w-4 h-4 text-subtle" />}
+            action={<DayToggle tomorrow={showTomorrow} onChange={(t) => setDayPick(t ? 'tomorrow' : 'today')} />}
+          />
           {courses.length === 0 ? (
             <EmptyState title="Bu dönem için ders yok" text="Ders programını oluşturarak başlayın." action={<button className={btnSecondary} onClick={onAddCourse}>Ders ekle</button>} />
-          ) : holidayToday && !holidayToday.half ? (
-            <EmptyState
-              title={holidayToday.kind === 'sinav' ? `Sınav dönemi — ${holidayToday.name}` : `Bugün tatil — ${holidayToday.name}`}
-              text="Akademik takvime göre bugün ders yok; devamsızlık sayılmaz."
-            />
-          ) : todaySessions.length === 0 ? (
-            <EmptyState title="Bugün dersiniz yok" />
+          ) : empty ? (
+            <EmptyState title={empty.title} text={empty.text} />
           ) : (
             <ul className="divide-y divide-line">
-              {todaySessions.map(({ course, session }) => {
+              {plan.halfHoliday && (
+                <li className="px-4 py-2 text-[11px] text-amber-300 bg-amber-500/5">{plan.halfHoliday.name} — 13:00’ten sonraki dersler yapılmaz.</li>
+              )}
+              {plan.sessions.map(({ course, session }) => {
                 const absent = absentToday(course, session.kind);
                 const hours = sessionHours(session);
                 return (
@@ -124,7 +130,7 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                         {session.room ? ` • ${session.room}` : ''}
                       </p>
                     </div>
-                    {isAttendanceExempt(course) ? (
+                    {showTomorrow ? null : isAttendanceExempt(course) ? (
                       <span className="text-[11px] text-muted whitespace-nowrap" title="Alttan alınan ders, nottan kalınmış">
                         Devam muaf
                       </span>
@@ -204,6 +210,30 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+/** Small "Bugün / Yarın" switch for day-schedule cards. */
+export function DayToggle({ tomorrow, onChange }: { tomorrow: boolean; onChange: (tomorrow: boolean) => void }) {
+  return (
+    <div className="flex rounded-md bg-surface-2 border border-line p-0.5" role="group" aria-label="Gün seçimi">
+      {(
+        [
+          [false, 'Bugün'],
+          [true, 'Yarın'],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={label}
+          type="button"
+          aria-pressed={tomorrow === value}
+          onClick={() => onChange(value)}
+          className={`h-6 px-2 rounded text-[11px] ${tomorrow === value ? 'bg-surface text-fg' : 'text-subtle hover:text-fg'}`}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }

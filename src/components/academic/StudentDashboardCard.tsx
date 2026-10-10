@@ -3,18 +3,21 @@
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, GraduationCap } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { DAYS, isHoliday, upcomingExams } from '@/lib/academic/grading';
+import { addDays, DAYS, dayPlan, formatDayPlanEmpty, nextClassDay, TOMORROW_FROM_HOUR, upcomingExams } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
 import { useAcademicData } from './useAcademicData';
 import { ExamRow } from './ExamsTab';
 import { WeekGrid } from './ScheduleTab';
 import { Card, CardHeader, EmptyState, btnGhost } from './ui';
+import { useNow } from './useNow';
 
 /** Course schedule + exam countdown shown on the main dashboard for student accounts. */
 export function StudentDashboardCard() {
   const { setActiveTab } = useAppStore();
   const { data } = useAcademicData();
-  const [view, setView] = useState<'today' | 'week'>('today');
+  const now = useNow();
+  // null = automatic: today until 17:00, tomorrow afterwards.
+  const [view, setView] = useState<'today' | 'tomorrow' | 'week' | null>(null);
 
   if (!data) return null;
   const termId = data.activeTermId ?? data.terms[data.terms.length - 1]?.id;
@@ -37,24 +40,19 @@ export function StudentDashboardCard() {
     );
   }
 
-  const todayIndex = (new Date().getDay() + 6) % 7;
   const term = data.terms.find((t) => t.id === termId);
-  const holidayToday = term ? isHoliday(toLocalDateString(), term) : undefined;
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const today = courses
-    .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
-    .filter(({ session }) => !holidayToday?.half || session.start < '13:00')
-    .sort((a, b) => a.session.start.localeCompare(b.session.start));
+  const shown = view ?? (now.getHours() >= TOMORROW_FROM_HOUR ? 'tomorrow' : 'today');
+  const tomorrow = shown === 'tomorrow';
+  const todayIso = toLocalDateString(now);
+  const plan = dayPlan(courses, term, tomorrow ? addDays(todayIso, 1) : todayIso);
+  const empty = formatDayPlanEmpty(plan, tomorrow, term);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  // First session on the following days, used when there is no class today.
-  const nextClass = [1, 2, 3, 4, 5, 6]
-    .map((offset) => (todayIndex + offset) % 7)
-    .map((day) =>
-      courses
-        .flatMap((c) => c.sessions.filter((s) => s.day === day).map((s) => ({ course: c, session: s })))
-        .sort((a, b) => a.session.start.localeCompare(b.session.start))[0]
-    )
-    .find(Boolean);
+  // Used when the shown day has no classes.
+  const next = empty ? nextClassDay(courses, term, plan.date) : null;
+  const nextText = next
+    ? `Sıradaki ders: ${next.date === addDays(todayIso, 1) ? 'Yarın' : DAYS[next.weekday]} ${next.sessions[0].session.start} • ${next.sessions[0].course.name}`
+    : undefined;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
@@ -68,13 +66,15 @@ export function StudentDashboardCard() {
                 {(
                   [
                     ['today', 'Bugün'],
+                    ['tomorrow', 'Yarın'],
                     ['week', 'Hafta'],
                   ] as const
                 ).map(([v, label]) => (
                   <button
                     key={v}
                     onClick={() => setView(v)}
-                    className={`h-6 px-2 rounded text-[11px] ${view === v ? 'bg-surface text-fg' : 'text-subtle hover:text-fg'}`}
+                    aria-pressed={shown === v}
+                    className={`h-6 px-2 rounded text-[11px] ${shown === v ? 'bg-surface text-fg' : 'text-subtle hover:text-fg'}`}
                   >
                     {label}
                   </button>
@@ -86,20 +86,19 @@ export function StudentDashboardCard() {
             </div>
           }
         />
-        {view === 'week' ? (
+        {shown === 'week' ? (
           <WeekGrid courses={courses} />
-        ) : holidayToday && !holidayToday.half ? (
-          <EmptyState title={holidayToday.kind === 'sinav' ? `Sınav dönemi — ${holidayToday.name}` : `Bugün tatil — ${holidayToday.name}`} />
-        ) : today.length === 0 ? (
-          <EmptyState
-            title={`${DAYS[todayIndex]} — bugün dersiniz yok`}
-            text={nextClass ? `Sıradaki ders: ${DAYS[nextClass.session.day]} ${nextClass.session.start} • ${nextClass.course.name}` : undefined}
-          />
+        ) : empty ? (
+          <EmptyState title={empty.title} text={nextText ?? empty.text} />
         ) : (
           <ul className="divide-y divide-line">
-            {today.map(({ course, session }) => {
-              const done = toMin(session.end) <= nowMinutes;
-              const live = !done && toMin(session.start) <= nowMinutes;
+            <li className="px-4 py-1.5 text-[11px] text-muted">
+              {tomorrow ? 'Yarın' : 'Bugün'} • {DAYS[plan.weekday]}
+              {plan.halfHoliday ? ` • ${plan.halfHoliday.name}: 13:00 sonrası ders yok` : ''}
+            </li>
+            {plan.sessions.map(({ course, session }) => {
+              const done = !tomorrow && toMin(session.end) <= nowMinutes;
+              const live = !tomorrow && !done && toMin(session.start) <= nowMinutes;
               return (
                 <li key={session.id} className={`px-4 py-2.5 flex items-center gap-3 ${done ? 'opacity-50' : ''}`}>
                   <span className="w-1 self-stretch rounded-full" style={{ backgroundColor: course.color }} />

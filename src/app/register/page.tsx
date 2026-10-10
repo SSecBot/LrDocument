@@ -33,7 +33,9 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [subscriptionPlan, setSubscriptionPlan] = useState<'Aylık' | 'Tek Seferlik'>('Aylık');
+  const [subscriptionPlan, setSubscriptionPlan] = useState<'Aylık' | 'Tek Seferlik'>(() =>
+    searchParams.get('plan') === 'omur' ? 'Tek Seferlik' : 'Aylık'
+  );
   // ?ogrenci=1 preselects the student account type (linked from the pricing section).
   const [isStudent, setIsStudent] = useState(() => searchParams.get('ogrenci') === '1');
   const [university, setUniversity] = useState('');
@@ -54,8 +56,8 @@ function RegisterForm() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('Şifreniz en az 6 karakter olmalıdır.');
+    if (password.length < 8) {
+      setErrorMessage('Şifreniz en az 8 karakter olmalıdır.');
       return;
     }
 
@@ -282,7 +284,7 @@ function RegisterForm() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Şifre (En az 6 karakter)
+                    Şifre (En az 8 karakter)
                   </label>
                   <div className="relative">
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />

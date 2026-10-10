@@ -109,8 +109,8 @@ export function SettingsView() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('Yeni şifre en az 6 karakter olmalıdır.');
+    if (newPassword.length < 8) {
+      setPasswordError('Yeni şifre en az 8 karakter olmalıdır.');
       return;
     }
 
@@ -406,7 +406,7 @@ export function SettingsView() {
             {/* New Password */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                Yeni Şifre (En az 6 karakter)
+                Yeni Şifre (En az 8 karakter)
               </label>
               <div className="relative">
                 <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />

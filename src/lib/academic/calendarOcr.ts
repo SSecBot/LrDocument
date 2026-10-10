@@ -29,7 +29,9 @@ interface RenderablePage {
 }
 export interface PdfJsRenderLike {
   getDocument(src: { data: Uint8Array; isEvalSupported?: boolean }): {
-    promise: Promise<{ numPages: number; getPage(n: number): Promise<RenderablePage>; destroy(): Promise<void> }>;
+    promise: Promise<{ numPages: number; getPage(n: number): Promise<RenderablePage> }>;
+    /** Since pdf.js 6 the loading task, not the document, releases the worker-side resources. */
+    destroy(): Promise<void>;
   };
 }
 
@@ -57,7 +59,11 @@ export async function readCalendarRows(
   data: Uint8Array,
   onProgress: (p: OcrProgress) => void
 ): Promise<{ rows: string[]; usedOcr: boolean }> {
-  const doc = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
+  const task = pdfjs.getDocument({ data, isEvalSupported: false });
+  const doc = await task.promise.catch(async (err) => {
+    await task.destroy();
+    throw err;
+  });
   const rows: string[] = [];
   let worker: TesseractWorker | null = null;
   const pages = Math.min(doc.numPages, MAX_CALENDAR_PAGES);
@@ -101,7 +107,7 @@ export async function readCalendarRows(
     }
   } finally {
     await worker?.terminate();
-    await doc.destroy();
+    await task.destroy();
   }
   return { rows, usedOcr: worker !== null };
 }

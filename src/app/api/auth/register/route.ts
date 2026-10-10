@@ -91,7 +91,17 @@ export async function POST(req: NextRequest) {
         await tx.studentProfile.create({ data: { userId: user.id, ...studentProfile } });
       }
       return user;
+    }).catch((err: unknown) => {
+      // Two simultaneous sign-ups with the same e-mail: the unique index rejects the second one.
+      if ((err as { code?: string })?.code === 'P2002') return null;
+      throw err;
     });
+    if (!newUser) {
+      return NextResponse.json(
+        { error: 'Bu e-posta adresiyle kayıtlı bir hesap zaten bulunmaktadır.' },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json(
       {

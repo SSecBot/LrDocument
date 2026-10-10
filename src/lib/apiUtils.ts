@@ -7,24 +7,42 @@ export function handleRouteError(error: unknown, logLabel: string, fallbackMessa
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
   if (error instanceof BadRequestError) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: error.status });
   }
   console.error(`${logLabel}:`, error);
   return NextResponse.json({ error: fallbackMessage }, { status: 500 });
 }
 
 export class BadRequestError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly status: 400 | 409 | 413 = 400) {
     super(message);
     this.name = 'BadRequestError';
   }
 }
 
-/** Parses a JSON object body; throws BadRequestError for malformed or non-object payloads. */
-export async function readJsonObject(req: Request): Promise<Record<string, unknown>> {
+/** Default request-body cap; fits a note or an inline image (media items allow ~2 MB data URLs). */
+export const DEFAULT_MAX_BODY_BYTES = 3 * 1024 * 1024;
+
+/**
+ * Parses a JSON object body; throws BadRequestError for malformed, non-object or oversized payloads.
+ * The size is checked before parsing so a huge body cannot tie up the server.
+ */
+export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_BYTES): Promise<Record<string, unknown>> {
+  const tooLarge = () => new BadRequestError('İstek gövdesi çok büyük.', 413);
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
+
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    throw new BadRequestError('Geçersiz istek gövdesi.');
+  }
+  if (raw.length > maxBytes) throw tooLarge();
+
   let body: unknown;
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     throw new BadRequestError('Geçersiz istek gövdesi.');
   }

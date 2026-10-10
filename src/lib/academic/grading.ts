@@ -255,6 +255,72 @@ export function calendarWeeks(term: Term): number | null {
   return Math.ceil((parseDate(term.end).getTime() - parseDate(term.start).getTime() + 86_400_000) / (7 * 86_400_000));
 }
 
+export function addDays(date: string, n: number): string {
+  const d = parseDate(date);
+  d.setDate(d.getDate() + n);
+  return isoOf(d);
+}
+
+/** From this hour on, the overview shows tomorrow's classes instead of today's. */
+export const TOMORROW_FROM_HOUR = 17;
+
+export interface DayPlan {
+  date: string;
+  /** 0 = Pazartesi */
+  weekday: number;
+  /** Full-day holiday or exam period: no classes. */
+  holiday?: Holiday;
+  /** Afternoon-only holiday (arife, 28 Ekim): sessions from 13:00 are cancelled. */
+  halfHoliday?: Holiday;
+  /** Date falls before the first / after the last day of classes. */
+  outside?: 'before' | 'after';
+  sessions: { course: Course; session: CourseSession }[];
+}
+
+/** The classes that actually take place on `date`, after holidays and exam periods. */
+export function dayPlan(courses: Course[], term: Term | undefined | null, date: string): DayPlan {
+  const weekday = (parseDate(date).getDay() + 6) % 7;
+  const h = term ? isHoliday(date, term) : undefined;
+  const holiday = h && !h.half ? h : undefined;
+  const halfHoliday = h?.half ? h : undefined;
+  const outside = hasCalendar(term) ? (date < term.start ? 'before' : date > term.end ? 'after' : undefined) : undefined;
+  const sessions =
+    holiday || outside
+      ? []
+      : courses
+          .flatMap((c) => c.sessions.filter((s) => s.day === weekday).map((s) => ({ course: c, session: s })))
+          .filter(({ session }) => !halfHoliday || session.start < '13:00')
+          .sort((a, b) => a.session.start.localeCompare(b.session.start));
+  return { date, weekday, holiday, halfHoliday, outside, sessions };
+}
+
+const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const shortDate = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS_TR[Number(iso.slice(5, 7)) - 1]}`;
+
+/** Message for a day without classes, or null when the plan has sessions. */
+export function formatDayPlanEmpty(plan: DayPlan, tomorrow: boolean, term?: Term | null): { title: string; text?: string } | null {
+  if (plan.sessions.length > 0) return null;
+  const when = tomorrow ? 'Yarın' : 'Bugün';
+  if (plan.outside === 'before' && term?.start) return { title: 'Dönem henüz başlamadı', text: `Dersler ${shortDate(term.start)} tarihinde başlıyor.` };
+  if (plan.outside === 'after') return { title: 'Dönemin ders günleri sona erdi', text: 'Akademik takvime göre bu dönemde artık ders yapılmıyor.' };
+  if (plan.holiday)
+    return {
+      title: plan.holiday.kind === 'sinav' ? `Sınav dönemi — ${plan.holiday.name}` : `${when} tatil — ${plan.holiday.name}`,
+      text: `Akademik takvime göre ${when.toLowerCase()} ders yok; devamsızlık sayılmaz.`,
+    };
+  return { title: `${when} dersiniz yok` };
+}
+
+/** First day after `date` (within three weeks) that has a class, with its earliest session. */
+export function nextClassDay(courses: Course[], term: Term | undefined | null, date: string): DayPlan | null {
+  for (let i = 1; i <= 21; i++) {
+    const plan = dayPlan(courses, term, addDays(date, i));
+    if (plan.sessions.length > 0) return plan;
+    if (plan.outside === 'after') return null;
+  }
+  return null;
+}
+
 /** Attendance is not required again for a retaken course failed on grades (devam şartı sağlanmış). */
 export function isAttendanceExempt(course: Course): boolean {
   return course.retake?.reason === 'not';

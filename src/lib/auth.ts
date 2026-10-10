@@ -26,7 +26,7 @@ export class AuthError extends Error {
   }
 }
 
-export const PASSWORD_MIN_LENGTH = 6;
+export const PASSWORD_MIN_LENGTH = 8;
 // bcrypt only considers the first 72 bytes; reject longer input instead of silently truncating.
 export const PASSWORD_MAX_LENGTH = 72;
 

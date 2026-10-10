@@ -401,11 +401,11 @@ export function AdminDashboard() {
       return;
     }
 
-    if (newUserPassword.length < 6) {
+    if (newUserPassword.length < 8) {
       addToast({
         type: 'warning',
         title: 'Geçersiz Şifre',
-        message: 'Şifre en az 6 karakter olmalıdır.',
+        message: 'Şifre en az 8 karakter olmalıdır.',
       });
       return;
     }
@@ -1040,7 +1040,7 @@ export function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Şifre (En az 6 karakter)</label>
+                <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Şifre (En az 8 karakter)</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                   <input

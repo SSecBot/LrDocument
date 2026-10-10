@@ -151,7 +151,7 @@ export function CalendarImportModal({ isOpen, onClose, data, update }: Props) {
                 sürebilir. Dosya cihazınızda işlenir, sunucuya yüklenmez.
               </span>
             </button>
-            <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => handleFile(e.target.files?.[0])} />
           </>
         ) : (
           <>

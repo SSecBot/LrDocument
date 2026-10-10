@@ -216,7 +216,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
                 OBS’den ya da bölüm sayfasından indirdiğiniz haftalık ders programı. Dosya cihazınızda işlenir, sunucuya yüklenmez.
               </span>
             </button>
-            <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => handleFile(e.target.files?.[0])} />
             <p className="text-[11px] text-muted">
               Gün sütunlu tablo, gün satırlı tablo ve “ders – gün – saat” listesi biçimleri desteklenir. Taranmış (fotoğraf) PDF’ler okunamaz.
               Bölüm programında birden fazla sınıf varsa sonraki adımda yalnızca kendi derslerinizi seçin.

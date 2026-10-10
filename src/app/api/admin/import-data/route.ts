@@ -3,6 +3,9 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, requireAdmin } from '@/lib/auth';
 import { handleRouteError, normalizeEmail, readJsonObject } from '@/lib/apiUtils';
+
+// Full backups (all users, inline images) are much larger than ordinary requests.
+const MAX_BACKUP_BYTES = 200 * 1024 * 1024;
 import { academicDataSchema } from '@/lib/academic/schema';
 
 type Row = Record<string, unknown>;
@@ -70,7 +73,7 @@ async function importOwnedRows(
 export async function POST(req: Request) {
   try {
     const session = await requireAdmin();
-    const body = await readJsonObject(req);
+    const body = await readJsonObject(req, MAX_BACKUP_BYTES);
 
     if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
       return NextResponse.json(

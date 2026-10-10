@@ -19,17 +19,20 @@ interface PdfJsPage {
 interface PdfJsDocument {
   numPages: number;
   getPage(n: number): Promise<PdfJsPage>;
-  destroy(): Promise<void>;
 }
 export interface PdfJsLike {
-  getDocument(src: { data: Uint8Array; isEvalSupported?: boolean; disableFontFace?: boolean }): { promise: Promise<PdfJsDocument> };
+  getDocument(src: { data: Uint8Array; isEvalSupported?: boolean; disableFontFace?: boolean }): { promise: Promise<PdfJsDocument>; destroy(): Promise<void> };
 }
 
 export const MAX_SCHEDULE_PDF_PAGES = 10;
 
 /** Extracts positioned text items (top-down coordinates) from the first pages of a PDF. */
 export async function extractPdfItems(pdfjs: PdfJsLike, data: Uint8Array): Promise<PdfTextItem[]> {
-  const doc = await pdfjs.getDocument({ data, isEvalSupported: false, disableFontFace: true }).promise;
+  const task = pdfjs.getDocument({ data, isEvalSupported: false, disableFontFace: true });
+  const doc = await task.promise.catch(async (err) => {
+    await task.destroy();
+    throw err;
+  });
   const items: PdfTextItem[] = [];
   try {
     const pages = Math.min(doc.numPages, MAX_SCHEDULE_PDF_PAGES);
@@ -55,7 +58,7 @@ export async function extractPdfItems(pdfjs: PdfJsLike, data: Uint8Array): Promi
       page.cleanup();
     }
   } finally {
-    await doc.destroy();
+    await task.destroy();
   }
   return items;
 }
