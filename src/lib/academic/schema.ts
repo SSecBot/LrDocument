@@ -74,6 +74,7 @@ const course = z.object({
   manualLetter: z.string().max(3).nullable().optional(),
   excludeFromGpa: z.boolean().optional(),
   curve: curve.nullable().optional(),
+  retake: z.object({ reason: z.enum(['not', 'devamsizlik']) }).nullable().optional(),
 });
 
 const letter = z.object({
@@ -102,7 +103,18 @@ const grading = z.object({
 export const academicDataSchema = z.object({
   version: z.literal(1),
   grading,
-  terms: z.array(z.object({ id, name: shortText(40).min(1) })).min(1).max(20),
+  terms: z
+    .array(
+      z.object({
+        id,
+        name: shortText(40).min(1),
+        start: date.optional(),
+        end: date.optional(),
+        holidays: z.array(z.object({ id, name: shortText(80), start: date, end: date })).max(60).optional(),
+      })
+    )
+    .min(1)
+    .max(20),
   activeTermId: id.nullable(),
   courses: z.array(course).max(150),
   targetGpa: z.number().min(0).max(5).nullable().optional(),

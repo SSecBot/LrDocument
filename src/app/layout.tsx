@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Σ LrDocument — Matematik & İçerik Üretim Çalışma Alanı',
-  description: 'Matematik meraklıları, içerik üreticileri ve öğrenciler için hepsi bir arada LaTeX notları, video senaryo stüdyosu, görev yönetimi ve yayın takvimi platformu.',
+  description: 'Matematik meraklıları, içerik üreticileri ve öğrenciler için hepsi bir arada LaTeX notları, ders ve sınav takibi, görev yönetimi ve yayın takvimi platformu.',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },

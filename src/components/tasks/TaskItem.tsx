@@ -9,7 +9,6 @@ import {
   Check,
   Calendar,
   FileText,
-  Video,
   Link2,
   Trash2,
   AlertCircle,
@@ -32,10 +31,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     updateTask,
     deleteTask,
     notes,
-    scripts,
     addKanbanCard,
     setActiveNoteId,
-    setActiveScriptId,
     setActiveTab,
     addToast,
   } = useAppStore();
@@ -50,7 +47,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
 
   const linkedNote = task.linkedNoteId ? notes.find(n => n.id === task.linkedNoteId) : null;
-  const linkedScript = task.linkedScriptId ? scripts.find(s => s.id === task.linkedScriptId) : null;
 
   const overdue = isTaskOverdue(task);
   const effectivePriority = getEffectiveTaskPriority(task);
@@ -107,7 +103,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
       dueDate: task.dueDate,
       tags: ['Görev'],
       linkedNoteId: task.linkedNoteId,
-      linkedScriptId: task.linkedScriptId,
     });
 
     addToast({
@@ -122,14 +117,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     if (linkedNote) {
       setActiveNoteId(linkedNote.id);
       setActiveTab('notes');
-    }
-  };
-
-  const handleJumpToScript = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (linkedScript) {
-      setActiveScriptId(linkedScript.id);
-      setActiveTab('scripts');
     }
   };
 
@@ -296,17 +283,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                   </button>
                 )}
 
-                {/* Linked Script Jump */}
-                {linkedScript && (
-                  <button
-                    onClick={handleJumpToScript}
-                    className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand/40 border border-brand/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
-                    title="Bağlı Video Senaryosuna Git"
-                  >
-                    <Video className="w-3 h-3 text-emerald-400" />
-                    <span className="truncate max-w-[130px]">Senaryo: {linkedScript.title}</span>
-                  </button>
-                )}
 
                 {/* One-Click Push to Kanban button */}
                 <button
@@ -325,7 +301,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                   title="Döküman bağlantılarını düzenle"
                 >
                   <Link2 className="w-3 h-3" />
-                  <span>{linkedNote || linkedScript ? 'Bağlantı' : '+ Not/Senaryo'}</span>
+                  <span>{linkedNote ? 'Bağlantı' : '+ Not'}</span>
                 </button>
               </div>
             </div>

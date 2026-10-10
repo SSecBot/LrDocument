@@ -13,7 +13,6 @@ export const transactionFormSchema = z
     endDate: z.string().optional(),
     priority: z.enum(['yuksek', 'orta', 'dusuk']).default('orta'),
     description: z.string().optional(),
-    linkedScriptId: z.string().optional(),
     isConfirmed: z.boolean().default(true),
   })
   .refine(

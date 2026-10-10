@@ -39,3 +39,8 @@ export const studentProfileSchema = z.object({
 });
 
 export type StudentProfileInput = z.infer<typeof studentProfileSchema>;
+
+/** Admins use the student pages too; their e-mail does not have to be an academic address. */
+export const adminStudentProfileSchema = studentProfileSchema.extend({
+  studentEmail: z.string().trim().toLowerCase().max(254).email('Geçerli bir e-posta adresi girin.'),
+});

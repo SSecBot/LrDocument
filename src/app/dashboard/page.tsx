@@ -9,7 +9,6 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ToastContainer } from '@/components/ui/Toast';
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
 import { NotesWorkspace } from '@/components/notes/NotesWorkspace';
-import { ScriptsWorkspace } from '@/components/scripts/ScriptsWorkspace';
 import { TasksWorkspace } from '@/components/tasks/TasksWorkspace';
 import { KanbanWorkspace } from '@/components/kanban/KanbanWorkspace';
 import { CalendarWorkspace } from '@/components/calendar/CalendarWorkspace';
@@ -61,7 +60,6 @@ export default function DashboardPage() {
         <main className="flex-1 flex overflow-hidden">
           {activeTab === 'dashboard' && <DashboardOverview />}
           {activeTab === 'notes' && <NotesWorkspace />}
-          {activeTab === 'scripts' && <ScriptsWorkspace />}
           {activeTab === 'kanban' && <KanbanWorkspace />}
           {activeTab === 'media' && <MediaWorkspace />}
           {activeTab === 'tasks' && <TasksWorkspace />}

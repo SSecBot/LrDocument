@@ -6,7 +6,6 @@ import { ActiveTab } from '@/types';
 import {
   LayoutDashboard,
   FileText,
-  Video,
   CheckSquare,
   Calendar,
   Image as ImageIcon,
@@ -36,7 +35,6 @@ export const Sidebar: React.FC = () => {
     isMobileSidebarOpen,
     setIsMobileSidebarOpen,
     notes,
-    scripts,
     tasks,
     kanbanCards,
     setIsCommandPaletteOpen,
@@ -50,7 +48,6 @@ export const Sidebar: React.FC = () => {
       items: [
         { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
         { id: 'notes', label: 'Notlar', icon: FileText, badge: notes.length },
-        { id: 'scripts', label: 'Video Senaryoları', icon: Video, badge: scripts.length },
         { id: 'tasks', label: 'Görevler', icon: CheckSquare, badge: tasks.filter((t) => !t.completed).length },
         { id: 'kanban', label: 'Kanban', icon: Kanban, badge: kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length },
         { id: 'calendar', label: 'Takvim', icon: Calendar },

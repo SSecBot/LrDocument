@@ -50,13 +50,21 @@ export function GradesTab({ data, term, courses, update, onEditCourse }: Props) 
             course={c}
             grading={g}
             resolvedStatus={finalStatus.get(c.id)}
+            term={term}
             update={update}
             onEditCourse={onEditCourse}
             onEditCurve={() => setCurveCourseId(c.id)}
           />
         ))}
       </div>
-      <CurveModal isOpen={curveCourse !== null} onClose={() => setCurveCourseId(null)} course={curveCourse} grading={g} onSave={saveCurve} />
+      <CurveModal
+        isOpen={curveCourse !== null}
+        onClose={() => setCurveCourseId(null)}
+        course={curveCourse}
+        grading={g}
+        term={term}
+        onSave={saveCurve}
+      />
     </div>
   );
 }
@@ -65,10 +73,12 @@ function GradeCard({
   course,
   grading,
   resolvedStatus,
+  term,
   update,
   onEditCourse,
   onEditCurve,
 }: {
+  term: Term;
   course: Course;
   grading: GradingSystem;
   resolvedStatus?: ReturnType<typeof computeCourseGrade>['status'];
@@ -79,8 +89,8 @@ function GradeCard({
   const [simulate, setSimulate] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
 
-  const saved = computeCourseGrade(course, grading);
-  const shown = simulate ? computeCourseGrade(course, grading, overrides) : saved;
+  const saved = computeCourseGrade(course, grading, {}, term);
+  const shown = simulate ? computeCourseGrade(course, grading, overrides, term) : saved;
   const status = !simulate && resolvedStatus ? resolvedStatus : shown.status;
 
   const setScore = (id: string, score: number | null) =>

@@ -6,7 +6,6 @@ import { CategoryManagerModal } from './CategoryManagerModal';
 import {
   TrendingUp,
   TrendingDown,
-  Video,
   Repeat,
   CheckCircle2,
   Settings,
@@ -34,7 +33,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     addTransaction,
     updateTransaction,
     financeCategories,
-    scripts,
     exchangeRates,
     fetchExchangeRates,
   } = useAppStore();
@@ -49,7 +47,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [endDate, setEndDate] = useState<string>('');
   const [priority, setPriority] = useState<TaskPriority>('orta');
   const [description, setDescription] = useState('');
-  const [linkedScriptId, setLinkedScriptId] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('aylik');
   const [isConfirmed, setIsConfirmed] = useState(true);
@@ -76,7 +73,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setEndDate(editTransaction.endDate || '');
       setPriority(editTransaction.priority || 'orta');
       setDescription(editTransaction.description || '');
-      setLinkedScriptId(editTransaction.linkedScriptId || '');
       setIsRecurring(editTransaction.isRecurring || false);
       setRecurringFrequency(editTransaction.recurringFrequency || 'aylik');
       setIsConfirmed(editTransaction.isConfirmed !== undefined ? editTransaction.isConfirmed : true);
@@ -92,7 +88,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setEndDate('');
       setPriority('orta');
       setDescription('');
-      setLinkedScriptId('');
       setIsRecurring(false);
       setRecurringFrequency('aylik');
       setIsConfirmed(true);
@@ -130,7 +125,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       recurringFrequency: isRecurring ? recurringFrequency : undefined,
       priority,
       description: description.trim() || undefined,
-      linkedScriptId: linkedScriptId || undefined,
       isConfirmed,
     });
 
@@ -165,7 +159,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         endDate: isRecurring ? validatedData.endDate : undefined,
         priority: validatedData.priority,
         description: validatedData.description,
-        linkedScriptId: validatedData.linkedScriptId,
         isRecurring: validatedData.isRecurring,
         recurringFrequency: validatedData.isRecurring ? validatedData.recurringFrequency : undefined,
         isConfirmed: validatedData.isConfirmed,
@@ -185,7 +178,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         endDate: isRecurring ? validatedData.endDate : undefined,
         priority: validatedData.priority,
         description: validatedData.description,
-        linkedScriptId: validatedData.linkedScriptId,
         isRecurring: validatedData.isRecurring,
         recurringFrequency: validatedData.isRecurring ? validatedData.recurringFrequency : undefined,
         isConfirmed: validatedData.isConfirmed,
@@ -550,25 +542,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             )}
           </div>
 
-          {/* Linked Script */}
-          <div>
-            <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
-              <Video className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Bağlı Video Senaryosu (Opsiyonel)</span>
-            </label>
-            <select
-              value={linkedScriptId}
-              onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="">(Bağlantı Yok)</option>
-              {scripts.map((s) => (
-                <option key={s.id} value={s.id}>
-                  [{s.targetPlatform}] {s.title}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Confirmation Toggle */}
           <div className="p-3 rounded-lg bg-surface border border-line flex items-center justify-between">

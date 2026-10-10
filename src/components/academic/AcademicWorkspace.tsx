@@ -157,12 +157,14 @@ export function AcademicWorkspace() {
         onSave={saveCourse}
         onDelete={deleteCourse}
         colorIndex={courses.length}
+        otherCourses={data.courses.filter((c) => c.termId !== term.id)}
       />
       <ScheduleImportModal
         isOpen={importOpen}
         onClose={() => setImportOpen(false)}
         termId={term.id}
         courses={courses}
+        classYear={profile?.classYear ?? null}
         update={update}
       />
     </div>

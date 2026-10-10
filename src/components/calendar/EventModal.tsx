@@ -6,7 +6,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
 import { generateId, toLocalDateString } from '@/lib/utils';
 import {
-  Video,
   ListChecks,
   Plus,
   Trash2,
@@ -26,7 +25,7 @@ export const EventModal: React.FC<EventModalProps> = ({
   initialDate,
   editEvent,
 }) => {
-  const { addEvent, updateEvent, deleteEvent, scripts } = useAppStore();
+  const { addEvent, updateEvent, deleteEvent } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -36,7 +35,6 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [eventType, setEventType] = useState<CalendarEventType>('yayin');
   const [platform, setPlatform] = useState<Platform>('YouTube');
   const [status, setStatus] = useState<EventStatus>('planlandi');
-  const [linkedScriptId, setLinkedScriptId] = useState<string>('');
   const [checklist, setChecklist] = useState<EventChecklistItem[]>([
     { id: '1', text: 'Kapak resmi (Thumbnail) tasarımı bitti', done: false },
     { id: '2', text: 'Video kurgusu ve ses dengelemesi tamam', done: false },
@@ -59,7 +57,6 @@ export const EventModal: React.FC<EventModalProps> = ({
       setEventType(editEvent.eventType || 'yayin');
       setPlatform(editEvent.platform || 'YouTube');
       setStatus(editEvent.status);
-      setLinkedScriptId(editEvent.linkedScriptId || '');
       setChecklist(editEvent.checklist || []);
     } else {
       setTitle('');
@@ -70,7 +67,6 @@ export const EventModal: React.FC<EventModalProps> = ({
       setEventType('yayin');
       setPlatform('YouTube');
       setStatus('planlandi');
-      setLinkedScriptId('');
       setChecklist([
         { id: generateId(), text: 'Kapak resmi (Thumbnail) tasarımı bitti', done: false },
         { id: generateId(), text: 'Video kurgusu ve ses dengelemesi tamam', done: false },
@@ -93,7 +89,6 @@ export const EventModal: React.FC<EventModalProps> = ({
         eventType,
         platform: eventType === 'yayin' ? platform : undefined,
         status,
-        linkedScriptId: linkedScriptId || undefined,
         checklist,
       });
     } else {
@@ -106,7 +101,6 @@ export const EventModal: React.FC<EventModalProps> = ({
         eventType,
         platform: eventType === 'yayin' ? platform : undefined,
         status,
-        linkedScriptId: linkedScriptId || undefined,
         checklist,
       });
     }
@@ -263,27 +257,6 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
 
-        {/* Linked Script (Optional) */}
-        {eventType === 'yayin' && (
-          <div>
-            <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1.5">
-              <Video className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Bağlı Video Senaryosu (Opsiyonel)</span>
-            </label>
-            <select
-              value={linkedScriptId}
-              onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="">(Bağlı Senaryo Yok)</option>
-              {scripts.map(s => (
-                <option key={s.id} value={s.id}>
-                  [{s.targetPlatform}] {s.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Description */}
         <div>

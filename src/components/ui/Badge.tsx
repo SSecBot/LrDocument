@@ -1,6 +1,6 @@
 import React from 'react';
-import { Platform, ScriptStatus, TaskPriority } from '@/types';
-import { Film, Globe, Mic, CheckCircle2, Clock, PlayCircle, Edit3, Flame, Play, Camera } from 'lucide-react';
+import { Platform, TaskPriority } from '@/types';
+import { Film, Globe, Mic, Play, Camera } from 'lucide-react';
 
 interface BadgeProps {
   children?: React.ReactNode;
@@ -110,55 +110,6 @@ export const PriorityBadge: React.FC<{ priority: TaskPriority }> = ({ priority }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md border ${c.bg} ${c.text} ${c.border}`}>
       {c.label}
-    </span>
-  );
-};
-
-export const ScriptStatusBadge: React.FC<{ status: ScriptStatus }> = ({ status }) => {
-  const configs: Record<ScriptStatus, { label: string; icon: React.ReactNode; bg: string; text: string; border: string }> = {
-    fikir: {
-      label: 'Fikir',
-      icon: <Flame className="w-3 h-3 text-amber-400" />,
-      bg: 'bg-zinc-900',
-      text: 'text-zinc-300',
-      border: 'border-zinc-700',
-    },
-    senaryo_hazir: {
-      label: 'Senaryo Hazır',
-      icon: <Edit3 className="w-3 h-3 text-blue-400" />,
-      bg: 'bg-blue-950/40',
-      text: 'text-blue-300',
-      border: 'border-blue-800/40',
-    },
-    cekimde: {
-      label: 'Çekimde',
-      icon: <PlayCircle className="w-3 h-3 text-orange-400" />,
-      bg: 'bg-amber-950/40',
-      text: 'text-amber-300',
-      border: 'border-amber-800/40',
-    },
-    kurguda: {
-      label: 'Kurguda',
-      icon: <Clock className="w-3 h-3 text-purple-400" />,
-      bg: 'bg-purple-950/40',
-      text: 'text-purple-300',
-      border: 'border-purple-800/40',
-    },
-    yayina_hazir: {
-      label: 'Yayına Hazır',
-      icon: <CheckCircle2 className="w-3 h-3 text-emerald-400" />,
-      bg: 'bg-emerald-950/40',
-      text: 'text-emerald-300',
-      border: 'border-emerald-800/40',
-    },
-  };
-
-  const c = configs[status] || configs.fikir;
-
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border ${c.bg} ${c.text} ${c.border}`}>
-      {c.icon}
-      <span>{c.label}</span>
     </span>
   );
 };

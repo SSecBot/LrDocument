@@ -240,7 +240,7 @@ export function SettingsView() {
           </div>
         </div>
 
-        {currentUser?.accountType === 'STUDENT' && <StudentProfileCard />}
+        {hasStudentAccess(currentUser) && <StudentProfileCard isAdmin={currentUser?.role === 'ADMIN'} />}
         {hasStudentAccess(currentUser) && <AcademicSettingsCard />}
 
         {/* Section 1: Email Address Self-Service Modification */}

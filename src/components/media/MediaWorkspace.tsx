@@ -25,9 +25,7 @@ export const MediaWorkspace: React.FC = () => {
     mediaItems,
     deleteMediaItem,
     notes,
-    scripts,
     setActiveNoteId,
-    setActiveScriptId,
     setActiveTab,
     addToast,
   } = useAppStore();
@@ -60,12 +58,6 @@ export const MediaWorkspace: React.FC = () => {
     e.stopPropagation();
     setActiveNoteId(noteId);
     setActiveTab('notes');
-  };
-
-  const handleJumpToScript = (scriptId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveScriptId(scriptId);
-    setActiveTab('scripts');
   };
 
   const getTypeBadge = (type: MediaType, isYt: boolean = false) => {
@@ -159,7 +151,6 @@ export const MediaWorkspace: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {filteredItems.map((item) => {
             const linkedNote = item.linkedNoteId ? notes.find(n => n.id === item.linkedNoteId) : null;
-            const linkedScript = item.linkedScriptId ? scripts.find(s => s.id === item.linkedScriptId) : null;
 
             const isYt = isYouTubeUrl(item.url);
             const ytThumbnail = isYt ? getYouTubeThumbnailUrl(item.url, 'hq') : null;
@@ -236,8 +227,8 @@ export const MediaWorkspace: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Connected Notes / Scripts Links */}
-                  {(linkedNote || linkedScript) && (
+                  {/* Connected note */}
+                  {linkedNote && (
                     <div className="pt-2 border-t border-line space-y-1">
                       {linkedNote && (
                         <button
@@ -246,15 +237,6 @@ export const MediaWorkspace: React.FC = () => {
                         >
                           <FileText className="w-3 h-3 shrink-0" />
                           <span className="truncate">Not: {linkedNote.title}</span>
-                        </button>
-                      )}
-                      {linkedScript && (
-                        <button
-                          onClick={(e) => handleJumpToScript(linkedScript.id, e)}
-                          className="min-h-[28px] w-full text-left flex items-center gap-1.5 text-[11px] text-emerald-400 hover:underline truncate"
-                        >
-                          <Video className="w-3 h-3 shrink-0" />
-                          <span className="truncate">Senaryo: {linkedScript.title}</span>
                         </button>
                       )}
                     </div>

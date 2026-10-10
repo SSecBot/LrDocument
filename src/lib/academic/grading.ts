@@ -7,6 +7,7 @@ import type {
   CurveBoundary,
   Exam,
   ExamType,
+  Holiday,
   GradingSystem,
   LetterGrade,
   SessionKind,
@@ -166,17 +167,97 @@ export interface AttendanceKindStatus {
   /** Remaining absences expressed in weeks of this kind */
   remainingWeeks: number;
   state: AttendanceState;
+  /** "takvim": counted from the term's academic calendar; "hafta": weeklyHours × weeksPerTerm */
+  basis: 'takvim' | 'hafta';
 }
 
-export function attendanceStatus(course: Course, grading: GradingSystem): AttendanceKindStatus[] {
+// ---------------------------------------------------------------------------
+// Academic calendar
+// ---------------------------------------------------------------------------
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDate(d: string): Date {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(y, m - 1, day);
+}
+
+function isoOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function hasCalendar(term: Term | undefined | null): term is Term & { start: string; end: string } {
+  return !!term && !!term.start && !!term.end && ISO_DATE.test(term.start) && ISO_DATE.test(term.end) && term.end >= term.start;
+}
+
+export function isHoliday(date: string, term: Term): Holiday | undefined {
+  return term.holidays?.find((h) => date >= h.start && date <= h.end);
+}
+
+/** How many times each weekday (0 = Pazartesi) has class in the term, skipping holidays. */
+export function meetingsPerWeekday(term: Term): number[] | null {
+  if (!hasCalendar(term)) return null;
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  const end = parseDate(term.end);
+  // Guard against absurd ranges (max ~1 year).
+  for (let d = parseDate(term.start), i = 0; d <= end && i < 400; d.setDate(d.getDate() + 1), i++) {
+    if (isHoliday(isoOf(d), term)) continue;
+    counts[(d.getDay() + 6) % 7]++;
+  }
+  return counts;
+}
+
+/** Number of calendar weeks between the first and last day of classes. */
+export function calendarWeeks(term: Term): number | null {
+  if (!hasCalendar(term)) return null;
+  return Math.ceil((parseDate(term.end).getTime() - parseDate(term.start).getTime() + 86_400_000) / (7 * 86_400_000));
+}
+
+/** Fixed-date official holidays in Türkiye (dini bayramlar her yıl değiştiği için elle eklenir). */
+const FIXED_HOLIDAYS: [string, string][] = [
+  ['01-01', 'Yılbaşı'],
+  ['04-23', 'Ulusal Egemenlik ve Çocuk Bayramı'],
+  ['05-01', 'Emek ve Dayanışma Günü'],
+  ['05-19', 'Atatürk’ü Anma, Gençlik ve Spor Bayramı'],
+  ['07-15', 'Demokrasi ve Millî Birlik Günü'],
+  ['08-30', 'Zafer Bayramı'],
+  ['10-29', 'Cumhuriyet Bayramı'],
+];
+
+export function officialHolidaysBetween(start: string, end: string): Holiday[] {
+  const out: Holiday[] = [];
+  const y1 = Number(start.slice(0, 4));
+  const y2 = Number(end.slice(0, 4));
+  for (let y = y1; y <= y2 && y <= y1 + 2; y++) {
+    for (const [md, name] of FIXED_HOLIDAYS) {
+      const date = `${y}-${md}`;
+      if (date >= start && date <= end) out.push({ id: newId(), name, start: date, end: date });
+    }
+  }
+  return out;
+}
+
+/** Attendance is not required again for a retaken course failed on grades (devam şartı sağlanmış). */
+export function isAttendanceExempt(course: Course): boolean {
+  return course.retake?.reason === 'not';
+}
+
+export function attendanceStatus(course: Course, grading: GradingSystem, term?: Term | null): AttendanceKindStatus[] {
   const result: AttendanceKindStatus[] = [];
+  if (isAttendanceExempt(course)) return result;
+  const meetings = term ? meetingsPerWeekday(term) : null;
   const kinds: [SessionKind, number, number][] = [
     ['teori', course.theoryHours, grading.attendanceTheory],
     ['uygulama', course.practiceHours, grading.attendancePractice],
   ];
   for (const [kind, weeklyHours, required] of kinds) {
     if (weeklyHours <= 0) continue;
-    const totalHours = weeklyHours * grading.weeksPerTerm;
+    const kindSessions = course.sessions.filter((s) => s.kind === kind);
+    // With an academic calendar, count the real class days of each session; otherwise N weeks.
+    const fromCalendar = meetings !== null && kindSessions.length > 0;
+    const totalHours = fromCalendar
+      ? kindSessions.reduce((sum, s) => sum + sessionHours(s) * meetings[s.day], 0)
+      : weeklyHours * grading.weeksPerTerm;
     const allowed = Math.floor((totalHours * (100 - required)) / 100 + 1e-9);
     const used = course.absences.filter((a) => a.kind === kind).reduce((sum, a) => sum + a.hours, 0);
     const remaining = allowed - used;
@@ -192,13 +273,14 @@ export function attendanceStatus(course: Course, grading: GradingSystem): Attend
       remaining,
       remainingWeeks: Math.max(0, Math.floor(remaining / weeklyHours)),
       state,
+      basis: fromCalendar ? 'takvim' : 'hafta',
     });
   }
   return result;
 }
 
-export function isAttendanceFailed(course: Course, grading: GradingSystem): boolean {
-  return attendanceStatus(course, grading).some((s) => s.state === 'over');
+export function isAttendanceFailed(course: Course, grading: GradingSystem, term?: Term | null): boolean {
+  return attendanceStatus(course, grading, term).some((s) => s.state === 'over');
 }
 
 // ---------------------------------------------------------------------------
@@ -369,7 +451,8 @@ function statusForLetter(letter: string, grading: GradingSystem): CourseStatus {
 export function computeCourseGrade(
   course: Course,
   grading: GradingSystem,
-  overrides: Record<string, number | null> = {}
+  overrides: Record<string, number | null> = {},
+  term?: Term | null
 ): CourseGrade {
   const scoreOf = (a: Assessment) => (a.id in overrides ? overrides[a.id] : a.score);
 
@@ -418,7 +501,7 @@ export function computeCourseGrade(
     scale,
   };
 
-  if (isAttendanceFailed(course, grading)) {
+  if (isAttendanceFailed(course, grading, term)) {
     return {
       ...base,
       letter: 'D',
@@ -533,7 +616,7 @@ export function summarizeTerm(data: AcademicData, term: Term): TermSummary {
   const g = data.grading;
   const graded = data.courses
     .filter((c) => c.termId === term.id)
-    .map((course) => ({ course, grade: computeCourseGrade(course, g), weight: gpaWeight(course, g) }));
+    .map((course) => ({ course, grade: computeCourseGrade(course, g, {}, term), weight: gpaWeight(course, g) }));
 
   const gpa = weightedGpa(
     graded.filter((x) => countsForGpa(x.course, x.grade)).map((x) => ({ point: x.grade.point as number, weight: x.weight }))

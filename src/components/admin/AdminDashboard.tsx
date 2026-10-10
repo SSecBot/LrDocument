@@ -566,7 +566,7 @@ export function AdminDashboard() {
                 </span>
               </div>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Mevcut veriler: {metrics?.totalUsers ?? users.length} Kullanıcı, {metrics?.totalNotes ?? 0} Not, {metrics?.totalTasks ?? 0} Görev, {metrics?.totalScripts ?? 0} Senaryo. Yapısal değişiklik öncesi tam JSON yedeği alabilirsiniz.
+                Mevcut veriler: {metrics?.totalUsers ?? users.length} Kullanıcı, {metrics?.totalNotes ?? 0} Not ve {metrics?.totalTasks ?? 0} Görev. Yapısal değişiklik öncesi tam JSON yedeği alabilirsiniz.
               </p>
             </div>
           </div>
@@ -661,9 +661,9 @@ export function AdminDashboard() {
               </div>
             </div>
             <div className="text-3xl font-black text-white">
-              {(metrics?.totalNotes ?? 0) + (metrics?.totalTasks ?? 0) + (metrics?.totalScripts ?? 0)}
+              {(metrics?.totalNotes ?? 0) + (metrics?.totalTasks ?? 0)}
             </div>
-            <p className="text-[11px] text-purple-400/80 mt-1 font-medium">Not, senaryo ve görev toplamı</p>
+            <p className="text-[11px] text-purple-400/80 mt-1 font-medium">Not ve görev toplamı</p>
           </div>
         </div>
 
@@ -935,9 +935,7 @@ export function AdminDashboard() {
 
                           <td className="p-4 text-center">
                             <span className="px-2 py-0.5 rounded-lg bg-surface-2 border border-line text-neutral-400 text-[11px]">
-                              {(user._count?.notes ?? 0) +
-                                (user._count?.tasks ?? 0) +
-                                (user._count?.scripts ?? 0)}{' '}
+                              {(user._count?.notes ?? 0) + (user._count?.tasks ?? 0)}{' '}
                               öğe
                             </span>
                           </td>

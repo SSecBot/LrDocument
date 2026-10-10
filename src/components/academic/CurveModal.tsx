@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import type { Course, CourseCurve, CurveBoundary, CurveMode, GradingSystem } from '@/lib/academic/types';
+import type { Course, CourseCurve, CurveBoundary, CurveMode, GradingSystem, Term } from '@/lib/academic/types';
 import { computeCourseGrade, defaultCurve, gradeScale, tTableForMean, T_SCORE_TABLE } from '@/lib/academic/grading';
 import { btnPrimary, btnSecondary, inputCls, labelCls } from './ui';
 
@@ -11,6 +11,7 @@ interface Props {
   onClose: () => void;
   course: Course | null;
   grading: GradingSystem;
+  term?: Term | null;
   onSave: (courseId: string, curve: CourseCurve | null) => void;
 }
 
@@ -21,7 +22,7 @@ const parseNum = (v: string): number | null => {
 };
 
 /** Edits the instructor's bell curve (bağıl değerlendirme) for a single course. */
-export function CurveModal({ isOpen, onClose, course, grading, onSave }: Props) {
+export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: Props) {
   const initial = () => (course?.curve ? structuredClone(course.curve) : defaultCurve(grading));
   const [draft, setDraft] = useState<CourseCurve>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function CurveModal({ isOpen, onClose, course, grading, onSave }: Props) 
 
   const preview = { ...course, curve: { ...draft, enabled: true } };
   const scale = gradeScale(preview, grading);
-  const grade = computeCourseGrade(preview, grading);
+  const grade = computeCourseGrade(preview, grading, {}, term);
 
   // Boundaries shown in the table: the standard T table follows the class average.
   const shownBoundaries: CurveBoundary[] =

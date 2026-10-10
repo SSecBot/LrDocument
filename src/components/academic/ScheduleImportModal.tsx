@@ -15,6 +15,8 @@ interface Props {
   onClose: () => void;
   termId: string;
   courses: Course[];
+  /** Student's class year from the profile; picks the matching block of a department program */
+  classYear: number | null;
   update: (fn: (d: AcademicData) => AcademicData) => void;
 }
 
@@ -23,6 +25,30 @@ const MAX_PDF_BYTES = 8 * 1024 * 1024;
 interface Row extends ParsedCourse {
   key: string;
   include: boolean;
+}
+
+const yearLabel = (y: number) => (y === 0 ? 'Hazırlık' : `${y}. sınıf`);
+
+/** Rows for the chosen class year and şube: other years and other groups' sessions are left out. */
+function buildRows(parsed: ParsedCourse[], year: number | null, group: string): Row[] {
+  return parsed
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => year === null || c.year === null || c.year === year)
+    .map(({ c, i }) => ({
+      ...c,
+      sessions: c.sessions.filter((s) => !group || !s.group || s.group === group).map((s) => ({ ...s })),
+      key: `${i}`,
+      include: !c.elective,
+    }))
+    .filter((r) => r.sessions.length > 0);
+}
+
+function groupsFor(parsed: ParsedCourse[], year: number | null): string[] {
+  const set = new Set<string>();
+  parsed
+    .filter((c) => year === null || c.year === null || c.year === year)
+    .forEach((c) => c.sessions.forEach((s) => s.group && set.add(s.group)));
+  return [...set].sort();
 }
 
 let pdfjsPromise: Promise<PdfJsLike> | null = null;
@@ -38,8 +64,11 @@ function loadPdfJs(): Promise<PdfJsLike> {
 
 const smallInput = 'h-8 bg-surface-2 border border-line rounded-md px-2 text-xs text-fg focus:outline-none focus:border-line-strong';
 
-export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }: Props) {
+export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYear, update }: Props) {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [parsed, setParsed] = useState<ParsedCourse[]>([]);
+  const [year, setYear] = useState<number | null>(null);
+  const [group, setGroup] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -57,9 +86,21 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
     }
   }
 
-  const matchOf = (code: string) => {
-    const c = code.trim().toLocaleUpperCase('tr-TR');
-    return c ? courses.find((x) => x.code.trim().toLocaleUpperCase('tr-TR') === c) : undefined;
+  const matchOf = (r: Pick<Row, 'code' | 'name'>) => {
+    const c = r.code.trim().toLocaleUpperCase('tr-TR');
+    if (c) return courses.find((x) => x.code.trim().toLocaleUpperCase('tr-TR') === c);
+    const n = r.name.trim().toLocaleLowerCase('tr-TR');
+    return courses.find((x) => x.name.trim().toLocaleLowerCase('tr-TR') === n);
+  };
+
+  const years = [...new Set(parsed.map((c) => c.year).filter((y): y is number => y !== null))].sort((a, b) => a - b);
+  const groups = groupsFor(parsed, year);
+
+  const choose = (nextYear: number | null, nextGroup?: string) => {
+    const g = nextGroup ?? groupsFor(parsed, nextYear)[0] ?? '';
+    setYear(nextYear);
+    setGroup(g);
+    setRows(buildRows(parsed, nextYear, g));
   };
 
   const handleFile = async (file: File | undefined) => {
@@ -80,7 +121,13 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
         setError('Bu PDF’te ders programı bulunamadı. Dersleri elle ekleyebilirsiniz.');
         return;
       }
-      setRows(result.courses.map((c, i) => ({ ...c, key: `${i}`, include: c.sessions.length > 0 })));
+      const found = [...new Set(result.courses.map((c) => c.year).filter((y): y is number => y !== null))].sort((a, b) => a - b);
+      const y = found.length === 0 ? null : classYear !== null && found.includes(classYear) ? classYear : found[0];
+      const g = groupsFor(result.courses, y)[0] ?? '';
+      setParsed(result.courses);
+      setYear(y);
+      setGroup(g);
+      setRows(buildRows(result.courses, y, g));
     } catch (err) {
       console.error(err);
       setError('PDF okunamadı. Dosya bozuk ya da şifreli olabilir.');
@@ -96,7 +143,9 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
   const removeSession = (key: string, index: number) =>
     setRows((r) => r && r.map((x) => (x.key === key ? { ...x, sessions: x.sessions.filter((_, i) => i !== index) } : x)));
 
-  const selected = rows?.filter((r) => r.include && r.sessions.length > 0 && r.name.trim()) ?? [];
+  const required = rows?.filter((r) => !r.elective) ?? [];
+  const electives = rows?.filter((r) => r.elective) ?? [];
+  const selected = required.filter((r) => r.include && r.sessions.length > 0 && r.name.trim());
 
   const handleImport = () => {
     if (selected.length === 0) return;
@@ -109,7 +158,14 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
       const list = [...d.courses];
       let colorIndex = list.filter((c) => c.termId === termId).length;
       for (const r of selected) {
-        const sessions: CourseSession[] = r.sessions.map((s) => ({ id: newId(), ...s, room: s.room?.slice(0, 40) ?? '' }));
+        const sessions: CourseSession[] = r.sessions.map((s) => ({
+          id: newId(),
+          day: s.day,
+          start: s.start,
+          end: s.end,
+          kind: s.kind,
+          room: s.room?.slice(0, 40) ?? '',
+        }));
         const code = r.code.trim().toLocaleUpperCase('tr-TR').slice(0, 20);
         const idx = code
           ? list.findIndex((c) => c.termId === termId && c.code.trim().toLocaleUpperCase('tr-TR') === code)
@@ -178,15 +234,38 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
           </>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-subtle">
-                {rows.length} ders bulundu. Kontrol edin, gerekirse düzeltin ve almak istemediklerinizin işaretini kaldırın.
-              </p>
-              <button type="button" className={btnGhost} onClick={() => setRows(null)}>Başka PDF seç</button>
+            <div className="flex flex-wrap items-end gap-2">
+              {years.length > 0 && (
+                <label className="text-[11px] text-subtle">
+                  Sınıf
+                  <select className={`${smallInput} block mt-1 w-32`} value={year ?? ''} onChange={(e) => choose(Number(e.target.value))}>
+                    {years.map((y) => (
+                      <option key={y} value={y}>{yearLabel(y)}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {groups.length > 0 && (
+                <label className="text-[11px] text-subtle">
+                  Şube / grup
+                  <select className={`${smallInput} block mt-1 w-32`} value={group} onChange={(e) => choose(year, e.target.value)}>
+                    {groups.map((g) => (
+                      <option key={g} value={g}>{g} şubesi</option>
+                    ))}
+                    <option value="">Tüm şubeler</option>
+                  </select>
+                </label>
+              )}
+              <button type="button" className={`${btnGhost} ml-auto`} onClick={() => setRows(null)}>Başka PDF seç</button>
             </div>
+            <p className="text-xs text-subtle">
+              {year !== null ? `${yearLabel(year)} için ` : ''}
+              {required.length} ders bulundu. Kontrol edip gerekirse düzeltin. Seçmeli dersler eklenmez; PDF’te seçmeli diye işaretlenmemiş
+              bir seçmeli ders varsa “Seçmeli” düğmesiyle ayırın. Aldığınız seçmelileri sonra “Ders ekle” ile elle ekleyin.
+            </p>
             <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
-              {rows.map((r) => {
-                const match = matchOf(r.code);
+              {required.map((r) => {
+                const match = matchOf(r);
                 return (
                   <div key={r.key} className={`rounded-lg border border-line p-3 space-y-2 ${r.include ? 'bg-surface-2/40' : 'opacity-50'}`}>
                     <div className="flex items-center gap-2">
@@ -206,6 +285,14 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
                       >
                         {match ? 'Mevcut ders' : 'Yeni ders'}
                       </span>
+                      <button
+                        type="button"
+                        className="shrink-0 h-7 px-2 rounded-md border border-line text-[11px] text-subtle hover:text-fg hover:bg-surface-3"
+                        onClick={() => setRow(r.key, { elective: true, include: false })}
+                        title="Seçmeli ders olarak ayır (eklenmez)"
+                      >
+                        Seçmeli
+                      </button>
                     </div>
                     <ul className="space-y-1.5 sm:pl-6">
                       {r.sessions.map((s, i) => (
@@ -247,8 +334,28 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, update }
                   </div>
                 );
               })}
+              {electives.length > 0 && (
+                <div className="rounded-lg border border-dashed border-line p-3 space-y-1.5">
+                  <p className="text-[11px] font-medium text-subtle">Seçmeli dersler — eklenmez, aldıklarınızı “Ders ekle” ile elle ekleyin</p>
+                  {electives.map((r) => (
+                    <div key={r.key} className="flex items-center justify-between gap-2 text-xs text-muted">
+                      <span className="truncate">
+                        {r.code && `${r.code} — `}
+                        {r.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-[11px] text-subtle hover:text-fg hover:underline"
+                        onClick={() => setRow(r.key, { elective: false, include: true })}
+                      >
+                        Zorunlu ders
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {rows.some((r) => matchOf(r.code)) && (
+            {required.some((r) => matchOf(r)) && (
               <label className="flex items-center gap-2 text-xs text-body">
                 <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
                 Mevcut derslerin saatlerini PDF’tekilerle değiştir (kapalıysa eklenir)

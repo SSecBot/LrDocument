@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicData, Course, SessionKind } from '@/lib/academic/types';
-import { attendanceStatus, newId } from '@/lib/academic/grading';
+import { attendanceStatus, calendarWeeks, hasCalendar, isAttendanceExempt, newId } from '@/lib/academic/grading';
 import { formatTurkishDate, toLocalDateString } from '@/lib/utils';
 import { Card, CardHeader, EmptyState, Progress, btnGhost, btnPrimary, inputCls } from './ui';
 
@@ -16,6 +16,7 @@ interface Props {
 
 export function AttendanceTab({ data, courses, update, onEditCourse }: Props) {
   const g = data.grading;
+  const term = data.terms.find((t) => t.id === courses[0]?.termId);
   if (courses.length === 0) {
     return (
       <Card>
@@ -28,7 +29,10 @@ export function AttendanceTab({ data, courses, update, onEditCourse }: Props) {
     <div className="space-y-3">
       <p className="text-xs text-muted">
         Devam zorunluluğu: teorik derslerde %{g.attendanceTheory}, uygulamalarda %{g.attendancePractice} •{' '}
-        {g.weeksPerTerm} haftalık dönem. Sınırı aşan derste final sınavına girilemez ve ders devamsızlıktan (D) kalınır.
+        {hasCalendar(term)
+          ? `akademik takvime göre ${calendarWeeks(term)} haftalık dönem; tatil günlerine denk gelen dersler sayılmaz`
+          : `${g.weeksPerTerm} haftalık dönem (akademik takvimi Ayarlar › Ders Takibi Ayarları’ndan ekleyebilirsiniz)`}
+        . Sınırı aşan derste final sınavına girilemez ve ders devamsızlıktan (D) kalınır.
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {courses.map((c) => (
@@ -50,7 +54,9 @@ function AttendanceCard({
   update: Props['update'];
   onEditCourse: (c: Course) => void;
 }) {
-  const statuses = attendanceStatus(course, data.grading);
+  const term = data.terms.find((t) => t.id === course.termId);
+  const statuses = attendanceStatus(course, data.grading, term);
+  const exempt = isAttendanceExempt(course);
   const [adding, setAdding] = useState(false);
   const [date, setDate] = useState(toLocalDateString());
   const [kind, setKind] = useState<SessionKind>(course.theoryHours > 0 || course.practiceHours === 0 ? 'teori' : 'uygulama');
@@ -73,13 +79,19 @@ function AttendanceCard({
           </span>
         }
         action={
-          <button className={btnGhost} onClick={() => setAdding((v) => !v)}>
-            <Plus className="w-3.5 h-3.5" /> Devamsızlık
-          </button>
+          !exempt && (
+            <button className={btnGhost} onClick={() => setAdding((v) => !v)}>
+              <Plus className="w-3.5 h-3.5" /> Devamsızlık
+            </button>
+          )
         }
       />
       <div className="p-4 space-y-3">
-        {statuses.length === 0 ? (
+        {exempt ? (
+          <p className="text-xs text-muted">
+            Alttan alınan ders (daha önce nottan kalındı): devam zorunluluğu yok, devamsızlık takip edilmez.
+          </p>
+        ) : statuses.length === 0 ? (
           <p className="text-xs text-muted">
             Haftalık ders saati girilmemiş.{' '}
             <button className="text-emerald-400 hover:underline" onClick={() => onEditCourse(course)}>
@@ -92,7 +104,9 @@ function AttendanceCard({
               <div className="flex items-baseline justify-between text-xs">
                 <span className="text-body">
                   {s.kind === 'teori' ? 'Teorik' : 'Uygulama'}{' '}
-                  <span className="text-muted">({s.weeklyHours} saat/hafta)</span>
+                  <span className="text-muted">
+                    ({s.weeklyHours} saat/hafta • dönemde {s.totalHours} saat{s.basis === 'takvim' ? ', takvime göre' : ''})
+                  </span>
                 </span>
                 <span className="tabular-nums text-subtle">
                   {s.used} / {s.allowed} saat

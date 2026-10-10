@@ -16,7 +16,6 @@ import {
   Trash2,
   ArrowUpRight,
   ArrowDownRight,
-  Video,
   Repeat,
   Settings,
   AlertTriangle,
@@ -35,7 +34,6 @@ export const FinanceWorkspace: React.FC = () => {
     transactions,
     deleteTransaction,
     toggleTransactionConfirmation,
-    scripts,
     exchangeRates,
     fetchExchangeRates,
     addToast,
@@ -593,7 +591,6 @@ export const FinanceWorkspace: React.FC = () => {
             <div className="divide-y divide-line">
               {sortedTransactions.map((tr) => {
                 const isOverdue = isTransactionOverdue(tr);
-                const linkedScript = tr.linkedScriptId ? scripts.find(s => s.id === tr.linkedScriptId) : null;
                 const trCurrency = tr.currency || 'TRY';
                 const isForeignCurrency = trCurrency !== 'TRY';
 
@@ -661,12 +658,6 @@ export const FinanceWorkspace: React.FC = () => {
                             </span>
                           )}
 
-                          {linkedScript && (
-                            <span className="flex items-center gap-1 text-emerald-400/80">
-                              <Video className="w-3 h-3" />
-                              <span>[{linkedScript.targetPlatform}] {linkedScript.title}</span>
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>

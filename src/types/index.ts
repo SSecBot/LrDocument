@@ -12,33 +12,7 @@ export interface Note {
   updatedAt: string;
 }
 
-export type ScriptSectionType = 'hook' | 'intro' | 'body' | 'proof' | 'example' | 'cta' | 'custom';
-
-export interface ScriptSection {
-  id: string;
-  type: ScriptSectionType;
-  title: string;
-  content: string;
-  visualNotes?: string;
-  estimatedSeconds?: number;
-}
-
 export type Platform = 'YouTube' | 'TikTok' | 'Instagram' | 'Web' | 'Podcast';
-
-export type ScriptStatus = 'fikir' | 'senaryo_hazir' | 'cekimde' | 'kurguda' | 'yayina_hazir';
-
-export interface Script {
-  id: string;
-  title: string;
-  targetPlatform: Platform;
-  status: ScriptStatus;
-  sections: ScriptSection[];
-  speakingRateWPM: number; // varsayılan 130
-  linkedNoteId?: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
 
 export type TaskPriority = 'yuksek' | 'orta' | 'dusuk';
 
@@ -50,7 +24,6 @@ export interface Task {
   priority: TaskPriority;
   dueDate?: string; // YYYY-MM-DD
   linkedNoteId?: string;
-  linkedScriptId?: string;
   createdAt: string;
   completedAt?: string;
 }
@@ -74,7 +47,6 @@ export interface CalendarEvent {
   durationMinutes: number;
   eventType: CalendarEventType;
   platform?: Platform;
-  linkedScriptId?: string;
   linkedNoteId?: string;
   linkedTaskId?: string;
   status: EventStatus;
@@ -100,7 +72,6 @@ export interface MediaItem {
   url: string;
   thumbnailUrl?: string;
   linkedNoteId?: string;
-  linkedScriptId?: string;
   tags: string[];
   createdAt: string;
 }
@@ -142,7 +113,6 @@ export interface FinanceTransaction {
   markupTRY?: number; // Custom markup added to rate (e.g. 2.50)
   effectiveRate?: number; // Resulting rate (e.g. 36.70)
   description?: string;
-  linkedScriptId?: string;
   isRecurring?: boolean;
   recurringFrequency?: RecurringFrequency;
   isConfirmed?: boolean; // Gelir Geldi (Onayla) / Gider Ödendi (Onayla)
@@ -170,7 +140,7 @@ export interface AppNotification {
 // Kanban Universal Module Types
 export type KanbanColumnId = 'fikir' | 'yapilacak' | 'devam_ediyor' | 'inceleme' | 'tamamlandi';
 
-export type KanbanProjectType = 'genel' | 'icerik' | 'matematik' | 'finans' | 'senaryo' | string;
+export type KanbanProjectType = 'genel' | 'icerik' | 'matematik' | 'finans' | string;
 
 export interface KanbanCard {
   id: string;
@@ -181,7 +151,6 @@ export interface KanbanCard {
   priority: TaskPriority;
   dueDate?: string; // YYYY-MM-DD
   tags: string[];
-  linkedScriptId?: string;
   linkedNoteId?: string;
   createdAt: string;
   updatedAt: string;
@@ -227,7 +196,6 @@ export interface AdminUserItem {
   updatedAt: string;
   _count?: {
     notes: number;
-    scripts: number;
     tasks: number;
     kanbanCards: number;
     events: number;
@@ -243,13 +211,11 @@ export interface AdminMetrics {
   rejectedCount: number;
   totalNotes: number;
   totalTasks: number;
-  totalScripts: number;
 }
 
 export type ActiveTab =
   | 'dashboard'
   | 'notes'
-  | 'scripts'
   | 'media'
   | 'tasks'
   | 'kanban'

@@ -149,10 +149,20 @@ step "4/6 Kod güncelleniyor"
 if [ -d .git ]; then
   # Eski sürümlerde veritabanı git'te izleniyordu; sunucudaki kopya artık kullanılmıyor (2. adım).
   git checkout -- prisma/dev.db 2>/dev/null || true
-  # `npm install` on the server often rewrites the lockfile; the repo's version is authoritative.
-  git checkout -- package-lock.json 2>/dev/null || true
+  # `npm install` / `npm approve-scripts` on the server rewrite package.json and the lockfile;
+  # the repo's version is authoritative. Keep a copy of local edits just in case.
+  for f in package.json package-lock.json; do
+    if ! git diff --quiet -- "$f" 2>/dev/null; then
+      cp "$f" "$f.sunucu-yedek"
+      warn "$f sunucuda değiştirilmişti; depodaki sürüm kullanılacak (yedek: $f.sunucu-yedek)."
+      git checkout -- "$f"
+    fi
+  done
   git fetch origin "$BRANCH"
-  git merge --ff-only "origin/$BRANCH" || fail "Sunucuda kaydedilmemiş kod değişiklikleri var. 'git status' ile kontrol edin."
+  if ! git merge --ff-only "origin/$BRANCH"; then
+    git status --short
+    fail "Sunucuda kaydedilmemiş kod değişiklikleri var (yukarıda listelendi). 'git diff' ile inceleyip 'git checkout -- <dosya>' ile geri alabilirsiniz."
+  fi
   git log -1 --pretty='Sürüm: %h %s'
 else
   warn "Git deposu yok; yeni dosyaların bu klasöre zaten yüklendiği varsayılıyor."

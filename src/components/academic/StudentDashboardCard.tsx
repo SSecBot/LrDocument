@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, GraduationCap } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { DAYS, upcomingExams } from '@/lib/academic/grading';
+import { DAYS, isHoliday, upcomingExams } from '@/lib/academic/grading';
+import { toLocalDateString } from '@/lib/utils';
 import { useAcademicData } from './useAcademicData';
 import { ExamRow } from './ExamsTab';
 import { WeekGrid } from './ScheduleTab';
@@ -37,6 +38,8 @@ export function StudentDashboardCard() {
   }
 
   const todayIndex = (new Date().getDay() + 6) % 7;
+  const term = data.terms.find((t) => t.id === termId);
+  const holidayToday = term ? isHoliday(toLocalDateString(), term) : undefined;
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   const today = courses
     .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
@@ -84,6 +87,8 @@ export function StudentDashboardCard() {
         />
         {view === 'week' ? (
           <WeekGrid courses={courses} />
+        ) : holidayToday ? (
+          <EmptyState title={`Bugün tatil — ${holidayToday.name}`} />
         ) : today.length === 0 ? (
           <EmptyState
             title={`${DAYS[todayIndex]} — bugün dersiniz yok`}

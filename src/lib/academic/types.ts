@@ -57,6 +57,11 @@ export interface Course {
   excludeFromGpa?: boolean;
   /** Instructor's bell curve (bağıl değerlendirme); replaces the letter table for this course */
   curve?: CourseCurve | null;
+  /**
+   * Alttan alınan ders: why it was failed before. "not" = attendance was already fulfilled, so
+   * attendance is not required again; "devamsizlik" = attendance is tracked as usual.
+   */
+  retake?: { reason: 'not' | 'devamsizlik' } | null;
 }
 
 export type CurveMode = 'tscore' | 'raw';
@@ -103,9 +108,22 @@ export interface Exam {
   assessmentId?: string | null;
 }
 
+export interface Holiday {
+  id: string;
+  name: string;
+  /** YYYY-MM-DD, inclusive */
+  start: string;
+  end: string;
+}
+
 export interface Term {
   id: string;
   name: string;
+  /** Academic calendar: first and last day of classes (YYYY-MM-DD). Without it weeksPerTerm is used. */
+  start?: string;
+  end?: string;
+  /** Days without classes (resmî tatiller, ara tatil…) */
+  holidays?: Holiday[];
 }
 
 export interface LetterGrade {

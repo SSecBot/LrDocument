@@ -5,6 +5,7 @@ import { AlertCircle, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useAcademicData } from '@/components/academic/useAcademicData';
 import { GradingSettingsTab } from '@/components/academic/GradingSettingsTab';
 import { SaveIndicator } from '@/components/academic/ui';
+import { AcademicCalendarCard } from '@/components/academic/AcademicCalendarCard';
 
 /** Ders Takibi parameters (grading system, attendance rules, terms) inside Settings. */
 export function AcademicSettingsCard() {
@@ -19,7 +20,7 @@ export function AcademicSettingsCard() {
             Ders Takibi Ayarları
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Not sistemi, harf aralıkları, final barajı, devam şartları ve dönemler. Değişiklikler otomatik kaydedilir.
+            Akademik takvim, not sistemi, harf aralıkları, final barajı, devam şartları ve dönemler. Değişiklikler otomatik kaydedilir.
           </p>
         </div>
         <SaveIndicator state={saveState} error={saveError} onRetry={retrySave} />
@@ -34,7 +35,10 @@ export function AcademicSettingsCard() {
           <Loader2 className="w-5 h-5 text-subtle animate-spin" />
         </div>
       ) : (
-        <GradingSettingsTab data={data} update={update} university={profile?.university ?? ''} />
+        <div className="space-y-4">
+          <AcademicCalendarCard data={data} update={update} />
+          <GradingSettingsTab data={data} update={update} university={profile?.university ?? ''} />
+        </div>
       )}
     </div>
   );

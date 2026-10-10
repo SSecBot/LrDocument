@@ -1,6 +1,5 @@
 import {
   Note,
-  Script,
   Task,
   CalendarEvent,
   FolderItem,
@@ -20,7 +19,6 @@ export const INITIAL_FOLDERS: FolderItem[] = [
 
 export const INITIAL_NOTES: Note[] = [];
 
-export const INITIAL_SCRIPTS: Script[] = [];
 
 export const INITIAL_TASKS: Task[] = [];
 

@@ -6,7 +6,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import {
   FileText,
-  Video,
   Kanban,
   ImageIcon,
   Calendar,
@@ -154,7 +153,7 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-base sm:text-lg text-neutral-400 max-w-3xl mx-auto font-normal leading-relaxed">
-          KaTeX formüllü notlar, video senaryoları, görsel storyboard & çizim galerisi, bağımsız Kanban iş akışları, takvim ve gelir-gider takibi tek bir güvenli çatı altında.
+          KaTeX formüllü notlar, öğrenciler için ders ve sınav takibi, çizim galerisi, bağımsız Kanban iş akışları, takvim ve gelir-gider takibi tek bir güvenli çatı altında.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -183,7 +182,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Süre Tahminli Senaryo Editörü</span>
+            <span>Öğrenciye Ders & Sınav Takibi</span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -206,7 +205,7 @@ export default function LandingPage() {
             Üretim Sürecinizi Uçtan Uca Yöneten 6 Güçlü Modül
           </h3>
           <p className="text-sm text-neutral-400 max-w-2xl mx-auto">
-            Her modül birbiriyle tam entegre çalışır; notlarınızı senaryolara, senaryolarınızı görev ve takvim kayıtlarına anında bağlayabilirsiniz.
+            Her modül birbiriyle entegre çalışır; notlarınızı görev, kanban ve takvim kayıtlarına anında bağlayabilirsiniz.
           </p>
         </div>
 
@@ -232,16 +231,17 @@ export default function LandingPage() {
           <div className="p-5 rounded-xl bg-surface border border-line hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
             <div>
               <div className="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Video className="w-6 h-6" />
+                <GraduationCap className="w-6 h-6" />
               </div>
-              <h4 className="text-lg font-bold text-white mb-2">Video Senaryoları & Süre Tahmini</h4>
+              <h4 className="text-lg font-bold text-white mb-2">Ders Takibi (Öğrenciler)</h4>
               <p className="text-xs text-neutral-400 leading-relaxed mb-4">
-                YouTube ve sosyal medya videoları için hook, ana gövde ve CTA bölümleri. Kelime sayısına göre dinamik süre hesaplama ve teleprompter modu.
+                Ders programını PDF’ten aktarın; akademik takvime göre devamsızlık hakkı, vize-final notları, çan eğrisi, harf notu, AGNO ve sınav
+                geri sayımı tek ekranda.
               </p>
             </div>
             <div className="pt-4 border-t border-line/80 flex items-center justify-between text-[11px] text-sky-400 font-mono">
-              <span>WPM Sayacı • Prompter</span>
-              <span>Bölümleme</span>
+              <span>Devamsızlık • Not • AGNO</span>
+              <span>%50 öğrenci indirimi</span>
             </div>
           </div>
 
@@ -270,7 +270,7 @@ export default function LandingPage() {
               </div>
               <h4 className="text-lg font-bold text-white mb-2">Medya Deposu & Çizim Galerisi</h4>
               <p className="text-xs text-neutral-400 leading-relaxed mb-4">
-                El çizimleri, geometrik şemalar, YouTube referans videoları ve storyboard varlıkları. Görselleri doğrudan not ve senaryolarla eşleştirin.
+                El çizimleri, geometrik şemalar, YouTube referans videoları ve storyboard varlıkları. Görselleri doğrudan notlarla eşleştirin.
               </p>
             </div>
             <div className="pt-4 border-t border-line/80 flex items-center justify-between text-[11px] text-amber-400 font-mono">

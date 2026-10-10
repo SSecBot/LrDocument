@@ -9,7 +9,6 @@ import {
   Plus,
   Bell,
   FileText,
-  Video,
   CheckSquare,
   Calendar,
   Image as ImageIcon,
@@ -32,12 +31,10 @@ export const Header: React.FC = () => {
     setIsNotificationPanelOpen,
     setIsMobileSidebarOpen,
     addNote,
-    addScript,
     addTask,
     addKanbanCard,
     setActiveTab,
     setActiveNoteId,
-    setActiveScriptId,
     exchangeRates,
     fetchExchangeRates,
     currentUser,
@@ -60,8 +57,6 @@ export const Header: React.FC = () => {
         return { title: 'Genel Bakış' };
       case 'notes':
         return { title: 'Notlar' };
-      case 'scripts':
-        return { title: 'Video Senaryoları' };
       case 'kanban':
         return { title: 'Kanban' };
       case 'media':
@@ -275,19 +270,6 @@ export const Header: React.FC = () => {
                 >
                   <FileText className="w-4 h-4 text-emerald-400" />
                   <span>Yeni Not</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    const id = addScript();
-                    setActiveScriptId(id);
-                    setActiveTab('scripts');
-                    setIsNewMenuOpen(false);
-                  }}
-                  className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
-                >
-                  <Video className="w-4 h-4 text-sky-400" />
-                  <span>Yeni Video Senaryosu</span>
                 </button>
 
                 <button

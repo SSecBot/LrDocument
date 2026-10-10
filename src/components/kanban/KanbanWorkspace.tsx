@@ -19,7 +19,6 @@ import {
   Edit3,
   PlayCircle,
   FileText,
-  Video,
   Calendar,
 } from 'lucide-react';
 import { formatTurkishDate } from '@/lib/utils';
@@ -96,7 +95,6 @@ export const KanbanWorkspace: React.FC = () => {
     moveKanbanCard,
     deleteKanbanCard,
     setActiveNoteId,
-    setActiveScriptId,
     setActiveTab,
   } = useAppStore();
 
@@ -239,7 +237,6 @@ export const KanbanWorkspace: React.FC = () => {
         {[
           { id: 'all', label: 'Tüm Projeler', icon: '🌐' },
           { id: 'matematik', label: 'Matematik', icon: '📐' },
-          { id: 'senaryo', label: 'Senaryo', icon: '🎬' },
           { id: 'icerik', label: 'İçerik', icon: '✨' },
           { id: 'finans', label: 'Finans', icon: '💰' },
           { id: 'genel', label: 'Genel', icon: '📋' },
@@ -406,20 +403,6 @@ export const KanbanWorkspace: React.FC = () => {
                           </button>
                         )}
 
-                        {card.linkedScriptId && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveScriptId(card.linkedScriptId!);
-                              setActiveTab('scripts');
-                            }}
-                            className="min-h-[28px] flex items-center gap-1 text-sky-400 hover:underline"
-                            title="Bağlı Senaryoya Git"
-                          >
-                            <Video className="w-3 h-3" />
-                            <span>Senaryo</span>
-                          </button>
-                        )}
                       </div>
 
                       {/* Tags */}

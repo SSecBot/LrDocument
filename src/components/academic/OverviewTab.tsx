@@ -8,6 +8,8 @@ import {
   computeCourseGrade,
   DAYS,
   daysUntil,
+  isAttendanceExempt,
+  isHoliday,
   newId,
   sessionHours,
   summarizeAll,
@@ -37,18 +39,19 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   const todayIndex = (new Date().getDay() + 6) % 7;
   const basisLabel = data.grading.gpaBasis === 'ects' ? 'AKTS' : 'kredi';
 
+  const holidayToday = isHoliday(today, term);
   const todaySessions = courses
     .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
     .sort((a, b) => a.session.start.localeCompare(b.session.start));
 
   const attention = courses.flatMap((c) => {
     const items: { course: Course; text: string; severity: 'warn' | 'bad' }[] = [];
-    for (const a of attendanceStatus(c, data.grading)) {
+    for (const a of attendanceStatus(c, data.grading, term)) {
       const label = a.kind === 'teori' ? 'teorik' : 'uygulama';
       if (a.state === 'over') items.push({ course: c, text: `Devamsızlık sınırı aşıldı (${label})`, severity: 'bad' });
       else if (a.state === 'warn') items.push({ course: c, text: `${label} için ${a.remaining} saat devamsızlık hakkı kaldı`, severity: 'warn' });
     }
-    const g = computeCourseGrade(c, data.grading);
+    const g = computeCourseGrade(c, data.grading, {}, term);
     if (g.status === 'kaldi') items.push({ course: c, text: `Kaldı${g.reason ? ` — ${g.reason}` : ''}`, severity: 'bad' });
     if (g.status === 'devam') {
       const pass = g.required[0];
@@ -98,6 +101,8 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
           <CardHeader title={`Bugün — ${DAYS[todayIndex]}`} icon={<CalendarClock className="w-4 h-4 text-subtle" />} />
           {courses.length === 0 ? (
             <EmptyState title="Bu dönem için ders yok" text="Ders programını oluşturarak başlayın." action={<button className={btnSecondary} onClick={onAddCourse}>Ders ekle</button>} />
+          ) : holidayToday ? (
+            <EmptyState title={`Bugün tatil — ${holidayToday.name}`} text="Akademik takvime göre bugün ders yok; devamsızlık sayılmaz." />
           ) : todaySessions.length === 0 ? (
             <EmptyState title="Bugün dersiniz yok" />
           ) : (
@@ -115,6 +120,11 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                         {session.room ? ` • ${session.room}` : ''}
                       </p>
                     </div>
+                    {isAttendanceExempt(course) ? (
+                      <span className="text-[11px] text-muted whitespace-nowrap" title="Alttan alınan ders, nottan kalınmış">
+                        Devam muaf
+                      </span>
+                    ) : (
                     <button
                       onClick={() => toggleAbsence(course, hours, session.kind)}
                       className={`h-8 px-2.5 rounded-lg text-xs inline-flex items-center gap-1.5 border transition-colors ${
@@ -127,6 +137,7 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                       {absent ? <Undo2 className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
                       {absent ? 'Geri al' : 'Gitmedim'}
                     </button>
+                    )}
                   </li>
                 );
               })}

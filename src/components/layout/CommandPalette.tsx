@@ -5,7 +5,6 @@ import { useAppStore } from '@/store/useAppStore';
 import {
   Search,
   FileText,
-  Video,
   CheckSquare,
   Calendar,
   Image as ImageIcon,
@@ -20,16 +19,13 @@ export const CommandPalette: React.FC = () => {
     isCommandPaletteOpen,
     setIsCommandPaletteOpen,
     notes,
-    scripts,
     tasks,
     kanbanCards,
     mediaItems,
     transactions,
     setActiveTab,
     setActiveNoteId,
-    setActiveScriptId,
     addNote,
-    addScript,
   } = useAppStore();
 
   const [query, setQuery] = useState('');
@@ -57,10 +53,6 @@ export const CommandPalette: React.FC = () => {
     !q || n.title.toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q))
   ).slice(0, 3);
 
-  const matchingScripts = scripts.filter(s =>
-    !q || s.title.toLowerCase().includes(q) || s.targetPlatform.toLowerCase().includes(q)
-  ).slice(0, 3);
-
   const matchingKanban = kanbanCards.filter(k =>
     !q || k.title.toLowerCase().includes(q) || k.tags.some(t => t.toLowerCase().includes(q))
   ).slice(0, 3);
@@ -76,12 +68,6 @@ export const CommandPalette: React.FC = () => {
   const handleSelectNote = (id: string) => {
     setActiveNoteId(id);
     setActiveTab('notes');
-    setIsCommandPaletteOpen(false);
-  };
-
-  const handleSelectScript = (id: string) => {
-    setActiveScriptId(id);
-    setActiveTab('scripts');
     setIsCommandPaletteOpen(false);
   };
 
@@ -126,7 +112,7 @@ export const CommandPalette: React.FC = () => {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Notlarda, senaryolarda, kanbanda veya finansta arayın..."
+            placeholder="Notlarda, kanbanda, medyada veya finansta arayın..."
             className="w-full bg-transparent text-white placeholder-muted text-sm focus:outline-none"
           />
           <kbd className="text-[11px] font-mono bg-surface-3 text-muted px-2 py-0.5 rounded-md border border-line-strong">
@@ -152,14 +138,11 @@ export const CommandPalette: React.FC = () => {
               </button>
 
               <button
-                onClick={() => {
-                  const id = addScript();
-                  handleSelectScript(id);
-                }}
+                onClick={handleSelectTasks}
                 className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
-                <Plus className="w-4 h-4 text-sky-400" />
-                <span>Yeni Senaryo Yaz</span>
+                <CheckSquare className="w-4 h-4 text-sky-400" />
+                <span>Görevleri Aç</span>
               </button>
 
               <button
@@ -220,29 +203,6 @@ export const CommandPalette: React.FC = () => {
             </div>
           )}
 
-          {/* Scripts */}
-          {matchingScripts.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Video Senaryoları</span>
-              <div className="space-y-1 pt-1">
-                {matchingScripts.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSelectScript(s.id)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <Video className="w-4 h-4 text-sky-400 shrink-0" />
-                      <span className="truncate">{s.title}</span>
-                    </div>
-                    <span className="text-[10px] text-emerald-400 bg-surface px-2 py-0.5 rounded">
-                      {s.targetPlatform}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Finance Records */}
           {matchingTransactions.length > 0 && (

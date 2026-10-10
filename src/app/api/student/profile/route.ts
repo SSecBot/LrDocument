@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireStudentAccess } from '@/lib/auth';
 import { handleRouteError, readJsonObject } from '@/lib/apiUtils';
-import { studentProfileSchema } from '@/lib/studentProfile';
+import { adminStudentProfileSchema, studentProfileSchema } from '@/lib/studentProfile';
 
 export async function PATCH(req: Request) {
   try {
     const session = await requireStudentAccess();
-    const parsed = studentProfileSchema.safeParse(await readJsonObject(req));
+    const schema = session.role === 'ADMIN' ? adminStudentProfileSchema : studentProfileSchema;
+    const parsed = schema.safeParse(await readJsonObject(req));
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || 'Öğrenci bilgileri geçersiz.' },

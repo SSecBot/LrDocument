@@ -11,7 +11,7 @@ type Row = Record<string, unknown>;
 // ---------------------------------------------------------------------------
 const MAX_ID = 128;
 const MAX_TITLE = 500;
-const MAX_TEXT = 200_000; // long notes / script sections
+const MAX_TEXT = 200_000; // long notes
 const MAX_SHORT = 5_000;
 
 function text(v: unknown, max: number, fallback = ''): string {
@@ -88,18 +88,7 @@ const ENTITIES: Record<string, EntityDef> = {
       isPinned: Boolean(d.isPinned),
     }),
   },
-  script: {
-    delegate: () => prisma.script as unknown as Delegate,
-    fields: (d) => ({
-      title: text(d.title, MAX_TITLE),
-      targetPlatform: oneOf(d.targetPlatform, ['YouTube', 'TikTok', 'Instagram', 'Web', 'Podcast'] as const, 'YouTube'),
-      status: oneOf(d.status, ['fikir', 'senaryo_hazir', 'cekimde', 'kurguda', 'yayina_hazir'] as const, 'fikir'),
-      sections: jsonArray(d.sections),
-      speakingRateWPM: int(d.speakingRateWPM, 130, 40, 400),
-      linkedNoteId: ref(d.linkedNoteId),
-      tags: tags(d.tags),
-    }),
-  },
+
   task: {
     delegate: () => prisma.task as unknown as Delegate,
     fields: (d) => ({
@@ -109,7 +98,6 @@ const ENTITIES: Record<string, EntityDef> = {
       priority: oneOf(d.priority, PRIORITIES, 'orta'),
       dueDate: optText(d.dueDate, 40),
       linkedNoteId: ref(d.linkedNoteId),
-      linkedScriptId: ref(d.linkedScriptId),
       completedAt: optDate(d.completedAt),
     }),
   },
@@ -123,7 +111,6 @@ const ENTITIES: Record<string, EntityDef> = {
       priority: oneOf(d.priority, PRIORITIES, 'orta'),
       dueDate: optText(d.dueDate, 40),
       tags: tags(d.tags),
-      linkedScriptId: ref(d.linkedScriptId),
       linkedNoteId: ref(d.linkedNoteId),
     }),
   },
@@ -137,7 +124,6 @@ const ENTITIES: Record<string, EntityDef> = {
       durationMinutes: int(d.durationMinutes, 30, 0, 7 * 24 * 60),
       eventType: oneOf(d.eventType, ['yayin', 'gorev', 'ozel_gun', 'finans'] as const, 'gorev'),
       platform: optText(d.platform, 32),
-      linkedScriptId: ref(d.linkedScriptId),
       linkedNoteId: ref(d.linkedNoteId),
       linkedTaskId: ref(d.linkedTaskId),
       status: oneOf(d.status, ['planlandi', 'hazirlaniyor', 'yayinlandi', 'iptal'] as const, 'planlandi'),
@@ -159,7 +145,6 @@ const ENTITIES: Record<string, EntityDef> = {
         url,
         thumbnailUrl: thumbnailUrl && isSafeMediaUrl(thumbnailUrl) ? thumbnailUrl : null,
         linkedNoteId: ref(d.linkedNoteId),
-        linkedScriptId: ref(d.linkedScriptId),
         tags: tags(d.tags),
       };
     },
@@ -179,7 +164,6 @@ const ENTITIES: Record<string, EntityDef> = {
       markupTRY: optFloat(d.markupTRY),
       effectiveRate: optFloat(d.effectiveRate),
       description: optText(d.description, MAX_SHORT),
-      linkedScriptId: ref(d.linkedScriptId),
       isRecurring: Boolean(d.isRecurring),
       recurringFrequency: d.recurringFrequency
         ? oneOf(d.recurringFrequency, ['gunluk', 'haftalik', 'aylik'] as const, 'aylik')

@@ -5,9 +5,10 @@ import { useAppStore } from '@/store/useAppStore';
 import { PlatformBadge } from '@/components/ui/Badge';
 import { AlertBanner } from './AlertBanner';
 import { StudentDashboardCard } from '@/components/academic/StudentDashboardCard';
+import { hasStudentAccess } from '@/lib/access';
 import {
   FileText,
-  Video,
+  GraduationCap,
   CheckSquare,
   Calendar,
   Image as ImageIcon,
@@ -34,7 +35,6 @@ export const DashboardOverview: React.FC = () => {
   const {
     currentUser,
     notes,
-    scripts,
     tasks,
     kanbanCards,
     events,
@@ -42,13 +42,10 @@ export const DashboardOverview: React.FC = () => {
     transactions,
     setActiveTab,
     setActiveNoteId,
-    setActiveScriptId,
     addNote,
-    addScript,
   } = useAppStore();
 
   const todayStr = toLocalDateString();
-  const readyScripts = scripts.filter((s) => s.status === 'yayina_hazir' || s.status === 'senaryo_hazir').length;
   const pendingTasks = tasks.filter((t) => !t.completed).length;
   const inProgressKanban = kanbanCards.filter((c) => c.columnId === 'devam_ediyor' || c.columnId === 'yapilacak').length;
   const futureEvents = events.filter((e) => e.date >= todayStr && e.status !== 'iptal');
@@ -69,15 +66,9 @@ export const DashboardOverview: React.FC = () => {
     setActiveNoteId(id);
     setActiveTab('notes');
   };
-  const startScript = () => {
-    const id = addScript();
-    setActiveScriptId(id);
-    setActiveTab('scripts');
-  };
 
   const stats: { tab: ActiveTab; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
     { tab: 'notes', label: 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
-    { tab: 'scripts', label: 'Senaryolar', value: scripts.length, hint: `${readyScripts} hazır`, icon: Video },
     { tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
     { tab: 'kanban', label: 'Kanban', value: kanbanCards.length, hint: `${inProgressKanban} aktif`, icon: Kanban },
     { tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
@@ -92,6 +83,7 @@ export const DashboardOverview: React.FC = () => {
   ];
 
   const firstName = currentUser?.name?.split(' ')[0];
+  const studentAccess = hasStudentAccess(currentUser);
 
   return (
     <div className="flex-1 overflow-y-auto bg-app p-4 sm:p-5 lg:p-6">
@@ -115,13 +107,15 @@ export const DashboardOverview: React.FC = () => {
               <Plus className="w-4 h-4" />
               Yeni not
             </button>
-            <button
-              onClick={startScript}
-              className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
-            >
-              <Video className="w-4 h-4 text-subtle" />
-              Senaryo
-            </button>
+            {studentAccess && (
+              <button
+                onClick={() => setActiveTab('academic')}
+                className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <GraduationCap className="w-4 h-4 text-subtle" />
+                Ders Takibi
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('tasks')}
               className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
@@ -139,17 +133,15 @@ export const DashboardOverview: React.FC = () => {
           </div>
         </div>
 
-        {currentUser?.accountType === 'STUDENT' && <StudentDashboardCard />}
+        {studentAccess && <StudentDashboardCard />}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
           {stats.map(({ tab, label, value, hint, icon: Icon }) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`text-left bg-surface hover:bg-surface-2 border border-line hover:border-line-strong rounded-lg px-3 py-2.5 transition-colors group ${
-                tab === 'finance' ? 'col-span-2 sm:col-span-1' : ''
-              }`}
+              className="text-left bg-surface hover:bg-surface-2 border border-line hover:border-line-strong rounded-lg px-3 py-2.5 transition-colors group"
             >
               <div className="flex items-center justify-between text-muted">
                 <span className="text-[11px] font-medium">{label}</span>

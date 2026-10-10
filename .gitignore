@@ -46,3 +46,4 @@ prisma/*.db-journal
 
 # local Claude preview config
 /.claude/
+*.sunucu-yedek

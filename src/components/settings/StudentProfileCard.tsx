@@ -19,7 +19,7 @@ const inputCls =
 const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2';
 
 /** Lets student accounts edit university, department, class year etc. */
-export function StudentProfileCard() {
+export function StudentProfileCard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [form, setForm] = useState<ProfileForm>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +54,7 @@ export function StudentProfileCard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    if (!isAcademicEmail(form.studentEmail)) {
+    if (!isAdmin && !isAcademicEmail(form.studentEmail)) {
       setMessage({ type: 'error', text: 'Öğrenci e-postası üniversite uzantılı olmalıdır (ör. ad@ogr.ktu.edu.tr).' });
       return;
     }

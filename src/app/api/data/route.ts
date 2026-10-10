@@ -47,9 +47,8 @@ export async function GET() {
       categories = await prisma.financeCategory.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
     }
 
-    const [dbNotes, dbScripts, dbTasks, dbKanban, dbEvents, dbMedia, dbTransactions] = await Promise.all([
+    const [dbNotes, dbTasks, dbKanban, dbEvents, dbMedia, dbTransactions] = await Promise.all([
       prisma.note.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
-      prisma.script.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
       prisma.task.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.kanbanCard.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
       prisma.calendarEvent.findMany({ where: { userId }, orderBy: { date: 'asc' } }),
@@ -62,14 +61,6 @@ export async function GET() {
       tags: safeJsonParse<string[]>(n.tags, []),
       createdAt: n.createdAt.toISOString(),
       updatedAt: n.updatedAt.toISOString(),
-    }));
-
-    const scripts = dbScripts.map((s) => ({
-      ...s,
-      sections: safeJsonParse(s.sections, []),
-      tags: safeJsonParse<string[]>(s.tags, []),
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
     }));
 
     const tasks = dbTasks.map((t) => ({
@@ -123,7 +114,6 @@ export async function GET() {
         success: true,
         data: {
           notes,
-          scripts,
           tasks,
           kanbanCards,
           events,

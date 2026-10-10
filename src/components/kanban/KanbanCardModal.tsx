@@ -6,7 +6,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
 import {
   FileText,
-  Video,
 } from 'lucide-react';
 
 interface KanbanCardModalProps {
@@ -21,7 +20,6 @@ const PROJECT_TYPES: { id: KanbanProjectType; label: string; icon: string }[] = 
   { id: 'icerik', label: 'İçerik Üretimi', icon: '✨' },
   { id: 'matematik', label: 'Matematik Araştırması', icon: '📐' },
   { id: 'finans', label: 'Finans Planı', icon: '💰' },
-  { id: 'senaryo', label: 'Video Senaryosu', icon: '🎬' },
 ];
 
 const COLUMNS: { id: KanbanColumnId; label: string }[] = [
@@ -38,7 +36,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
   editCard,
   defaultColumnId = 'fikir',
 }) => {
-  const { addKanbanCard, updateKanbanCard, notes, scripts } = useAppStore();
+  const { addKanbanCard, updateKanbanCard, notes } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,7 +46,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [linkedNoteId, setLinkedNoteId] = useState('');
-  const [linkedScriptId, setLinkedScriptId] = useState('');
 
   // Reset the form whenever the modal is (re)opened or a different record is edited.
   // Adjusting state during render (instead of in an effect) avoids a flash of stale values.
@@ -65,7 +62,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       setDueDate(editCard.dueDate || '');
       setTagsInput(editCard.tags.join(', '));
       setLinkedNoteId(editCard.linkedNoteId || '');
-      setLinkedScriptId(editCard.linkedScriptId || '');
     } else {
       setTitle('');
       setDescription('');
@@ -75,7 +71,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       setDueDate('');
       setTagsInput('');
       setLinkedNoteId('');
-      setLinkedScriptId('');
     }
   }
 
@@ -98,7 +93,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         dueDate: dueDate || undefined,
         tags,
         linkedNoteId: linkedNoteId || undefined,
-        linkedScriptId: linkedScriptId || undefined,
       });
     } else {
       addKanbanCard({
@@ -110,7 +104,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         dueDate: dueDate || undefined,
         tags,
         linkedNoteId: linkedNoteId || undefined,
-        linkedScriptId: linkedScriptId || undefined,
       });
     }
 
@@ -122,7 +115,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={editCard ? 'Kanban Kartını Düzenle' : 'Yeni Kanban Kartı Oluştur'}
-      subtitle="Genel görevler, matematik araştırmaları, senaryo veya finans için kart ekleyin."
+      subtitle="Genel görevler, matematik araştırmaları, içerik veya finans için kart ekleyin."
       maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -222,8 +215,8 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
           />
         </div>
 
-        {/* Link with Note or Script */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* Link with a note */}
+        <div className="pt-1">
           <div>
             <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
               <FileText className="w-3.5 h-3.5 text-emerald-400" />
@@ -238,25 +231,6 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
               {notes.map((n) => (
                 <option key={n.id} value={n.id}>
                   {n.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
-              <Video className="w-3.5 h-3.5 text-sky-400" />
-              <span>Bağlı Senaryo (Opsiyonel)</span>
-            </label>
-            <select
-              value={linkedScriptId}
-              onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="">(Bağlantı Yok)</option>
-              {scripts.map((s) => (
-                <option key={s.id} value={s.id}>
-                  [{s.targetPlatform}] {s.title}
                 </option>
               ))}
             </select>

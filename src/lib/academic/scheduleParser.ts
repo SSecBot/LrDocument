@@ -24,12 +24,18 @@ export interface ParsedSession {
   end: string;
   kind: SessionKind;
   room?: string;
+  /** Şube / group letter, e.g. "A" from "ANALİZ-I (A)" */
+  group?: string;
 }
 
 export interface ParsedCourse {
   code: string;
   name: string;
   instructor?: string;
+  /** Class year of the row block the course was found in (0 = hazırlık), null if unknown */
+  year: number | null;
+  /** Marked as elective in the PDF */
+  elective: boolean;
   sessions: ParsedSession[];
 }
 
@@ -123,8 +129,9 @@ function stripCodes(str: string): string {
 }
 
 const INSTRUCTOR_RE = /\b(prof|doc|dr|ogr|ars|gor|okt|uzm|instructor|lecturer)\b\.?/;
-const ROOM_RE = /^(?:[A-ZÇĞİÖŞÜ]{1,4}[-\s.]?\d{1,4}[A-Z]?(?:[-.]\d{1,3})?|(?:AMF[İI]?|AMPH[İI]|LAB|DERSL[İI]K|SALON|SINIF|D)\s?[-.]?\s?[\w-]{0,6})$/i;
-const KIND_U_RE = /(\(u\)|\buyg|\buygulama|\blab\b|\blaboratuvar|\bpratik)/;
+const ROOM_RE = /^(?:[A-ZÇĞİÖŞÜ]{1,4}[-\s.]?\d{1,4}[A-Z]?(?:[-.]\d{1,3})?|(?:AMF[İI]?|AMPH[İI]|LAB|DERSL[İI]K|SALON|SINIF|CUD|UZEM|ONLINE|D)\s?[-.]?\s?[\w-]{0,6})$/i;
+// "UYG. MAT." (Uygulamalı Matematik) is a theory course, so only explicit markers count.
+const KIND_U_RE = /(\(u\)|\(uyg\.?\)|\buygulama\b|\blab\b|\blaboratuvar|\bpratik)/;
 const KIND_T_RE = /(\(t\)|\bteori)/;
 
 function minutes(t: string): number {
@@ -255,15 +262,78 @@ interface Slot {
   center: number;
   start: string;
   end: string | null;
+  /** Row block (e.g. "1. SINIF", "2. SINIF" blocks repeat the same hours) */
+  section: number;
 }
 
 interface Run {
   key: string;
   code: string;
+  /** Course name when the timetable has no course codes */
+  name?: string;
+  group?: string;
+  room?: string;
   day: number;
   first: number;
   last: number;
   texts: string[];
+}
+
+/** "08:15-10:00", "08:15" or whole-hour ranges such as "8-10". */
+function slotTimes(str: string): string[] {
+  const t = timesIn(str);
+  if (t.length > 0) return t;
+  const m = str.trim().match(/^(\d{1,2})\s*[-–]\s*(\d{1,2})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a >= 6 && b > a && b <= 23) return [`${String(a).padStart(2, '0')}:00`, `${String(b).padStart(2, '0')}:00`];
+  }
+  return [];
+}
+
+const HEADER_WORDS = new Set([
+  'ders adi',
+  'derslik',
+  'sinif',
+  'saat',
+  'gun',
+  'ders kodu',
+  'ders',
+  'kod',
+  'ogretim elemani',
+  'ogretim uyesi',
+  'gun saat',
+  'saat gun',
+  'yer',
+]);
+
+function isHeaderWord(str: string): boolean {
+  return HEADER_WORDS.has(fold(str).replace(/[^a-z]+/g, ' ').trim());
+}
+
+/** Year of a row-block label such as "1. SINIF" or "Hazırlık" (0). */
+function sectionYear(str: string): number | null {
+  const f = fold(str).replace(/\s+/g, ' ').trim();
+  const m = f.match(/^(\d)\s*\.?\s*sinif$/) ?? f.match(/^sinif\s*:?\s*(\d)$/);
+  if (m) return Number(m[1]);
+  return /^hazirlik( sinifi)?$/.test(f) ? 0 : null;
+}
+
+const ELECTIVE_RE = /(\bsecmeli\b|\bsec\b|\(s\)|^u?sec\d|\*)/;
+
+/** Elective markers: "(S)", "Seç.", "Seçmeli", "*" or university elective codes (USEC…). */
+export function looksElective(text: string): boolean {
+  return ELECTIVE_RE.test(fold(text));
+}
+
+const GROUP_RE = /\(\s*([A-Za-zÇĞİÖŞÜ]|\d)\s*\)\s*$/;
+
+/** "ANALİZ-I (A)" → base "ANALİZ-I", group "A" (şube). */
+function splitGroup(name: string): { base: string; group?: string } {
+  const m = name.match(GROUP_RE);
+  if (!m || m.index === undefined) return { base: name };
+  return { base: cleanSegment(name.slice(0, m.index)), group: m[1].toLocaleUpperCase('tr-TR') };
 }
 
 function buildSlots(timeItems: PdfTextItem[], axis: (i: PdfTextItem) => number): Slot[] {
@@ -271,7 +341,7 @@ function buildSlots(timeItems: PdfTextItem[], axis: (i: PdfTextItem) => number):
   const groups: { center: number; items: PdfTextItem[] }[] = [];
   for (const it of sorted) {
     const g = groups[groups.length - 1];
-    if (g && Math.abs(axis(it) - g.center) <= Math.max(4, it.h * 1.6) && timesIn(g.items.map((x) => x.str).join(' ')).length < 2) {
+    if (g && Math.abs(axis(it) - g.center) <= Math.max(4, it.h * 1.6) && slotTimes(g.items.map((x) => x.str).join(' ')).length < 2) {
       g.items.push(it);
       g.center = g.items.reduce((s, x) => s + axis(x), 0) / g.items.length;
     } else {
@@ -279,20 +349,88 @@ function buildSlots(timeItems: PdfTextItem[], axis: (i: PdfTextItem) => number):
     }
   }
   const slots: Slot[] = [];
+  let section = 0;
   for (const g of groups) {
-    const t = timesIn(g.items.sort((a, b) => a.y - b.y || a.x - b.x).map((x) => x.str).join(' '));
+    const parts = g.items.sort((a, b) => a.y - b.y || a.x - b.x).map((x) => x.str);
+    const joined = slotTimes(parts.join(' '));
+    const t = joined.length > 0 ? joined : parts.flatMap(slotTimes);
     if (t.length === 0) continue;
-    slots.push({ center: g.center, start: t[0], end: t.length > 1 && minutes(t[1]) > minutes(t[0]) ? t[1] : null });
+    const prev = slots[slots.length - 1];
+    // Hours starting over (e.g. 15-17 followed by 8-10) begin a new row block.
+    if (prev && minutes(t[0]) <= minutes(prev.start)) section++;
+    slots.push({ center: g.center, start: t[0], end: t.length > 1 && minutes(t[1]) > minutes(t[0]) ? t[1] : null, section });
   }
   // Fill missing end times from the next slot (or assume a 50-minute class hour).
   slots.forEach((s, i) => {
     if (s.end) return;
     const next = slots[i + 1];
-    const gap = next ? minutes(next.start) - minutes(s.start) : 0;
+    const gap = next && next.section === s.section ? minutes(next.start) - minutes(s.start) : 0;
     s.end = gap > 0 && gap <= 70 ? next!.start : hhmm(minutes(s.start) + 50);
   });
-  // Drop slots that are out of order (e.g. stray times in a legend).
-  return slots.filter((s, i) => i === 0 || minutes(s.start) > minutes(slots[i - 1].start));
+  return slots;
+}
+
+interface DayColumns {
+  bands: [number, number][];
+  /** Items whose center is at or right of this x inside a day column are rooms ("DERSLİK") */
+  roomX: (number | null)[];
+  subHeader: PdfTextItem[];
+}
+
+/**
+ * Day column bands. KTÜ-style programs split each day into "DERS ADI" and "DERSLİK"
+ * sub-columns; when those sub-headers exist they define the columns precisely.
+ */
+function dayColumns(items: PdfTextItem[], dayList: [number, number][], headerEdge: number, transposed: boolean): DayColumns {
+  const fallback: DayColumns = { bands: bands(dayList.map(([, p]) => p)), roomX: dayList.map(() => null), subHeader: [] };
+  if (transposed) return fallback;
+  const label = (i: PdfTextItem) => fold(i.str).replace(/[^a-z]+/g, ' ').trim();
+  const below = items.filter((i) => i.y > headerEdge && i.y < headerEdge + 40);
+  const names = below.filter((i) => label(i) === 'ders adi' || label(i) === 'ders').sort((a, b) => a.x - b.x);
+  const rooms = below.filter((i) => label(i) === 'derslik' || label(i) === 'yer').sort((a, b) => a.x - b.x);
+  if (names.length !== dayList.length) return fallback;
+  const roomFor = (i: number) => rooms.find((r) => r.x > names[i].x && (i + 1 >= names.length || r.x < names[i + 1].x));
+  const edges: number[] = [];
+  for (let i = 0; i + 1 < names.length; i++) {
+    const room = roomFor(i);
+    const right = room ? room.x + room.w : names[i].x + names[i].w;
+    edges.push((right + names[i + 1].x) / 2);
+  }
+  const firstLo = names[0].x - Math.min(30, (edges[0] ?? names[0].x + 100) - names[0].x);
+  return {
+    bands: names.map((_, i) => [i === 0 ? firstLo : edges[i - 1], i === names.length - 1 ? Infinity : edges[i]] as [number, number]),
+    roomX: names.map((_, i) => {
+      const room = roomFor(i);
+      return room ? room.x - 4 : null;
+    }),
+    subHeader: below.filter((i) => isHeaderWord(i.str)),
+  };
+}
+
+interface CellEntry {
+  name: string;
+  room?: string;
+  y: number;
+}
+
+/** Splits a cell without course codes into one entry per course line (A/B groups are stacked). */
+function cellEntries(list: PdfTextItem[], roomX: number | null): CellEntry[] {
+  const entries: CellEntry[] = [];
+  const looseRooms: { room: string; y: number }[] = [];
+  for (const line of groupLines(list)) {
+    const nameItems = roomX === null ? line.items : line.items.filter((i) => cx(i) < roomX);
+    const roomItems = roomX === null ? [] : line.items.filter((i) => cx(i) >= roomX);
+    const seg = classifySegments([nameItems.map((i) => i.str).join(' ')]);
+    const room = cleanSegment(roomItems.map((i) => i.str).join(' ')) || seg.room;
+    if (seg.name) entries.push({ name: seg.name, room: room || undefined, y: line.y });
+    else if (room) looseRooms.push({ room, y: line.y });
+  }
+  // Rooms printed on their own line belong to the closest course line without a room.
+  for (const r of looseRooms) {
+    const target = entries.filter((e) => !e.room).sort((a, b) => Math.abs(a.y - r.y) - Math.abs(b.y - r.y))[0];
+    if (target) target.room = r.room;
+  }
+  return entries;
 }
 
 function parseGrid(
@@ -300,7 +438,7 @@ function parseGrid(
   dayItems: PdfTextItem[],
   transposed: boolean,
   warnings: string[]
-): { runs: Run[]; slots: Slot[]; used: PdfTextItem[] } {
+): { runs: Run[]; slots: Slot[]; used: PdfTextItem[]; years: Map<number, number> } {
   // Day axis: x for the normal layout (days are columns), y for the transposed one.
   const dayPos = transposed ? cy : cx;
   const slotPos = transposed ? cx : cy;
@@ -310,28 +448,45 @@ function parseGrid(
     if (!byDay.has(d)) byDay.set(d, dayPos(it));
   }
   const dayList = [...byDay.entries()].sort((a, b) => a[1] - b[1]);
-  const dayBands = bands(dayList.map(([, p]) => p));
   const headerEdge = transposed ? Math.max(...dayItems.map((i) => i.x + i.w)) : Math.max(...dayItems.map((i) => i.y));
+  const columns = dayColumns(items, dayList, headerEdge, transposed);
+  const dayBands = columns.bands;
   const firstDayLo = dayBands[0][0];
 
   // Time labels live outside the day bands: left of the first column, or above the first row.
   const timeItems = items.filter((it) => {
-    if (timesIn(it.str).length === 0) return false;
+    if (slotTimes(it.str).length === 0) return false;
     return transposed ? cy(it) < firstDayLo && cx(it) > headerEdge - 2 : cx(it) < firstDayLo && it.y > headerEdge;
   });
   const slots = buildSlots(timeItems, slotPos);
   if (slots.length < 2) {
     warnings.push('Tabloda saat satırları bulunamadı.');
-    return { runs: [], slots: [], used: [] };
+    return { runs: [], slots: [], used: [], years: new Map() };
   }
   const slotBands = bands(slots.map((s) => s.center));
-  const timeSet = new Set(timeItems);
-  const daySet = new Set(dayItems);
+  // Keep bands inside their row block so blocks never bleed into each other.
+  slots.forEach((s, k) => {
+    if (k > 0 && slots[k - 1].section !== s.section) {
+      const mid = (slots[k - 1].center + s.center) / 2;
+      slotBands[k - 1][1] = mid;
+      slotBands[k][0] = mid;
+    }
+  });
+
+  // Row-block labels ("1. SINIF") → class year of each block.
+  const years = new Map<number, number>();
+  const sectionLabels = items.filter((it) => sectionYear(it.str) !== null && dayPos(it) < firstDayLo);
+  for (const label of sectionLabels) {
+    const k = bandIndex(slotPos(label), slotBands);
+    if (k >= 0 && !years.has(slots[k].section)) years.set(slots[k].section, sectionYear(label.str)!);
+  }
+
+  const skip = new Set<PdfTextItem>([...timeItems, ...dayItems, ...columns.subHeader, ...sectionLabels]);
 
   // Bucket every remaining item into (day, slot) cells.
   const cells = new Map<string, PdfTextItem[]>();
   for (const it of items) {
-    if (timeSet.has(it) || daySet.has(it) || !it.str.trim()) continue;
+    if (skip.has(it) || !it.str.trim() || isHeaderWord(it.str)) continue;
     const di = bandIndex(dayPos(it), dayBands);
     if (di < 0) continue;
     if (transposed ? it.x + it.w <= headerEdge : it.y <= headerEdge) continue;
@@ -359,43 +514,43 @@ function parseGrid(
   const useCodes = allTexts.filter((t) => codesIn(t).length > 0).length >= 2;
 
   const runs: Run[] = [];
-  for (const [day] of dayList) {
+  dayList.forEach(([day], di) => {
     const active = new Map<string, Run>();
     for (let k = 0; k < slots.length; k++) {
       const list = cells.get(`${day}:${k}`);
       const text = list ? cellText(list) : '';
-      if (!text.trim()) {
-        active.clear();
-        continue;
-      }
-      let keys: { key: string; code: string }[];
+      if (!text.trim() || (k > 0 && slots[k - 1].section !== slots[k].section)) active.clear();
+      if (!list || !text.trim()) continue;
+
+      let keys: { key: string; code: string; name?: string; group?: string; room?: string; text: string }[];
       if (useCodes) {
         const codes = codesIn(text);
         if (codes.length === 0) {
           // Text without a code right below a coded cell: rest of a merged multi-hour cell.
-          if (active.size > 0) {
-            for (const run of active.values()) {
-              run.last = k;
-              run.texts.push(text);
-            }
+          for (const run of active.values()) {
+            run.last = k;
+            run.texts.push(text);
           }
           continue;
         }
-        keys = codes.map((c) => ({ key: c, code: c }));
+        keys = codes.map((c) => ({ key: c, code: c, text }));
       } else {
-        const first = fold(text.split('\n')[0]).replace(/[^a-z0-9]+/g, ' ').trim();
-        if (!first) continue;
-        keys = [{ key: first, code: '' }];
+        keys = cellEntries(list, columns.roomX[di])
+          .map((e) => {
+            const { base, group } = splitGroup(e.name);
+            return { key: `${fold(base).replace(/[^a-z0-9]+/g, '')}|${group ?? ''}`, code: '', name: base, group, room: e.room, text: e.name };
+          })
+          .filter((x) => !x.key.startsWith('|'));
       }
       const next = new Map<string, Run>();
-      for (const { key, code } of keys) {
+      for (const { key, code, name, group, room, text: t } of keys) {
         const existing = active.get(key);
         if (existing && existing.last === k - 1) {
           existing.last = k;
-          existing.texts.push(text);
+          existing.texts.push(t);
           next.set(key, existing);
         } else {
-          const run: Run = { key, code, day, first: k, last: k, texts: [text] };
+          const run: Run = { key, code, name, group, room, day, first: k, last: k, texts: [t] };
           runs.push(run);
           next.set(key, run);
         }
@@ -403,10 +558,10 @@ function parseGrid(
       active.clear();
       next.forEach((v, key) => active.set(key, v));
     }
-  }
+  });
 
-  const used = [...timeItems, ...dayItems, ...[...cells.values()].flat()];
-  return { runs, slots, used };
+  const used = [...skip, ...[...cells.values()].flat()];
+  return { runs, slots, used, years };
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +631,7 @@ function mergeSessions(sessions: ParsedSession[]): ParsedSession[] {
       prev &&
       prev.day === s.day &&
       prev.kind === s.kind &&
+      prev.group === s.group &&
       minutes(s.start) >= minutes(prev.start) &&
       minutes(s.start) - minutes(prev.end) <= 20 &&
       (!prev.room || !s.room || prev.room === s.room)
@@ -535,7 +691,7 @@ export function parseSchedule(allItems: PdfTextItem[]): ParseResult {
   const used = new Set<PdfTextItem>();
   const gridWarnings: string[] = [];
 
-  type Collected = { code: string; key: string; session: ParsedSession; texts: string[] };
+  type Collected = { code: string; key: string; name?: string; year: number | null; session: ParsedSession; texts: string[] };
   const collected: Collected[] = [];
   let layout: ParseResult['layout'] = 'none';
 
@@ -544,22 +700,27 @@ export function parseSchedule(allItems: PdfTextItem[]): ParseResult {
     const header = findDayHeader(pageItems);
     if (header) {
       const grid = parseGrid(pageItems, header.items, header.transposed, gridWarnings);
-      const { runs, slots } = grid;
+      const { runs, slots, years } = grid;
       if (runs.length > 0) {
         grid.used.forEach((i) => used.add(i));
         layout = header.transposed ? 'transposed' : 'grid';
         for (const r of runs) {
           const text = r.texts.join('\n');
+          const section = slots[r.first].section;
           collected.push({
             code: r.code,
-            key: r.key,
+            // Group (şube) is kept on the session, not in the course key.
+            key: `${years.get(section) ?? `s${section}`}|${r.code || r.key.split('|')[0]}`,
+            name: r.name,
+            year: years.get(section) ?? null,
             texts: r.texts,
             session: {
               day: r.day,
               start: slots[r.first].start,
               end: slots[r.last].end!,
               kind: kindOf(text),
-              room: classifySegments(text.split('\n')).room,
+              room: r.room ?? classifySegments(text.split('\n')).room,
+              group: r.group,
             },
           });
         }
@@ -572,6 +733,7 @@ export function parseSchedule(allItems: PdfTextItem[]): ParseResult {
       collected.push({
         code: e.code,
         key: e.key,
+        year: null,
         texts: [e.text],
         session: { day: e.day, start: e.start, end: e.end, kind: kindOf(e.text), room: classifySegments(e.text.split(/\s{2,}/)).room },
       });
@@ -595,18 +757,25 @@ export function parseSchedule(allItems: PdfTextItem[]): ParseResult {
     const code = list[0].code;
     const fromLegend = code ? legend.get(code) : undefined;
     const fromCells = classifySegments(list.flatMap((c) => c.texts.flatMap((t) => t.split('\n'))));
-    const name = fromLegend?.name || fromCells.name || code || 'Ders';
+    // Prefer the most common spelling for code-less names ("T.MAT" vs "T. MAT").
+    const counts = new Map<string, number>();
+    list.forEach((c) => c.name && counts.set(c.name, (counts.get(c.name) ?? 0) + 1));
+    const cellName = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0]?.[0];
+    const name = fromLegend?.name || cellName || fromCells.name || code || 'Ders';
+    const allText = [code, name, ...list.flatMap((c) => c.texts)].join(' ');
     courses.push({
       code,
       name,
       instructor: fromLegend?.instructor || fromCells.instructor,
+      year: list[0].year,
+      elective: looksElective(allText),
       sessions: mergeSessions(list.map((c) => c.session)),
     });
   }
   courses.sort((a, b) => {
     const sa = a.sessions[0];
     const sb = b.sessions[0];
-    return sa.day - sb.day || sa.start.localeCompare(sb.start);
+    return (a.year ?? 99) - (b.year ?? 99) || sa.day - sb.day || sa.start.localeCompare(sb.start);
   });
 
   if (courses.length === 0 && warnings.length === 0) {

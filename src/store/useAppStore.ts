@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import {
   Note,
-  Script,
-  ScriptSection,
-  ScriptSectionType,
   Task,
   CalendarEvent,
   FolderItem,
@@ -16,7 +13,6 @@ import {
   KanbanCard,
   KanbanColumnId,
   ActiveTab,
-  ScriptStatus,
   EventStatus,
   TaskPriority,
   AppNotification,
@@ -88,18 +84,6 @@ interface AppState {
   toggleFavoriteNote: (id: string) => void;
   togglePinNote: (id: string) => void;
 
-  // Scripts
-  scripts: Script[];
-  activeScriptId: string | null;
-  setActiveScriptId: (id: string | null) => void;
-  addScript: (partial?: Partial<Script>) => string;
-  updateScript: (id: string, partial: Partial<Script>) => void;
-  deleteScript: (id: string) => void;
-  updateScriptStatus: (id: string, status: ScriptStatus) => void;
-  addScriptSection: (scriptId: string, section: { type: ScriptSectionType; title: string; content?: string; visualNotes?: string }) => void;
-  updateScriptSection: (scriptId: string, sectionId: string, partial: Partial<ScriptSection>) => void;
-  deleteScriptSection: (scriptId: string, sectionId: string) => void;
-
   // Tasks
   tasks: Task[];
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => string;
@@ -163,8 +147,6 @@ const globalState: {
   activeNoteId: string | null;
   activeFolder: string;
   folders: FolderItem[];
-  scripts: Script[];
-  activeScriptId: string | null;
   tasks: Task[];
   kanbanCards: KanbanCard[];
   events: CalendarEvent[];
@@ -188,8 +170,6 @@ const globalState: {
   activeNoteId: null,
   activeFolder: 'all',
   folders: INITIAL_FOLDERS,
-  scripts: [],
-  activeScriptId: null,
   tasks: [],
   kanbanCards: [],
   events: [],
@@ -205,7 +185,7 @@ function notify() {
   listeners.forEach((fn) => fn());
 }
 
-type MutationEntity = 'note' | 'script' | 'task' | 'kanban' | 'event' | 'media' | 'finance' | 'folder' | 'category';
+type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'media' | 'finance' | 'folder' | 'category';
 
 // Upserts are debounced per record so typing in an editor sends one request per pause, not per keystroke.
 const UPSERT_DEBOUNCE_MS = 500;
@@ -304,7 +284,6 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
         date: task.dueDate,
         status: (task.completed ? 'yayinlandi' : 'planlandi') as EventStatus,
         linkedNoteId: task.linkedNoteId,
-        linkedScriptId: task.linkedScriptId,
       };
       globalState.events[existingEventIndex] = updatedEvent;
       mutateDB('event', 'upsert', updatedEvent.id, updatedEvent);
@@ -319,7 +298,6 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
         eventType: 'gorev',
         linkedTaskId: task.id,
         linkedNoteId: task.linkedNoteId,
-        linkedScriptId: task.linkedScriptId,
         status: task.completed ? 'yayinlandi' : 'planlandi',
         checklist: [],
         createdAt: new Date().toISOString(),
@@ -473,7 +451,6 @@ const loadUserData = async () => {
       const json = await res.json();
       if (json.success && json.data) {
         globalState.notes = json.data.notes || [];
-        globalState.scripts = json.data.scripts || [];
         globalState.tasks = json.data.tasks || [];
         globalState.kanbanCards = json.data.kanbanCards || [];
         globalState.events = json.data.events || [];
@@ -486,9 +463,6 @@ const loadUserData = async () => {
 
         if (globalState.notes.length > 0 && !globalState.activeNoteId) {
           globalState.activeNoteId = globalState.notes[0].id;
-        }
-        if (globalState.scripts.length > 0 && !globalState.activeScriptId) {
-          globalState.activeScriptId = globalState.scripts[0].id;
         }
       }
     } else {
@@ -521,7 +495,6 @@ const logout = async () => {
   isAuthInitialized = false;
   isAuthCheckStarted = false;
   globalState.notes = [];
-  globalState.scripts = [];
   globalState.tasks = [];
   globalState.kanbanCards = [];
   globalState.events = [];
@@ -703,114 +676,6 @@ const togglePinNote = (id: string) => {
   );
   const updated = globalState.notes.find((n) => n.id === id);
   if (updated) mutateDB('note', 'upsert', id, updated);
-  notify();
-};
-
-const addScript = (partial?: Partial<Script>): string => {
-  const id = generateId();
-  const newScript: Script = {
-    id,
-    title: partial?.title || 'Yeni Video Senaryosu',
-    targetPlatform: partial?.targetPlatform || 'YouTube',
-    status: partial?.status || 'fikir',
-    sections: partial?.sections || [
-      { id: generateId(), type: 'hook', title: 'Kanca (Hook)', content: '', estimatedSeconds: 5 },
-      { id: generateId(), type: 'intro', title: 'Giriş', content: '', estimatedSeconds: 15 },
-      { id: generateId(), type: 'body', title: 'Gövde (Ana Bölüm)', content: '', estimatedSeconds: 60 },
-      { id: generateId(), type: 'cta', title: 'Harekete Geçirici Mesaj (CTA)', content: '', estimatedSeconds: 10 },
-    ],
-    speakingRateWPM: partial?.speakingRateWPM || 130,
-    tags: partial?.tags || [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  globalState.scripts = [newScript, ...globalState.scripts];
-  globalState.activeScriptId = id;
-  mutateDB('script', 'create', id, newScript);
-  notify();
-  return id;
-};
-
-const updateScript = (id: string, partial: Partial<Script>) => {
-  globalState.scripts = globalState.scripts.map((s) =>
-    s.id === id ? { ...s, ...partial, updatedAt: new Date().toISOString() } : s
-  );
-  const updated = globalState.scripts.find((s) => s.id === id);
-  if (updated) mutateDB('script', 'upsert', id, updated);
-  notify();
-};
-
-const deleteScript = (id: string) => {
-  globalState.scripts = globalState.scripts.filter((s) => s.id !== id);
-  if (globalState.activeScriptId === id) {
-    globalState.activeScriptId = globalState.scripts[0]?.id || null;
-  }
-  mutateDB('script', 'delete', id);
-  notify();
-};
-
-const updateScriptStatus = (id: string, status: ScriptStatus) => {
-  globalState.scripts = globalState.scripts.map((s) =>
-    s.id === id ? { ...s, status, updatedAt: new Date().toISOString() } : s
-  );
-  const updated = globalState.scripts.find((s) => s.id === id);
-  if (updated) mutateDB('script', 'upsert', id, updated);
-  notify();
-};
-
-const addScriptSection = (
-  scriptId: string,
-  section: { type: ScriptSectionType; title: string; content?: string; visualNotes?: string }
-) => {
-  const secId = generateId();
-  globalState.scripts = globalState.scripts.map((s) => {
-    if (s.id !== scriptId) return s;
-    return {
-      ...s,
-      sections: [
-        ...s.sections,
-        {
-          id: secId,
-          type: section.type,
-          title: section.title,
-          content: section.content || '',
-          visualNotes: section.visualNotes || '',
-          estimatedSeconds: 30,
-        },
-      ],
-      updatedAt: new Date().toISOString(),
-    };
-  });
-  const updated = globalState.scripts.find((s) => s.id === scriptId);
-  if (updated) mutateDB('script', 'upsert', scriptId, updated);
-  notify();
-};
-
-const updateScriptSection = (scriptId: string, sectionId: string, partial: Partial<ScriptSection>) => {
-  globalState.scripts = globalState.scripts.map((s) => {
-    if (s.id !== scriptId) return s;
-    return {
-      ...s,
-      sections: s.sections.map((sec) => (sec.id === sectionId ? { ...sec, ...partial } : sec)),
-      updatedAt: new Date().toISOString(),
-    };
-  });
-  const updated = globalState.scripts.find((s) => s.id === scriptId);
-  if (updated) mutateDB('script', 'upsert', scriptId, updated);
-  notify();
-};
-
-const deleteScriptSection = (scriptId: string, sectionId: string) => {
-  globalState.scripts = globalState.scripts.map((s) => {
-    if (s.id !== scriptId) return s;
-    return {
-      ...s,
-      sections: s.sections.filter((sec) => sec.id !== sectionId),
-      updatedAt: new Date().toISOString(),
-    };
-  });
-  const updated = globalState.scripts.find((s) => s.id === scriptId);
-  if (updated) mutateDB('script', 'upsert', scriptId, updated);
   notify();
 };
 
@@ -1121,10 +986,6 @@ const setActiveFolder = (folder: string) => {
   notify();
 };
 
-const setActiveScriptId = (id: string | null) => {
-  globalState.activeScriptId = id;
-  notify();
-};
 
 export function useAppStore(): AppState {
   const [, setTick] = useState(0);
@@ -1190,16 +1051,6 @@ export function useAppStore(): AppState {
     toggleFavoriteNote,
     togglePinNote,
 
-    scripts: globalState.scripts,
-    activeScriptId: globalState.activeScriptId,
-    setActiveScriptId,
-    addScript,
-    updateScript,
-    deleteScript,
-    updateScriptStatus,
-    addScriptSection,
-    updateScriptSection,
-    deleteScriptSection,
 
     tasks: globalState.tasks,
     addTask,

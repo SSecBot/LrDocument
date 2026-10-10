@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import type { Assessment, AssessmentType, Course, CourseSession, GradingSystem } from '@/lib/academic/types';
-import { ASSESSMENT_LABEL, DAYS, defaultAssessments, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
+import { ASSESSMENT_LABEL, DAYS, computeCourseGrade, defaultAssessments, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
 import { btnGhost, btnPrimary, btnSecondary, COURSE_COLORS, inputCls, labelCls } from './ui';
 
 interface Props {
@@ -17,7 +17,15 @@ interface Props {
   onDelete?: (id: string) => void;
   /** Used to pick a different default colour for each new course */
   colorIndex?: number;
+  /** Courses of other terms, used to spot a course being retaken (alttan) */
+  otherCourses?: Course[];
 }
+
+const sameCourse = (a: Pick<Course, 'code' | 'name'>, b: Pick<Course, 'code' | 'name'>) => {
+  const code = (c: string) => c.trim().toLocaleUpperCase('tr-TR');
+  if (code(a.code) && code(b.code)) return code(a.code) === code(b.code);
+  return a.name.trim().toLocaleLowerCase('tr-TR') === b.name.trim().toLocaleLowerCase('tr-TR') && !!a.name.trim();
+};
 
 export function emptyCourse(termId: string, grading: GradingSystem, colorIndex: number): Course {
   return {
@@ -39,10 +47,11 @@ export function emptyCourse(termId: string, grading: GradingSystem, colorIndex: 
   };
 }
 
-export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, onDelete, colorIndex = 0 }: Props) {
+export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, onDelete, colorIndex = 0, otherCourses = [] }: Props) {
   const [draft, setDraft] = useState<Course>(() => course ?? emptyCourse(termId, grading, colorIndex));
   const [autoHours, setAutoHours] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retakeOn, setRetakeOn] = useState(!!course?.retake);
 
   // Reset the form whenever the dialog opens for a different course.
   const resetKey = `${isOpen}:${course?.id ?? 'new'}:${termId}`;
@@ -51,6 +60,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
     setPrevKey(resetKey);
     setDraft(course ? structuredClone(course) : emptyCourse(termId, grading, colorIndex));
     setAutoHours(!course || (course.theoryHours === 0 && course.practiceHours === 0) || matchesSessions(course));
+    setRetakeOn(!!course?.retake);
     setError(null);
   }
 
@@ -74,17 +84,29 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
 
   const handleSave = () => {
     if (!draft.name.trim()) return setError('Ders adını giriniz.');
+    if (retakeOn && !draft.retake) return setError('Alttan aldığınız bu dersten daha önce neden kaldığınızı seçin.');
     for (const s of draft.sessions) {
       if (s.end <= s.start) return setError(`${DAYS[s.day]} oturumunda bitiş saati başlangıçtan sonra olmalı.`);
     }
     if (!draft.manualLetter && draft.assessments.length > 0 && Math.abs(weightTotal - 100) > 0.01) {
       return setError(`Değerlendirme ağırlıklarının toplamı %100 olmalı (şu an %${weightTotal}).`);
     }
-    onSave({ ...draft, name: draft.name.trim(), code: draft.code.trim().toLocaleUpperCase('tr-TR') });
+    onSave({
+      ...draft,
+      retake: retakeOn ? draft.retake : null,
+      name: draft.name.trim(),
+      code: draft.code.trim().toLocaleUpperCase('tr-TR'),
+    });
     onClose();
   };
 
   const letters = grading.letters.map((l) => l.letter);
+
+  // A failed attempt of the same course in another term suggests this is an alttan ders.
+  const previousFail = otherCourses
+    .filter((c) => c.id !== draft.id && sameCourse(c, draft))
+    .map((c) => ({ c, status: computeCourseGrade(c, grading).status }))
+    .find((x) => x.status === 'kaldi' || x.status === 'devamsiz');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={course ? 'Dersi düzenle' : 'Yeni ders'} maxWidth="max-w-2xl">
@@ -229,6 +251,52 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
               </button>
             </div>
           ))}
+        </section>
+
+        {/* Retake (alttan) */}
+        <section className="space-y-2 rounded-lg border border-line p-3">
+          <label className="flex items-center gap-2 text-xs text-body">
+            <input
+              type="checkbox"
+              checked={retakeOn}
+              onChange={(e) => {
+                setRetakeOn(e.target.checked);
+                if (!e.target.checked) set('retake', null);
+              }}
+            />
+            Alttan alınan ders (daha önce kalındı)
+          </label>
+          {!retakeOn && previousFail && (
+            <p className="text-[11px] text-amber-300/90">
+              Bu dersten önceki bir dönemde {previousFail.status === 'devamsiz' ? 'devamsızlıktan' : 'kalmış'} görünüyorsunuz. Alttan
+              alıyorsanız işaretleyin.
+            </p>
+          )}
+          {retakeOn && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-subtle">Bu dersten daha önce neden kaldınız?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(
+                  [
+                    ['not', 'Nottan kaldım', 'Devam şartını sağlamıştım; devamsızlık takip edilmez.'],
+                    ['devamsizlik', 'Devamsızlıktan kaldım', 'Derse devam zorunlu; devamsızlık takip edilir.'],
+                  ] as const
+                ).map(([value, title, text]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => set('retake', { reason: value })}
+                    className={`text-left rounded-lg border px-3 py-2 transition-colors ${
+                      draft.retake?.reason === value ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-line hover:bg-surface-2'
+                    }`}
+                  >
+                    <span className="block text-xs font-medium text-fg">{title}</span>
+                    <span className="block text-[11px] text-muted">{text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Completed course */}

@@ -27,14 +27,13 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
   onClose,
   editItem,
 }) => {
-  const { addMediaItem, updateMediaItem, notes, scripts } = useAppStore();
+  const { addMediaItem, updateMediaItem, notes } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<MediaType>('diagram');
   const [url, setUrl] = useState('');
   const [linkedNoteId, setLinkedNoteId] = useState('');
-  const [linkedScriptId, setLinkedScriptId] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Matematik', 'Görsel']);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -52,7 +51,6 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
       setType(editItem.type);
       setUrl(editItem.url);
       setLinkedNoteId(editItem.linkedNoteId || '');
-      setLinkedScriptId(editItem.linkedScriptId || '');
       setTags(editItem.tags || []);
     } else {
       setTitle('');
@@ -60,7 +58,6 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
       setType('diagram');
       setUrl('');
       setLinkedNoteId('');
-      setLinkedScriptId('');
       setTags(['Matematik', 'Görsel']);
     }
   }
@@ -105,7 +102,6 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
         type,
         url: url.trim(),
         linkedNoteId: linkedNoteId || undefined,
-        linkedScriptId: linkedScriptId || undefined,
         tags,
       });
     } else {
@@ -115,7 +111,6 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
         type,
         url: url.trim(),
         linkedNoteId: linkedNoteId || undefined,
-        linkedScriptId: linkedScriptId || undefined,
         tags,
       });
     }
@@ -243,24 +238,6 @@ export const MediaItemModal: React.FC<MediaItemModalProps> = ({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
-              <Video className="w-3 h-3 text-sky-400" />
-              <span>Bağlı Senaryo (Opsiyonel)</span>
-            </label>
-            <select
-              value={linkedScriptId}
-              onChange={(e) => setLinkedScriptId(e.target.value)}
-              className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-            >
-              <option value="">(Bağlı Senaryo Yok)</option>
-              {scripts.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Tags */}

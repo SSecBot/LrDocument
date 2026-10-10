@@ -26,7 +26,6 @@ export async function GET() {
         _count: {
           select: {
             notes: true,
-            scripts: true,
             tasks: true,
             kanbanCards: true,
             events: true,
@@ -45,10 +44,9 @@ export async function GET() {
     const approvedCount = users.filter((u) => u.status === 'APPROVED').length;
     const rejectedCount = users.filter((u) => u.status === 'REJECTED').length;
 
-    const [totalNotes, totalTasks, totalScripts] = await Promise.all([
+    const [totalNotes, totalTasks] = await Promise.all([
       prisma.note.count(),
       prisma.task.count(),
-      prisma.script.count(),
     ]);
 
     return NextResponse.json({
@@ -60,7 +58,6 @@ export async function GET() {
         rejectedCount,
         totalNotes,
         totalTasks,
-        totalScripts,
       },
       users,
     });
