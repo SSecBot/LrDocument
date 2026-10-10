@@ -2,7 +2,11 @@ import type {
   AcademicData,
   Assessment,
   Course,
+  CourseCurve,
   CourseSession,
+  CurveBoundary,
+  Exam,
+  ExamType,
   GradingSystem,
   LetterGrade,
   SessionKind,
@@ -49,7 +53,7 @@ export const KTU_GRADING: GradingSystem = {
   failingLetters: ['DD', 'FD', 'FF'],
   gpaBasis: 'ects',
   relativeNote:
-    'KTÜ’de 30 ve üzeri öğrencili derslerde bağıl değerlendirme uygulanır; kesin harf notu sınıfın not dağılımına göre değişir. Buradaki harf notu mutlak ölçeğe göre tahmindir.',
+    'KTÜ’de 30 ve üzeri öğrencili derslerde bağıl değerlendirme uygulanır; kesin harf notu sınıfın not dağılımına göre değişir. Hocanın açıkladığı sınıf ortalaması ve standart sapmayı Notlar › Çan eğrisi bölümünden girerseniz o dersin harf notu bağıl sisteme göre hesaplanır; girmezseniz mutlak ölçeğe göre tahmin edilir.',
 };
 
 /** Common absolute scale used by many Turkish universities (editable). */
@@ -110,6 +114,7 @@ export function createDefaultData(university: string): AcademicData {
     activeTermId: term.id,
     courses: [],
     targetGpa: null,
+    exams: [],
   };
 }
 
@@ -218,6 +223,9 @@ export interface CourseGrade {
   weightsValid: boolean;
   finalScore: number | null;
   usedButunleme: boolean;
+  /** T-score of the average when a T-score curve is active */
+  tScore: number | null;
+  scale: GradeScale;
   letter: string | null;
   point: number | null;
   status: CourseStatus;
@@ -235,9 +243,114 @@ export function letterPoint(letter: string, grading: GradingSystem): number | nu
   return found ? found.point : null;
 }
 
-export function letterForScore(score: number, grading: GradingSystem): LetterGrade {
-  const sorted = [...grading.letters].sort((a, b) => b.min - a.min);
+export function letterForScore(score: number, letters: LetterGrade[]): LetterGrade {
+  const sorted = [...letters].sort((a, b) => b.min - a.min);
   return sorted.find((l) => score >= l.min) ?? sorted[sorted.length - 1];
+}
+
+// ---------------------------------------------------------------------------
+// Bell curve (bağıl değerlendirme)
+// ---------------------------------------------------------------------------
+
+const CURVE_LETTERS = ['AA', 'BA', 'BB', 'CB', 'CC', 'DC', 'DD', 'FD'];
+
+/**
+ * Standard T-score table used in Turkish universities' bağıl değerlendirme yönergeleri:
+ * the minimum T-score of each letter depends on the class average. FF is everything below FD.
+ */
+export const T_SCORE_TABLE: { label: string; meanAbove: number; mins: number[] }[] = [
+  { label: 'Mükemmel (70–80)', meanAbove: 70, mins: [57, 52, 47, 42, 37, 32, 27, 22] },
+  { label: 'Çok iyi (62,5–70)', meanAbove: 62.5, mins: [59, 54, 49, 44, 39, 34, 29, 24] },
+  { label: 'İyi (57,5–62,5)', meanAbove: 57.5, mins: [61, 56, 51, 46, 41, 36, 31, 26] },
+  { label: 'Ortanın üstü (52,5–57,5)', meanAbove: 52.5, mins: [63, 58, 53, 48, 43, 38, 33, 28] },
+  { label: 'Orta (47,5–52,5)', meanAbove: 47.5, mins: [65, 60, 55, 50, 45, 40, 35, 30] },
+  { label: 'Zayıf (42,5–47,5)', meanAbove: 42.5, mins: [67, 62, 57, 52, 47, 42, 37, 32] },
+  { label: 'Kötü (42,5 ve altı)', meanAbove: -1, mins: [69, 64, 59, 54, 49, 44, 39, 34] },
+];
+
+export function tTableForMean(mean: number): { label: string; boundaries: CurveBoundary[] } {
+  const row = T_SCORE_TABLE.find((r) => mean > r.meanAbove) ?? T_SCORE_TABLE[T_SCORE_TABLE.length - 1];
+  return { label: row.label, boundaries: CURVE_LETTERS.map((letter, i) => ({ letter, min: row.mins[i] })) };
+}
+
+export function defaultCurve(grading: GradingSystem): CourseCurve {
+  return {
+    enabled: true,
+    mode: 'tscore',
+    mean: null,
+    stdDev: null,
+    autoTable: true,
+    absoluteAbove: 80,
+    boundaries: [...grading.letters]
+      .filter((l) => l.min > 0)
+      .sort((a, b) => b.min - a.min)
+      .map((l) => ({ letter: l.letter, min: l.min })),
+  };
+}
+
+export function tScoreOf(raw: number, mean: number, stdDev: number): number {
+  return round2(50 + (10 * (raw - mean)) / stdDev);
+}
+
+export function rawForTScore(t: number, mean: number, stdDev: number): number {
+  return round2(mean + (stdDev * (t - 50)) / 10);
+}
+
+export interface GradeScale {
+  /** Letters in raw-score space, descending */
+  letters: LetterGrade[];
+  curved: boolean;
+  mode: 'mutlak' | 'tscore' | 'raw';
+  /** Label of the standard T table row in use */
+  tableLabel?: string;
+  /** T-score boundaries in use (tscore mode) */
+  tBoundaries?: CurveBoundary[];
+  /** Why the curve is not applied yet */
+  note?: string;
+  mean?: number;
+  stdDev?: number;
+}
+
+/** Turns the course's curve (if any) into a letter table in raw-score space. */
+export function gradeScale(course: Course, grading: GradingSystem): GradeScale {
+  const absolute: GradeScale = { letters: [...grading.letters].sort((a, b) => b.min - a.min), curved: false, mode: 'mutlak' };
+  const c = course.curve;
+  if (!c || !c.enabled) return absolute;
+
+  const lowest = absolute.letters[absolute.letters.length - 1];
+  const build = (boundaries: CurveBoundary[], toRaw: (min: number) => number): LetterGrade[] => {
+    const letters: LetterGrade[] = [];
+    for (const b of boundaries) {
+      const point = grading.letters.find((l) => l.letter === b.letter)?.point;
+      if (point === undefined || b.letter === lowest.letter) continue;
+      letters.push({ letter: b.letter, min: Math.max(0, toRaw(b.min)), point });
+    }
+    letters.push({ ...lowest, min: 0 });
+    return letters.sort((a, b) => b.min - a.min);
+  };
+
+  if (c.mode === 'raw') {
+    if (c.boundaries.length === 0) return { ...absolute, note: 'Hocanın harf aralıkları girilmedi.' };
+    return { letters: build(c.boundaries, (m) => m), curved: true, mode: 'raw' };
+  }
+
+  if (c.mean === null || c.stdDev === null || c.stdDev <= 0) {
+    return { ...absolute, note: 'Sınıf ortalaması ve standart sapma girilince çan eğrisi uygulanır.' };
+  }
+  if (c.absoluteAbove > 0 && c.mean > c.absoluteAbove) {
+    return { ...absolute, note: `Sınıf ortalaması ${c.absoluteAbove} üzerinde olduğu için mutlak değerlendirme uygulanır.` };
+  }
+  const { mean, stdDev } = c;
+  const table = c.autoTable ? tTableForMean(mean) : { label: undefined, boundaries: c.boundaries };
+  return {
+    letters: build(table.boundaries, (t) => rawForTScore(t, mean, stdDev)),
+    curved: true,
+    mode: 'tscore',
+    tableLabel: table.label,
+    tBoundaries: table.boundaries,
+    mean,
+    stdDev,
+  };
 }
 
 function statusForLetter(letter: string, grading: GradingSystem): CourseStatus {
@@ -286,9 +399,12 @@ export function computeCourseGrade(
 
   const weightsValid = Math.abs(totalWeight - 100) < 0.01;
   // Normalise if weights do not add up to 100 so averages stay on a 0–100 scale.
-  const scale = totalWeight > 0 ? 100 / totalWeight : 1;
-  const earnedScaled = earned * scale;
+  const weightScale = totalWeight > 0 ? 100 / totalWeight : 1;
+  const earnedScaled = earned * weightScale;
   const average = enteredWeight > 0 ? round2((earned * 100) / enteredWeight) : null;
+  const scale = gradeScale(course, grading);
+  const tFor = (raw: number | null) =>
+    raw !== null && scale.mode === 'tscore' && scale.mean !== undefined && scale.stdDev ? tScoreOf(raw, scale.mean, scale.stdDev) : null;
 
   const base: Omit<CourseGrade, 'letter' | 'point' | 'status' | 'reason' | 'required'> = {
     average,
@@ -298,6 +414,8 @@ export function computeCourseGrade(
     weightsValid,
     finalScore,
     usedButunleme,
+    tScore: tFor(average),
+    scale,
   };
 
   if (isAttendanceFailed(course, grading)) {
@@ -322,13 +440,13 @@ export function computeCourseGrade(
   }
 
   if (missingWeight > 0 || components.length === 0) {
-    return { ...base, letter: null, point: null, status: 'devam', required: requiredScores(course, grading, base) };
+    return { ...base, letter: null, point: null, status: 'devam', required: requiredScores(course, grading, scale, base) };
   }
 
   const raw = round2(earnedScaled);
   let letter: LetterGrade;
   let reason: string | undefined;
-  const ff = grading.letters.find((l) => l.letter === 'FF') ?? letterForScore(0, grading);
+  const ff = grading.letters.find((l) => l.letter === 'FF') ?? letterForScore(0, grading.letters);
   if (finalComp && finalScore !== null && finalScore < grading.minFinal) {
     letter = ff;
     reason = `${usedButunleme ? 'Bütünleme' : 'Final'} notu barajın (${grading.minFinal}) altında`;
@@ -336,12 +454,13 @@ export function computeCourseGrade(
     letter = ff;
     reason = `Ortalama ${grading.failBelowAverage}’un altında`;
   } else {
-    letter = letterForScore(raw, grading);
+    letter = letterForScore(raw, scale.letters);
   }
 
   return {
     ...base,
     average: raw,
+    tScore: tFor(raw),
     letter: letter.letter,
     point: letter.point,
     status: statusForLetter(letter.letter, grading),
@@ -353,6 +472,7 @@ export function computeCourseGrade(
 function requiredScores(
   course: Course,
   grading: GradingSystem,
+  scale: GradeScale,
   g: Pick<CourseGrade, 'earned' | 'missingWeight' | 'totalWeight'>
 ): RequiredScore[] {
   if (g.missingWeight <= 0 || g.totalWeight <= 0) return [];
@@ -360,7 +480,7 @@ function requiredScores(
     (a) => a.type === 'final' && a.score === null && !course.assessments.some((b) => b.type === 'butunleme' && b.score !== null)
   );
   const missingShare = g.missingWeight / g.totalWeight; // fraction of the grade still open
-  const targets = [...grading.letters]
+  const targets = [...scale.letters]
     .filter((l) => !grading.failingLetters.includes(l.letter))
     .sort((a, b) => a.min - b.min);
 
@@ -498,3 +618,60 @@ export const ASSESSMENT_LABEL: Record<Assessment['type'], string> = {
   final: 'Final',
   butunleme: 'Bütünleme',
 };
+
+// ---------------------------------------------------------------------------
+// Exams
+// ---------------------------------------------------------------------------
+
+export const EXAM_TYPE_LABEL: Record<ExamType, string> = {
+  vize: 'Vize',
+  final: 'Final',
+  butunleme: 'Bütünleme',
+  quiz: 'Quiz',
+  proje: 'Proje / Teslim',
+  diger: 'Diğer',
+};
+
+function dateAt(date: string, time?: string): Date {
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = (time || '00:00').split(':').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+}
+
+/** Calendar days from today to `date` (0 = today, negative = past). */
+export function daysUntil(date: string, now = new Date()): number {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((dateAt(date).getTime() - today.getTime()) / 86_400_000);
+}
+
+export function isExamPast(exam: Exam, now = new Date()): boolean {
+  const end = exam.end || exam.start;
+  if (!end) return daysUntil(exam.date, now) < 0;
+  return dateAt(exam.date, end).getTime() < now.getTime();
+}
+
+export function countdownLabel(exam: Exam, now = new Date()): string {
+  const days = daysUntil(exam.date, now);
+  if (days < 0) return `${-days} gün önce`;
+  if (days === 0) {
+    if (isExamPast(exam, now)) return 'Bugün yapıldı';
+    if (exam.start) {
+      const mins = Math.round((dateAt(exam.date, exam.start).getTime() - now.getTime()) / 60_000);
+      if (mins <= 0) return 'Şu an';
+      if (mins >= 60) return `Bugün, ${Math.floor(mins / 60)} sa ${mins % 60} dk sonra`;
+      return `${mins} dk sonra`;
+    }
+    return 'Bugün';
+  }
+  if (days === 1) return 'Yarın';
+  return `${days} gün kaldı`;
+}
+
+export function sortExams(exams: Exam[]): Exam[] {
+  return [...exams].sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+}
+
+/** Upcoming (not yet finished) exams, soonest first. */
+export function upcomingExams(exams: Exam[], now = new Date()): Exam[] {
+  return sortExams(exams.filter((e) => !isExamPast(e, now)));
+}

@@ -55,6 +55,52 @@ export interface Course {
   manualLetter?: string | null;
   /** e.g. non-credit courses (G/K) */
   excludeFromGpa?: boolean;
+  /** Instructor's bell curve (bağıl değerlendirme); replaces the letter table for this course */
+  curve?: CourseCurve | null;
+}
+
+export type CurveMode = 'tscore' | 'raw';
+
+export interface CurveBoundary {
+  letter: string;
+  /** Minimum T-score (tscore mode) or raw score (raw mode), inclusive */
+  min: number;
+}
+
+export interface CourseCurve {
+  enabled: boolean;
+  /**
+   * tscore: T = 50 + 10·(HBN − ortalama) / std. sapma, letters from a T-score table
+   * raw: the instructor announced raw-score boundaries directly
+   */
+  mode: CurveMode;
+  /** Class average (sınıf ortalaması) */
+  mean: number | null;
+  stdDev: number | null;
+  /** tscore mode: pick the standard table by class average instead of `boundaries` */
+  autoTable: boolean;
+  /** Above this class average absolute grading applies (0 = never) */
+  absoluteAbove: number;
+  boundaries: CurveBoundary[];
+}
+
+export type ExamType = 'vize' | 'final' | 'butunleme' | 'quiz' | 'proje' | 'diger';
+
+export interface Exam {
+  id: string;
+  termId: string;
+  courseId: string | null;
+  title: string;
+  type: ExamType;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:mm */
+  start?: string;
+  end?: string;
+  room?: string;
+  note?: string;
+  /** Assessment whose score is entered from the exam list */
+  assessmentId?: string | null;
 }
 
 export interface Term {
@@ -103,4 +149,5 @@ export interface AcademicData {
   courses: Course[];
   /** Optional target cumulative GPA for planning */
   targetGpa?: number | null;
+  exams?: Exam[];
 }

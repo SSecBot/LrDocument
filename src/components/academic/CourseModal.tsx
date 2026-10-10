@@ -19,7 +19,7 @@ interface Props {
   colorIndex?: number;
 }
 
-function emptyCourse(termId: string, grading: GradingSystem, colorIndex: number): Course {
+export function emptyCourse(termId: string, grading: GradingSystem, colorIndex: number): Course {
   return {
     id: newId(),
     termId,

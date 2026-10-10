@@ -33,6 +33,30 @@ const assessment = z.object({
   score,
 });
 
+const curve = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(['tscore', 'raw']),
+  mean: z.number().min(0).max(100).nullable(),
+  stdDev: z.number().min(0).max(100).nullable(),
+  autoTable: z.boolean(),
+  absoluteAbove: z.number().min(0).max(100),
+  boundaries: z.array(z.object({ letter: z.string().trim().min(1).max(3), min: z.number().min(-100).max(200) })).max(15),
+});
+
+const exam = z.object({
+  id,
+  termId: id,
+  courseId: id.nullable(),
+  title: shortText(120).min(1, 'Sınav adı boş olamaz.'),
+  type: z.enum(['vize', 'final', 'butunleme', 'quiz', 'proje', 'diger']),
+  date,
+  start: time.optional(),
+  end: time.optional(),
+  room: shortText(60).optional(),
+  note: shortText(300).optional(),
+  assessmentId: id.nullable().optional(),
+});
+
 const course = z.object({
   id,
   termId: id,
@@ -49,6 +73,7 @@ const course = z.object({
   assessments: z.array(assessment).max(20),
   manualLetter: z.string().max(3).nullable().optional(),
   excludeFromGpa: z.boolean().optional(),
+  curve: curve.nullable().optional(),
 });
 
 const letter = z.object({
@@ -81,6 +106,7 @@ export const academicDataSchema = z.object({
   activeTermId: id.nullable(),
   courses: z.array(course).max(150),
   targetGpa: z.number().min(0).max(5).nullable().optional(),
+  exams: z.array(exam).max(300).optional(),
 });
 
 export const MAX_ACADEMIC_JSON_BYTES = 400_000;

@@ -67,7 +67,7 @@ export function useAcademicData() {
       })
       .then((json) => {
         if (cancelled) return;
-        setData(json.data);
+        setData({ ...json.data, exams: json.data.exams ?? [] });
         setProfile(json.profile);
       })
       .catch((err: Error) => {

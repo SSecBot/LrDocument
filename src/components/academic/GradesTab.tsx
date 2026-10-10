@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FlaskConical, Plus, RotateCcw, Settings2 } from 'lucide-react';
-import type { AcademicData, Course, GradingSystem, Term } from '@/lib/academic/types';
+import { Activity, FlaskConical, Plus, RotateCcw, Settings2 } from 'lucide-react';
+import type { AcademicData, Course, CourseCurve, GradingSystem, Term } from '@/lib/academic/types';
 import { computeCourseGrade, newId, summarizeTerm } from '@/lib/academic/grading';
+import { CurveModal } from './CurveModal';
 import { Card, CardHeader, EmptyState, LetterBadge, ScoreInput, StatusBadge, btnGhost } from './ui';
 
 interface Props {
@@ -16,6 +17,12 @@ interface Props {
 
 export function GradesTab({ data, term, courses, update, onEditCourse }: Props) {
   const g = data.grading;
+  const [curveCourseId, setCurveCourseId] = useState<string | null>(null);
+  const curveCourse = courses.find((c) => c.id === curveCourseId) ?? null;
+
+  const saveCurve = (courseId: string, curve: CourseCurve | null) =>
+    update((d) => ({ ...d, courses: d.courses.map((c) => (c.id === courseId ? { ...c, curve } : c)) }));
+
   if (courses.length === 0) {
     return (
       <Card>
@@ -45,9 +52,11 @@ export function GradesTab({ data, term, courses, update, onEditCourse }: Props) 
             resolvedStatus={finalStatus.get(c.id)}
             update={update}
             onEditCourse={onEditCourse}
+            onEditCurve={() => setCurveCourseId(c.id)}
           />
         ))}
       </div>
+      <CurveModal isOpen={curveCourse !== null} onClose={() => setCurveCourseId(null)} course={curveCourse} grading={g} onSave={saveCurve} />
     </div>
   );
 }
@@ -58,12 +67,14 @@ function GradeCard({
   resolvedStatus,
   update,
   onEditCourse,
+  onEditCurve,
 }: {
   course: Course;
   grading: GradingSystem;
   resolvedStatus?: ReturnType<typeof computeCourseGrade>['status'];
   update: Props['update'];
   onEditCourse: (c: Course) => void;
+  onEditCurve: () => void;
 }) {
   const [simulate, setSimulate] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
@@ -114,6 +125,13 @@ function GradeCard({
               title="Kaydetmeden farklı notları dene"
             >
               <FlaskConical className="w-3.5 h-3.5" /> Test et
+            </button>
+            <button
+              className={`${btnGhost} ${course.curve?.enabled ? 'text-violet-300 bg-violet-500/10' : ''}`}
+              onClick={onEditCurve}
+              title="Hocanın çan eğrisini (bağıl değerlendirme) gir"
+            >
+              <Activity className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Çan eğrisi</span>
             </button>
             <button className={btnGhost} onClick={() => onEditCourse(course)} aria-label="Dersi düzenle" title="Değerlendirme ağırlıklarını düzenle">
               <Settings2 className="w-3.5 h-3.5" />
@@ -177,6 +195,7 @@ function GradeCard({
           </div>
         </div>
         {shown.reason && <p className="text-[11px] text-rose-400">{shown.reason}</p>}
+        {course.curve?.enabled && <CurveInfo grade={shown} onEdit={onEditCurve} />}
 
         {shown.status === 'devam' && shown.required.length > 0 && (
           <div className="rounded-lg bg-surface-2 border border-line p-3">
@@ -213,5 +232,34 @@ function GradeCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function CurveInfo({ grade, onEdit }: { grade: ReturnType<typeof computeCourseGrade>; onEdit: () => void }) {
+  const sc = grade.scale;
+  return (
+    <button
+      onClick={onEdit}
+      className="w-full text-left text-[11px] rounded-lg border border-violet-500/25 bg-violet-500/5 px-3 py-1.5 text-violet-200/90 hover:bg-violet-500/10"
+    >
+      <span className="font-medium">Çan eğrisi</span>
+      {sc.note ? (
+        <span className="text-amber-300/90"> — {sc.note}</span>
+      ) : sc.mode === 'tscore' ? (
+        <>
+          {' '}— ort. {sc.mean} • std. sapma {sc.stdDev}
+          {grade.tScore !== null && <> • T-skorunuz {grade.tScore.toFixed(1)}</>}
+          {sc.tableLabel && <span className="text-muted"> • {sc.tableLabel}</span>}
+        </>
+      ) : (
+        <> — hocanın not aralıkları (
+          {sc.letters
+            .filter((l) => l.min > 0)
+            .slice(0, 4)
+            .map((l) => `${l.letter} ${l.min}`)
+            .join(', ')}
+          …)</>
+      )}
+    </button>
   );
 }

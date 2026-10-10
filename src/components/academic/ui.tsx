@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Check, CloudOff, Loader2 } from 'lucide-react';
 import type { CourseStatus } from '@/lib/academic/grading';
 import { STATUS_LABEL } from '@/lib/academic/grading';
 
@@ -125,4 +126,26 @@ export function ScoreInput({
       className={`h-8 w-20 bg-surface-2 border border-line rounded-md px-2 text-sm text-fg text-right tabular-nums focus:outline-none focus:border-line-strong ${className}`}
     />
   );
+}
+
+export function SaveIndicator({ state, error, onRetry }: { state: string; error: string | null; onRetry: () => void }) {
+  if (state === 'saving')
+    return (
+      <span className="text-[11px] text-muted inline-flex items-center gap-1 whitespace-nowrap">
+        <Loader2 className="w-3 h-3 animate-spin" /> Kaydediliyor
+      </span>
+    );
+  if (state === 'error')
+    return (
+      <button onClick={onRetry} className="text-[11px] text-rose-400 inline-flex items-center gap-1 hover:underline whitespace-nowrap" title={error ?? ''}>
+        <CloudOff className="w-3 h-3" /> Kaydedilemedi — tekrar dene
+      </button>
+    );
+  if (state === 'saved')
+    return (
+      <span className="text-[11px] text-muted inline-flex items-center gap-1 whitespace-nowrap">
+        <Check className="w-3 h-3 text-emerald-400" /> Kaydedildi
+      </span>
+    );
+  return null;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertCircle, Check, CloudOff, GraduationCap, Loader2, Plus } from 'lucide-react';
+import { AlertCircle, GraduationCap, Loader2, Plus, Settings2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Course } from '@/lib/academic/types';
 import { classYearLabel } from '@/lib/studentProfile';
@@ -12,18 +12,19 @@ import { ScheduleTab } from './ScheduleTab';
 import { AttendanceTab } from './AttendanceTab';
 import { GradesTab } from './GradesTab';
 import { AnalysisTab } from './AnalysisTab';
-import { GradingSettingsTab } from './GradingSettingsTab';
-import { btnPrimary, inputCls } from './ui';
+import { ExamsTab } from './ExamsTab';
+import { ScheduleImportModal } from './ScheduleImportModal';
+import { SaveIndicator, btnPrimary, btnSecondary, inputCls } from './ui';
 
-type Tab = 'ozet' | 'program' | 'devam' | 'notlar' | 'analiz' | 'ayarlar';
+type Tab = 'ozet' | 'program' | 'sinavlar' | 'devam' | 'notlar' | 'analiz';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'ozet', label: 'Özet' },
   { id: 'program', label: 'Program' },
+  { id: 'sinavlar', label: 'Sınavlar' },
   { id: 'devam', label: 'Devamsızlık' },
   { id: 'notlar', label: 'Notlar' },
   { id: 'analiz', label: 'Akademik durum' },
-  { id: 'ayarlar', label: 'Not sistemi' },
 ];
 
 export function AcademicWorkspace() {
@@ -31,6 +32,7 @@ export function AcademicWorkspace() {
   const { data, profile, loadError, saveState, saveError, update, retrySave } = useAcademicData();
   const [tab, setTab] = useState<Tab>('ozet');
   const [modal, setModal] = useState<{ open: boolean; course: Course | null }>({ open: false, course: null });
+  const [importOpen, setImportOpen] = useState(false);
 
   if (loadError) {
     return (
@@ -63,7 +65,8 @@ export function AcademicWorkspace() {
       courses: d.courses.some((c) => c.id === course.id) ? d.courses.map((c) => (c.id === course.id ? course : c)) : [...d.courses, course],
     }));
 
-  const deleteCourse = (id: string) => update((d) => ({ ...d, courses: d.courses.filter((c) => c.id !== id) }));
+  const deleteCourse = (id: string) =>
+    update((d) => ({ ...d, courses: d.courses.filter((c) => c.id !== id), exams: (d.exams ?? []).filter((e) => e.courseId !== id) }));
 
   return (
     <div className="flex-1 overflow-y-auto bg-app">
@@ -106,6 +109,17 @@ export function AcademicWorkspace() {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Ders ekle</span>
             </button>
+            <button
+              className={btnSecondary}
+              onClick={() => {
+                setActiveTab('settings');
+                setTimeout(() => document.getElementById('ders-takibi-ayarlari')?.scrollIntoView({ behavior: 'smooth' }), 150);
+              }}
+              title="Not sistemi, devam şartları ve dönemler"
+              aria-label="Ders takibi ayarları"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -124,12 +138,14 @@ export function AcademicWorkspace() {
           ))}
         </div>
 
-        {tab === 'ozet' && <OverviewTab data={data} term={term} courses={courses} update={update} onAddCourse={openNew} />}
-        {tab === 'program' && <ScheduleTab courses={courses} onAddCourse={openNew} onEditCourse={openEdit} />}
+        {tab === 'ozet' && <OverviewTab data={data} term={term} courses={courses} update={update} onAddCourse={openNew} onOpenTab={setTab} />}
+        {tab === 'program' && (
+          <ScheduleTab courses={courses} onAddCourse={openNew} onEditCourse={openEdit} onImport={() => setImportOpen(true)} />
+        )}
+        {tab === 'sinavlar' && <ExamsTab data={data} term={term} courses={courses} update={update} />}
         {tab === 'devam' && <AttendanceTab data={data} courses={courses} update={update} onEditCourse={openEdit} />}
         {tab === 'notlar' && <GradesTab data={data} term={term} courses={courses} update={update} onEditCourse={openEdit} />}
         {tab === 'analiz' && <AnalysisTab data={data} update={update} />}
-        {tab === 'ayarlar' && <GradingSettingsTab data={data} update={update} university={profile?.university ?? ''} />}
       </div>
 
       <CourseModal
@@ -142,28 +158,13 @@ export function AcademicWorkspace() {
         onDelete={deleteCourse}
         colorIndex={courses.length}
       />
+      <ScheduleImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        termId={term.id}
+        courses={courses}
+        update={update}
+      />
     </div>
   );
-}
-
-function SaveIndicator({ state, error, onRetry }: { state: string; error: string | null; onRetry: () => void }) {
-  if (state === 'saving')
-    return (
-      <span className="text-[11px] text-muted inline-flex items-center gap-1">
-        <Loader2 className="w-3 h-3 animate-spin" /> Kaydediliyor
-      </span>
-    );
-  if (state === 'error')
-    return (
-      <button onClick={onRetry} className="text-[11px] text-rose-400 inline-flex items-center gap-1 hover:underline" title={error ?? ''}>
-        <CloudOff className="w-3 h-3" /> Kaydedilemedi — tekrar dene
-      </button>
-    );
-  if (state === 'saved')
-    return (
-      <span className="text-[11px] text-muted inline-flex items-center gap-1">
-        <Check className="w-3 h-3 text-emerald-400" /> Kaydedildi
-      </span>
-    );
-  return null;
 }

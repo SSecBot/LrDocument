@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { formatPlanPrice } from '@/lib/pricing';
 import { StudentProfileCard } from './StudentProfileCard';
+import { AcademicSettingsCard } from './AcademicSettingsCard';
+import { hasStudentAccess } from '@/lib/access';
 import {
   ShieldCheck,
   Lock,
@@ -239,6 +241,7 @@ export function SettingsView() {
         </div>
 
         {currentUser?.accountType === 'STUDENT' && <StudentProfileCard />}
+        {hasStudentAccess(currentUser) && <AcademicSettingsCard />}
 
         {/* Section 1: Email Address Self-Service Modification */}
         <div className="p-5 sm:p-6 rounded-xl bg-surface border border-line/80 space-y-5">

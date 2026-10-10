@@ -219,7 +219,12 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
                 onClick={() =>
                   update((d) => {
                     const terms = d.terms.filter((x) => x.id !== t.id);
-                    return { ...d, terms, activeTermId: d.activeTermId === t.id ? terms[terms.length - 1].id : d.activeTermId };
+                    return {
+                      ...d,
+                      terms,
+                      exams: (d.exams ?? []).filter((e) => e.termId !== t.id),
+                      activeTermId: d.activeTermId === t.id ? terms[terms.length - 1].id : d.activeTermId,
+                    };
                   })
                 }
                 aria-label="Dönemi sil"

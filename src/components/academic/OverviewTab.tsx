@@ -1,19 +1,23 @@
 'use client';
 
 import React from 'react';
-import { AlertTriangle, CalendarClock, Check, Undo2, UserX } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CalendarDays, Check, Table2, Undo2, UserX } from 'lucide-react';
 import type { AcademicData, Course, Term } from '@/lib/academic/types';
 import {
   attendanceStatus,
   computeCourseGrade,
   DAYS,
+  daysUntil,
   newId,
   sessionHours,
   summarizeAll,
   summarizeTerm,
+  upcomingExams,
 } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
-import { Card, CardHeader, EmptyState, Stat, btnSecondary } from './ui';
+import { Card, CardHeader, EmptyState, Stat, btnGhost, btnSecondary } from './ui';
+import { ExamRow } from './ExamsTab';
+import { WeekGrid } from './ScheduleTab';
 
 interface Props {
   data: AcademicData;
@@ -21,9 +25,12 @@ interface Props {
   courses: Course[];
   update: (fn: (d: AcademicData) => AcademicData) => void;
   onAddCourse: () => void;
+  onOpenTab: (tab: 'program' | 'sinavlar') => void;
 }
 
-export function OverviewTab({ data, term, courses, update, onAddCourse }: Props) {
+export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTab }: Props) {
+  const exams = upcomingExams(data.exams ?? []).slice(0, 5);
+  const nextExam = exams[0];
   const termSummary = summarizeTerm(data, term);
   const all = summarizeAll(data);
   const today = toLocalDateString();
@@ -72,7 +79,12 @@ export function OverviewTab({ data, term, courses, update, onAddCourse }: Props)
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Stat label={`Dönem ortalaması (${term.name})`} value={termSummary.gpa?.toFixed(2) ?? '—'} hint={`${termSummary.gradedWeight} ${basisLabel} notlandı`} tone={gpaTone(termSummary.gpa)} />
         <Stat label="Genel ortalama (AGNO)" value={all.gpa?.toFixed(2) ?? '—'} hint={`${all.earnedWeight} ${basisLabel} tamamlandı`} tone={gpaTone(all.gpa)} />
-        <Stat label="Bu dönem" value={`${courses.length} ders`} hint={`${termSummary.totalWeight} ${basisLabel}`} />
+        <Stat
+          label="Sıradaki sınav"
+          value={nextExam ? (daysUntil(nextExam.date) <= 0 ? 'Bugün' : `${daysUntil(nextExam.date)} gün`) : '—'}
+          hint={nextExam ? nextExam.title : `${courses.length} ders • ${termSummary.totalWeight} ${basisLabel}`}
+          tone={nextExam ? (daysUntil(nextExam.date) <= 2 ? 'bad' : daysUntil(nextExam.date) <= 7 ? 'warn' : undefined) : undefined}
+        />
         <Stat
           label="Uyarılar"
           value={attention.length}
@@ -122,6 +134,39 @@ export function OverviewTab({ data, term, courses, update, onAddCourse }: Props)
           )}
         </Card>
 
+        <Card>
+          <CardHeader
+            title="Yaklaşan sınavlar"
+            icon={<CalendarDays className="w-4 h-4 text-subtle" />}
+            action={<button className={btnGhost} onClick={() => onOpenTab('sinavlar')}>Tümü</button>}
+          />
+          {exams.length === 0 ? (
+            <EmptyState
+              title="Yaklaşan sınav yok"
+              action={<button className={btnSecondary} onClick={() => onOpenTab('sinavlar')}>Sınav takvimi ekle</button>}
+            />
+          ) : (
+            <div className="divide-y divide-line">
+              {exams.map((e) => (
+                <ExamRow key={e.id} exam={e} course={data.courses.find((c) => c.id === e.courseId)} />
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {courses.some((c) => c.sessions.length > 0) && (
+        <Card>
+          <CardHeader
+            title="Haftalık ders programı"
+            icon={<Table2 className="w-4 h-4 text-subtle" />}
+            action={<button className={btnGhost} onClick={() => onOpenTab('program')}>Düzenle</button>}
+          />
+          <WeekGrid courses={courses} />
+        </Card>
+      )}
+
+      <div>
         <Card>
           <CardHeader title="Dikkat gerektirenler" icon={<AlertTriangle className="w-4 h-4 text-subtle" />} />
           {attention.length === 0 ? (
