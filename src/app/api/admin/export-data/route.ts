@@ -18,6 +18,7 @@ export async function GET() {
       transactions,
       categories,
       kanbanCards,
+      studentProfiles,
     ] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: 'asc' },
@@ -49,6 +50,9 @@ export async function GET() {
       prisma.kanbanCard.findMany({
         orderBy: { createdAt: 'asc' },
       }),
+      prisma.studentProfile.findMany({
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
     const backupPayload = {
@@ -66,6 +70,7 @@ export async function GET() {
         totalTransactions: transactions.length,
         totalCategories: categories.length,
         totalKanbanCards: kanbanCards.length,
+        totalStudentProfiles: studentProfiles.length,
       },
       data: {
         users,
@@ -78,6 +83,7 @@ export async function GET() {
         transactions,
         categories,
         kanbanCards,
+        studentProfiles,
       },
     };
 

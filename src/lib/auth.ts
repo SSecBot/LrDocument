@@ -14,6 +14,7 @@ export interface UserJWTPayload {
   subscriptionPlan?: 'Aylık' | 'Tek Seferlik';
   subscriptionType?: 'AYLIK' | 'TEK_SEFERLIK';
   paymentStatus?: 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
+  accountType?: 'STANDARD' | 'STUDENT';
   /** Session version; bumping it in the DB invalidates every token issued before. */
   sv?: number;
 }
@@ -169,6 +170,7 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
         subscriptionType: true,
         paymentStatus: true,
         sessionVersion: true,
+        accountType: true,
       },
     });
 
@@ -184,6 +186,7 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
       subscriptionPlan: (user.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
       subscriptionType: (user.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
       paymentStatus: (user.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
+      accountType: user.accountType === 'STUDENT' ? 'STUDENT' : 'STANDARD',
       sv: user.sessionVersion,
     };
   } catch {
@@ -194,6 +197,16 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
 export async function requireAuth(): Promise<UserJWTPayload> {
   const session = await getCurrentSession();
   if (!session) throw new AuthError(401, 'Giriş yapmanız gerekmektedir.');
+  return session;
+}
+
+/** Student tools are available to student accounts and to admins. */
+export async function requireStudentAccess(): Promise<UserJWTPayload> {
+  const session = await getCurrentSession();
+  if (!session) throw new AuthError(401, 'Giriş yapmanız gerekmektedir.');
+  if (session.accountType !== 'STUDENT' && session.role !== 'ADMIN') {
+    throw new AuthError(403, 'Bu bölüm yalnızca öğrenci hesaplarına açıktır.');
+  }
   return session;
 }
 

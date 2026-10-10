@@ -29,6 +29,8 @@ import { useAppStore } from '@/store/useAppStore';
 import { exportUsersToExcel, exportUsersToCSV } from '@/lib/exportExcel';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import { toLocalDateString } from '@/lib/utils';
+import { planLabel } from '@/lib/pricing';
+import { classYearLabel } from '@/lib/studentProfile';
 
 async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
   const res = await fetch('/api/admin/users', { cache: 'no-store' });
@@ -294,6 +296,26 @@ export function AdminDashboard() {
         title: 'Hata',
         message: errorMessage(err),
       });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleToggleAccountType = async (user: AdminUserItem) => {
+    const accountType = user.accountType === 'STUDENT' ? 'STANDARD' : 'STUDENT';
+    try {
+      setActionLoadingId(user.id);
+      const res = await fetch(`/api/admin/users/${user.id}/account-type`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountType }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Hesap tipi güncellenemedi.');
+      addToast({ type: 'success', title: 'Hesap tipi güncellendi', message: data.message });
+      await fetchAdminData();
+    } catch (err) {
+      addToast({ type: 'error', title: 'Hata', message: errorMessage(err) });
     } finally {
       setActionLoadingId(null);
     }
@@ -710,6 +732,17 @@ export function AdminDashboard() {
                       <h3 className="text-base font-bold text-white">{user.name}</h3>
                       <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.email}</p>
 
+                      {user.accountType === 'STUDENT' && user.studentProfile && (
+                        <div className="mt-3 p-2.5 rounded-lg bg-sky-500/5 border border-sky-500/20 text-[11px] space-y-0.5">
+                          <p className="font-semibold text-sky-300">Öğrenci kaydı (%50 indirim)</p>
+                          <p className="text-neutral-300">{user.studentProfile.university}</p>
+                          <p className="text-neutral-400">
+                            {user.studentProfile.department} • {classYearLabel(user.studentProfile.classYear)}
+                          </p>
+                          <p className="text-neutral-400 font-mono break-all">{user.studentProfile.studentEmail}</p>
+                        </div>
+                      )}
+
                       {/* Subscription Plan Tag & Modifier */}
                       <div className="mt-3 flex items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-2/90 border border-line">
                         <span className="text-[11px] text-neutral-400 flex items-center gap-1.5">
@@ -721,8 +754,8 @@ export function AdminDashboard() {
                           onChange={(e) => handleUpdatePlan(user, e.target.value as SubscriptionPlan)}
                           className="bg-surface border border-line-strong rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 focus:outline-none"
                         >
-                          <option value="Aylık">Aylık (100 TL)</option>
-                          <option value="Tek Seferlik">Tek Seferlik (1999 TL)</option>
+                          <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD')}</option>
+                          <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD')}</option>
                         </select>
                       </div>
                     </div>
@@ -820,6 +853,12 @@ export function AdminDashboard() {
                               <div>
                                 <p className="font-semibold text-white">{user.name}</p>
                                 <p className="text-[11px] text-neutral-500 font-mono">{user.email}</p>
+                                {user.accountType === 'STUDENT' && user.studentProfile && (
+                                  <p className="text-[11px] text-sky-300/90 mt-0.5" title={user.studentProfile.studentEmail}>
+                                    {user.studentProfile.university} • {user.studentProfile.department} •{' '}
+                                    {classYearLabel(user.studentProfile.classYear)}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -837,6 +876,18 @@ export function AdminDashboard() {
                             >
                               {user.role}
                             </button>
+                            <button
+                              onClick={() => handleToggleAccountType(user)}
+                              disabled={actionLoadingId === user.id}
+                              title="Hesap tipini değiştir (öğrenci hesapları Ders Takibi sayfasını görür)"
+                              className={`ml-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                user.accountType === 'STUDENT'
+                                  ? 'bg-sky-500/15 text-sky-300 border-sky-500/40 hover:bg-sky-500/25'
+                                  : 'bg-surface-3 text-neutral-400 border-line-strong hover:bg-neutral-700'
+                              }`}
+                            >
+                              {user.accountType === 'STUDENT' ? 'ÖĞRENCİ' : 'STANDART'}
+                            </button>
                           </td>
 
                           {/* Subscription Plan Column */}
@@ -851,8 +902,8 @@ export function AdminDashboard() {
                                   : 'bg-surface-2 text-neutral-300 border-line-strong'
                               }`}
                             >
-                              <option value="Aylık">Aylık (100 TL)</option>
-                              <option value="Tek Seferlik">Tek Seferlik (1999 TL)</option>
+                              <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD')}</option>
+                              <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD')}</option>
                             </select>
                           </td>
 

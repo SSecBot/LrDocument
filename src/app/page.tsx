@@ -20,8 +20,10 @@ import {
   X,
   Check,
   ChevronRight,
+  GraduationCap,
 } from 'lucide-react';
 import { SubscriptionPlan } from '@/types';
+import { formatPlanPrice } from '@/lib/pricing';
 
 export default function LandingPage() {
   const { isAuthenticated } = useAppStore();
@@ -424,6 +426,28 @@ export default function LandingPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        </div>
+
+        {/* Student discount */}
+        <div className="mt-6 p-4 sm:p-5 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-surface-3 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Üniversite öğrencilerine %50 indirim</p>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Aylık {formatPlanPrice('Aylık', 'STUDENT')} • Ömür boyu {formatPlanPrice('Tek Seferlik', 'STUDENT')}. Öğrenci hesabında ders programı,
+                devamsızlık takibi, vize/final not hesaplama ve AGNO analizi (KTÜ ve diğer üniversiteler) bulunur.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/register?ogrenci=1"
+            className="shrink-0 h-10 px-4 rounded-lg bg-surface-3 hover:bg-surface-4 border border-line-strong text-white text-xs font-semibold inline-flex items-center justify-center gap-2"
+          >
+            Öğrenci olarak kayıt ol <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </section>
 

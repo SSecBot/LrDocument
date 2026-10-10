@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, ensureDefaultAdmin, validatePassword } from '@/lib/auth';
 import { seedDefaultUserData } from '@/lib/userSeed';
+import { studentProfileSchema } from '@/lib/studentProfile';
 import {
   getClientIp,
   handleRouteError,
@@ -41,6 +42,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
+    // Optional university-student registration (half price, unlocks the course tracker).
+    const isStudent = body.accountType === 'STUDENT';
+    let studentProfile: ReturnType<typeof studentProfileSchema.parse> | null = null;
+    if (isStudent) {
+      const parsed = studentProfileSchema.safeParse(body.student ?? {});
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.issues[0]?.message || 'Öğrenci bilgileri geçersiz.' },
+          { status: 400 }
+        );
+      }
+      studentProfile = parsed.data;
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existing) {
       return NextResponse.json(
@@ -68,9 +83,13 @@ export async function POST(req: NextRequest) {
           subscriptionType: subType,
           subscriptionPlan: planValue,
           paymentStatus: 'PENDING',
+          accountType: isStudent ? 'STUDENT' : 'STANDARD',
         },
       });
       await seedDefaultUserData(tx, user.id);
+      if (studentProfile) {
+        await tx.studentProfile.create({ data: { userId: user.id, ...studentProfile } });
+      }
       return user;
     });
 
@@ -88,6 +107,7 @@ export async function POST(req: NextRequest) {
           subscriptionType: newUser.subscriptionType,
           subscriptionPlan: newUser.subscriptionPlan,
           paymentStatus: newUser.paymentStatus,
+          accountType: newUser.accountType,
         },
       },
       { status: 201 }

@@ -17,6 +17,8 @@ import { MediaWorkspace } from '@/components/media/MediaWorkspace';
 import { FinanceWorkspace } from '@/components/finance/FinanceWorkspace';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { SettingsView } from '@/components/settings/SettingsView';
+import { AcademicWorkspace } from '@/components/academic/AcademicWorkspace';
+import { hasStudentAccess } from '@/lib/access';
 import { ShieldCheck } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -65,6 +67,7 @@ export default function DashboardPage() {
           {activeTab === 'tasks' && <TasksWorkspace />}
           {activeTab === 'calendar' && <CalendarWorkspace />}
           {activeTab === 'finance' && <FinanceWorkspace />}
+          {activeTab === 'academic' && hasStudentAccess(currentUser) && <AcademicWorkspace />}
           {activeTab === 'settings' && <SettingsView />}
           {activeTab === 'admin' && currentUser?.role === 'ADMIN' && <AdminDashboard />}
         </main>

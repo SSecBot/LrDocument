@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   LogOut,
   Settings,
+  GraduationCap,
 } from 'lucide-react';
+import { hasStudentAccess } from '@/lib/access';
 
 interface NavItem {
   id: ActiveTab;
@@ -52,6 +54,7 @@ export const Sidebar: React.FC = () => {
         { id: 'tasks', label: 'Görevler', icon: CheckSquare, badge: tasks.filter((t) => !t.completed).length },
         { id: 'kanban', label: 'Kanban', icon: Kanban, badge: kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length },
         { id: 'calendar', label: 'Takvim', icon: Calendar },
+        ...(hasStudentAccess(currentUser) ? [{ id: 'academic' as ActiveTab, label: 'Ders Takibi', icon: GraduationCap }] : []),
       ],
     },
     {

@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, requireAdmin } from '@/lib/auth';
 import { handleRouteError, normalizeEmail, readJsonObject } from '@/lib/apiUtils';
+import { academicDataSchema } from '@/lib/academic/schema';
 
 type Row = Record<string, unknown>;
 
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
       importedTransactions: 0,
       importedCategories: 0,
       importedKanbanCards: 0,
+      importedStudentProfiles: 0,
     };
 
     // Backup user id -> actual DB user id (an account with the same e-mail may already exist under another id).
@@ -110,6 +112,7 @@ export async function POST(req: Request) {
         subscriptionType: oneOf(u.subscriptionType, ['AYLIK', 'TEK_SEFERLIK'] as const, 'AYLIK'),
         subscriptionPlan: oneOf(u.subscriptionPlan, ['Aylık', 'Tek Seferlik'] as const, 'Aylık'),
         paymentStatus: oneOf(u.paymentStatus, ['PENDING', 'MANUAL_APPROVED', 'SUCCESSFUL'] as const, 'PENDING'),
+        accountType: oneOf(u.accountType, ['STANDARD', 'STUDENT'] as const, 'STANDARD'),
       };
 
       const existing = await prisma.user.findUnique({ where: { email } });
@@ -242,6 +245,29 @@ export async function POST(req: Request) {
       linkedScriptId: optStr(k.linkedScriptId),
       linkedNoteId: optStr(k.linkedNoteId),
     }));
+
+    // Student profiles are 1:1 with users, keyed by userId.
+    for (const sp of asRows(data.studentProfiles)) {
+      const userId = userIdMap.get(str(sp.userId));
+      if (!userId) continue;
+      let academic = '{}';
+      try {
+        const parsed = academicDataSchema.safeParse(JSON.parse(str(sp.data, '{}')));
+        if (parsed.success) academic = JSON.stringify(parsed.data);
+      } catch {
+        academic = '{}';
+      }
+      const fields = {
+        university: str(sp.university).slice(0, 120),
+        studentEmail: str(sp.studentEmail).slice(0, 254),
+        department: str(sp.department).slice(0, 120),
+        classYear: Math.min(7, Math.max(0, Math.round(num(sp.classYear, 1)))),
+        studentNo: optStr(sp.studentNo),
+        data: academic,
+      };
+      await prisma.studentProfile.upsert({ where: { userId }, update: fields, create: { userId, ...fields } });
+      summary.importedStudentProfiles++;
+    }
 
     return NextResponse.json({
       success: true,

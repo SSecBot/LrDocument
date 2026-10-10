@@ -191,6 +191,7 @@ export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
 export type SubscriptionType = 'AYLIK' | 'TEK_SEFERLIK';
+export type AccountType = 'STANDARD' | 'STUDENT';
 export type PaymentStatus = 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
 
 export interface UserProfile {
@@ -202,6 +203,7 @@ export interface UserProfile {
   subscriptionPlan?: SubscriptionPlan;
   subscriptionType?: SubscriptionType;
   paymentStatus?: PaymentStatus;
+  accountType?: AccountType;
 }
 
 export interface AdminUserItem {
@@ -213,6 +215,14 @@ export interface AdminUserItem {
   subscriptionPlan: SubscriptionPlan;
   subscriptionType?: SubscriptionType;
   paymentStatus?: PaymentStatus;
+  accountType?: AccountType;
+  studentProfile?: {
+    university: string;
+    studentEmail: string;
+    department: string;
+    classYear: number;
+    studentNo?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -245,6 +255,7 @@ export type ActiveTab =
   | 'kanban'
   | 'calendar'
   | 'finance'
+  | 'academic'
   | 'admin'
   | 'settings';
 

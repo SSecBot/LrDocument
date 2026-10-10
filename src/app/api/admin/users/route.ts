@@ -17,6 +17,10 @@ export async function GET() {
         subscriptionPlan: true,
         subscriptionType: true,
         paymentStatus: true,
+        accountType: true,
+        studentProfile: {
+          select: { university: true, studentEmail: true, department: true, classYear: true, studentNo: true },
+        },
         createdAt: true,
         updatedAt: true,
         _count: {

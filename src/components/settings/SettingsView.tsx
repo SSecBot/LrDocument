@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { formatPlanPrice } from '@/lib/pricing';
+import { StudentProfileCard } from './StudentProfileCard';
 import {
   ShieldCheck,
   Lock,
@@ -220,10 +222,11 @@ export function SettingsView() {
 
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">
-                {currentUser?.subscriptionPlan === 'Tek Seferlik' ? '1999 TL' : '100 TL'}
+                {formatPlanPrice(currentUser?.subscriptionPlan === 'Tek Seferlik' ? 'Tek Seferlik' : 'Aylık', currentUser?.accountType ?? 'STANDARD')}
               </span>
               <span className="text-xs text-neutral-400">
                 {currentUser?.subscriptionPlan === 'Tek Seferlik' ? '(Tek Seferlik Erişim)' : '/ aylık'}
+                {currentUser?.accountType === 'STUDENT' && ' • öğrenci indirimi (%50)'}
               </span>
             </div>
 
@@ -234,6 +237,8 @@ export function SettingsView() {
             </p>
           </div>
         </div>
+
+        {currentUser?.accountType === 'STUDENT' && <StudentProfileCard />}
 
         {/* Section 1: Email Address Self-Service Modification */}
         <div className="p-5 sm:p-6 rounded-xl bg-surface border border-line/80 space-y-5">
