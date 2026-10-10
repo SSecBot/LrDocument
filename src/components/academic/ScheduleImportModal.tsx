@@ -7,6 +7,7 @@ import type { AcademicData, Course, CourseSession, SessionKind } from '@/lib/aca
 import { DAYS, DAYS_SHORT, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
 import { parseSchedule, type ParsedCourse } from '@/lib/academic/scheduleParser';
 import { extractPdfItems, type PdfJsLike } from '@/lib/academic/pdfText';
+import { loadPdfJs } from '@/lib/academic/pdfjsLoader';
 import { emptyCourse } from './CourseModal';
 import { btnGhost, btnPrimary, btnSecondary } from './ui';
 
@@ -49,17 +50,6 @@ function groupsFor(parsed: ParsedCourse[], year: number | null): string[] {
     .filter((c) => year === null || c.year === null || c.year === year)
     .forEach((c) => c.sessions.forEach((s) => s.group && set.add(s.group)));
   return [...set].sort();
-}
-
-let pdfjsPromise: Promise<PdfJsLike> | null = null;
-
-/** Loads pdf.js on demand; the PDF is parsed in the browser and never uploaded. */
-function loadPdfJs(): Promise<PdfJsLike> {
-  pdfjsPromise ??= import('pdfjs-dist').then((mod) => {
-    mod.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-    return mod as unknown as PdfJsLike;
-  });
-  return pdfjsPromise;
 }
 
 const smallInput = 'h-8 bg-surface-2 border border-line rounded-md px-2 text-xs text-fg focus:outline-none focus:border-line-strong';
@@ -113,7 +103,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
     if (file.size > MAX_PDF_BYTES) return setError('PDF en fazla 8 MB olabilir.');
     setBusy(true);
     try {
-      const pdfjs = await loadPdfJs();
+      const pdfjs = await loadPdfJs<PdfJsLike>();
       const items = await extractPdfItems(pdfjs, new Uint8Array(await file.arrayBuffer()));
       const result = parseSchedule(items);
       setWarnings(result.warnings);

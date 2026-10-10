@@ -47,3 +47,6 @@ prisma/*.db-journal
 # local Claude preview config
 /.claude/
 *.sunucu-yedek
+
+# OCR assets copied from node_modules (scripts/copy-ocr-assets.mjs)
+/public/ocr/

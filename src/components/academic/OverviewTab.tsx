@@ -42,6 +42,7 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   const holidayToday = isHoliday(today, term);
   const todaySessions = courses
     .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
+    .filter(({ session }) => !holidayToday?.half || session.start < '13:00')
     .sort((a, b) => a.session.start.localeCompare(b.session.start));
 
   const attention = courses.flatMap((c) => {
@@ -101,8 +102,11 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
           <CardHeader title={`Bugün — ${DAYS[todayIndex]}`} icon={<CalendarClock className="w-4 h-4 text-subtle" />} />
           {courses.length === 0 ? (
             <EmptyState title="Bu dönem için ders yok" text="Ders programını oluşturarak başlayın." action={<button className={btnSecondary} onClick={onAddCourse}>Ders ekle</button>} />
-          ) : holidayToday ? (
-            <EmptyState title={`Bugün tatil — ${holidayToday.name}`} text="Akademik takvime göre bugün ders yok; devamsızlık sayılmaz." />
+          ) : holidayToday && !holidayToday.half ? (
+            <EmptyState
+              title={holidayToday.kind === 'sinav' ? `Sınav dönemi — ${holidayToday.name}` : `Bugün tatil — ${holidayToday.name}`}
+              text="Akademik takvime göre bugün ders yok; devamsızlık sayılmaz."
+            />
           ) : todaySessions.length === 0 ? (
             <EmptyState title="Bugün dersiniz yok" />
           ) : (

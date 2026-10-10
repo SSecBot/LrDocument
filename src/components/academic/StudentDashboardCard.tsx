@@ -43,6 +43,7 @@ export function StudentDashboardCard() {
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   const today = courses
     .flatMap((c) => c.sessions.filter((s) => s.day === todayIndex).map((s) => ({ course: c, session: s })))
+    .filter(({ session }) => !holidayToday?.half || session.start < '13:00')
     .sort((a, b) => a.session.start.localeCompare(b.session.start));
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
   // First session on the following days, used when there is no class today.
@@ -87,8 +88,8 @@ export function StudentDashboardCard() {
         />
         {view === 'week' ? (
           <WeekGrid courses={courses} />
-        ) : holidayToday ? (
-          <EmptyState title={`Bugün tatil — ${holidayToday.name}`} />
+        ) : holidayToday && !holidayToday.half ? (
+          <EmptyState title={holidayToday.kind === 'sinav' ? `Sınav dönemi — ${holidayToday.name}` : `Bugün tatil — ${holidayToday.name}`} />
         ) : today.length === 0 ? (
           <EmptyState
             title={`${DAYS[todayIndex]} — bugün dersiniz yok`}

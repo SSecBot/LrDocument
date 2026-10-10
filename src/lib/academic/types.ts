@@ -114,6 +114,14 @@ export interface Holiday {
   /** YYYY-MM-DD, inclusive */
   start: string;
   end: string;
+  /** Only the afternoon is off (arife): sessions starting at 13:00 or later are cancelled */
+  half?: boolean;
+  /** "sinav": exam week from the academic calendar (no classes) */
+  kind?: 'tatil' | 'sinav';
+  /** Generated official holiday (milli/dinî bayram); not stored */
+  auto?: boolean;
+  /** Religious holiday date computed, not yet verified against Diyanet's calendar */
+  estimated?: boolean;
 }
 
 export interface Term {
@@ -122,8 +130,10 @@ export interface Term {
   /** Academic calendar: first and last day of classes (YYYY-MM-DD). Without it weeksPerTerm is used. */
   start?: string;
   end?: string;
-  /** Days without classes (resmî tatiller, ara tatil…) */
+  /** Days without classes (ara sınav haftası, ara tatil…), added by the user or the calendar PDF */
   holidays?: Holiday[];
+  /** Add national and religious holidays automatically (default true) */
+  autoHolidays?: boolean;
 }
 
 export interface LetterGrade {

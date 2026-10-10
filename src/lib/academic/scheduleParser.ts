@@ -206,13 +206,13 @@ function median(values: number[]): number {
   return s[Math.floor(s.length / 2)];
 }
 
-interface Line {
+export interface Line {
   y: number;
   items: PdfTextItem[];
   text: string;
 }
 
-function groupLines(items: PdfTextItem[]): Line[] {
+export function groupLines(items: PdfTextItem[]): Line[] {
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const lines: { y: number; items: PdfTextItem[] }[] = [];
   for (const it of sorted) {

@@ -110,7 +110,20 @@ export const academicDataSchema = z.object({
         name: shortText(40).min(1),
         start: date.optional(),
         end: date.optional(),
-        holidays: z.array(z.object({ id, name: shortText(80), start: date, end: date })).max(60).optional(),
+        holidays: z
+          .array(
+            z.object({
+              id,
+              name: shortText(80),
+              start: date,
+              end: date,
+              half: z.boolean().optional(),
+              kind: z.enum(['tatil', 'sinav']).optional(),
+            })
+          )
+          .max(60)
+          .optional(),
+        autoHolidays: z.boolean().optional(),
       })
     )
     .min(1)

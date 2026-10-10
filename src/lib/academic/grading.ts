@@ -13,6 +13,7 @@ import type {
   SessionKind,
   Term,
 } from './types';
+import { officialHolidays } from './holidays';
 
 // ---------------------------------------------------------------------------
 // Presets
@@ -190,51 +191,68 @@ export function hasCalendar(term: Term | undefined | null): term is Term & { sta
   return !!term && !!term.start && !!term.end && ISO_DATE.test(term.start) && ISO_DATE.test(term.end) && term.end >= term.start;
 }
 
-export function isHoliday(date: string, term: Term): Holiday | undefined {
-  return term.holidays?.find((h) => date >= h.start && date <= h.end);
+/** User/calendar holidays plus (unless turned off) the official ones within the term. */
+export function termHolidays(term: Term): Holiday[] {
+  const own = term.holidays ?? [];
+  if (term.autoHolidays === false || !hasCalendar(term)) return own;
+  const official: Holiday[] = officialHolidays(term.start, term.end)
+    // Skip official days already covered by a stored full-day entry.
+    .filter((o) => !own.some((h) => !h.half && o.date >= h.start && o.date <= h.end))
+    .map((o) => ({
+      id: `auto-${o.date}`,
+      name: o.name,
+      start: o.date,
+      end: o.date,
+      auto: true,
+      ...(o.half ? { half: true } : {}),
+      ...(o.estimated ? { estimated: true } : {}),
+    }));
+  return [...own, ...official].sort((a, b) => a.start.localeCompare(b.start));
 }
 
-/** How many times each weekday (0 = Pazartesi) has class in the term, skipping holidays. */
-export function meetingsPerWeekday(term: Term): number[] | null {
-  if (!hasCalendar(term)) return null;
-  const counts = [0, 0, 0, 0, 0, 0, 0];
+/** Holiday covering `date` (a full day wins over an afternoon-only arife). */
+export function isHoliday(date: string, term: Term): Holiday | undefined {
+  const covering = termHolidays(term).filter((h) => date >= h.start && date <= h.end);
+  return covering.find((h) => !h.half) ?? covering[0];
+}
+
+function eachClassDay(term: Term & { start: string; end: string }, fn: (iso: string, weekday: number, holidays: Holiday[]) => void) {
+  const holidays = termHolidays(term);
   const end = parseDate(term.end);
   // Guard against absurd ranges (max ~1 year).
   for (let d = parseDate(term.start), i = 0; d <= end && i < 400; d.setDate(d.getDate() + 1), i++) {
-    if (isHoliday(isoOf(d), term)) continue;
-    counts[(d.getDay() + 6) % 7]++;
+    const iso = isoOf(d);
+    fn(iso, (d.getDay() + 6) % 7, holidays.filter((h) => iso >= h.start && iso <= h.end));
   }
+}
+
+/** How many full class days each weekday (0 = Pazartesi) has in the term. */
+export function meetingsPerWeekday(term: Term): number[] | null {
+  if (!hasCalendar(term)) return null;
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  eachClassDay(term, (_, weekday, hs) => {
+    if (!hs.some((h) => !h.half)) counts[weekday]++;
+  });
   return counts;
+}
+
+/** How many times a session actually takes place: holidays, exam weeks and arife afternoons excluded. */
+export function sessionMeetings(session: Pick<CourseSession, 'day' | 'start'>, term: Term): number | null {
+  if (!hasCalendar(term)) return null;
+  let n = 0;
+  eachClassDay(term, (_, weekday, hs) => {
+    if (weekday !== session.day) return;
+    if (hs.some((h) => !h.half)) return;
+    if (hs.some((h) => h.half) && session.start >= '13:00') return;
+    n++;
+  });
+  return n;
 }
 
 /** Number of calendar weeks between the first and last day of classes. */
 export function calendarWeeks(term: Term): number | null {
   if (!hasCalendar(term)) return null;
   return Math.ceil((parseDate(term.end).getTime() - parseDate(term.start).getTime() + 86_400_000) / (7 * 86_400_000));
-}
-
-/** Fixed-date official holidays in Türkiye (dini bayramlar her yıl değiştiği için elle eklenir). */
-const FIXED_HOLIDAYS: [string, string][] = [
-  ['01-01', 'Yılbaşı'],
-  ['04-23', 'Ulusal Egemenlik ve Çocuk Bayramı'],
-  ['05-01', 'Emek ve Dayanışma Günü'],
-  ['05-19', 'Atatürk’ü Anma, Gençlik ve Spor Bayramı'],
-  ['07-15', 'Demokrasi ve Millî Birlik Günü'],
-  ['08-30', 'Zafer Bayramı'],
-  ['10-29', 'Cumhuriyet Bayramı'],
-];
-
-export function officialHolidaysBetween(start: string, end: string): Holiday[] {
-  const out: Holiday[] = [];
-  const y1 = Number(start.slice(0, 4));
-  const y2 = Number(end.slice(0, 4));
-  for (let y = y1; y <= y2 && y <= y1 + 2; y++) {
-    for (const [md, name] of FIXED_HOLIDAYS) {
-      const date = `${y}-${md}`;
-      if (date >= start && date <= end) out.push({ id: newId(), name, start: date, end: date });
-    }
-  }
-  return out;
 }
 
 /** Attendance is not required again for a retaken course failed on grades (devam şartı sağlanmış). */
@@ -245,7 +263,7 @@ export function isAttendanceExempt(course: Course): boolean {
 export function attendanceStatus(course: Course, grading: GradingSystem, term?: Term | null): AttendanceKindStatus[] {
   const result: AttendanceKindStatus[] = [];
   if (isAttendanceExempt(course)) return result;
-  const meetings = term ? meetingsPerWeekday(term) : null;
+  const calendar = hasCalendar(term) ? term : null;
   const kinds: [SessionKind, number, number][] = [
     ['teori', course.theoryHours, grading.attendanceTheory],
     ['uygulama', course.practiceHours, grading.attendancePractice],
@@ -254,9 +272,9 @@ export function attendanceStatus(course: Course, grading: GradingSystem, term?: 
     if (weeklyHours <= 0) continue;
     const kindSessions = course.sessions.filter((s) => s.kind === kind);
     // With an academic calendar, count the real class days of each session; otherwise N weeks.
-    const fromCalendar = meetings !== null && kindSessions.length > 0;
+    const fromCalendar = calendar !== null && kindSessions.length > 0;
     const totalHours = fromCalendar
-      ? kindSessions.reduce((sum, s) => sum + sessionHours(s) * meetings[s.day], 0)
+      ? kindSessions.reduce((sum, s) => sum + sessionHours(s) * (sessionMeetings(s, calendar) ?? 0), 0)
       : weeklyHours * grading.weeksPerTerm;
     const allowed = Math.floor((totalHours * (100 - required)) / 100 + 1e-9);
     const used = course.absences.filter((a) => a.kind === kind).reduce((sum, a) => sum + a.hours, 0);

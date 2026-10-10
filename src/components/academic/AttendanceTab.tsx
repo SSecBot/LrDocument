@@ -30,7 +30,7 @@ export function AttendanceTab({ data, courses, update, onEditCourse }: Props) {
       <p className="text-xs text-muted">
         Devam zorunluluğu: teorik derslerde %{g.attendanceTheory}, uygulamalarda %{g.attendancePractice} •{' '}
         {hasCalendar(term)
-          ? `akademik takvime göre ${calendarWeeks(term)} haftalık dönem; tatil günlerine denk gelen dersler sayılmaz`
+          ? `akademik takvime göre ${calendarWeeks(term)} haftalık dönem; bayram, tatil ve sınav haftalarına denk gelen dersler sayılmaz`
           : `${g.weeksPerTerm} haftalık dönem (akademik takvimi Ayarlar › Ders Takibi Ayarları’ndan ekleyebilirsiniz)`}
         . Sınırı aşan derste final sınavına girilemez ve ders devamsızlıktan (D) kalınır.
       </p>
