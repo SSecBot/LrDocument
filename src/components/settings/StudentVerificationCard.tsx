@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, Clock, FileUp, GraduationCap, MailCheck, XCircle } from 'lucide-react';
-import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
+import { useAppStore } from '@/store/useAppStore';
+import { Message, Panel, primaryBtn } from './settingsUi';
 
 interface Status {
   verified: boolean;
@@ -21,9 +22,8 @@ const MAX_BYTES = 3 * 1024 * 1024;
 
 /** Öğrencilik doğrulaması: code to the university e-mail, or an uploaded öğrenci belgesi. */
 export function StudentVerificationCard() {
+  const { setSettingsSection } = useAppStore();
   const [status, setStatus] = useState<Status | null>(null);
-  const [codeSent, setCodeSent] = useState(false);
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,7 +81,7 @@ export function StudentVerificationCard() {
   return (
     <Panel
       title="Öğrencilik doğrulaması"
-      description="Öğrenci indirimi ve ders takibi için öğrenciliğinizi doğrulayın. En hızlısı üniversite e-postanıza gelen kod; alternatif olarak e-Devlet’ten aldığınız öğrenci belgesini yükleyebilirsiniz."
+      description="Öğrenci indirimi için öğrenciliğinizi doğrulayın: üniversite e-postanıza gelen kodla ya da e-Devlet’ten aldığınız öğrenci belgesiyle."
     >
       <div className="space-y-5 max-w-xl">
         {status.documentStatus === 'pending' && (
@@ -95,48 +95,14 @@ export function StudentVerificationCard() {
           </p>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           <h3 className="text-sm font-medium text-fg flex items-center gap-2">
-            <MailCheck className="w-4 h-4 text-subtle" /> Üniversite e-postası ile
+            <MailCheck className="w-4 h-4 text-subtle" /> Üniversite e-postası ile (anında)
           </h3>
-          {status.academic ? (
-            codeSent ? (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await call({ action: 'confirm', code });
-                }}
-                className="flex flex-wrap items-end gap-2"
-              >
-                <label className="block">
-                  <span className={labelCls}>{status.studentEmail} adresine gelen kod</span>
-                  <input className={`${fieldCls} font-mono tracking-[0.3em] text-center max-w-[180px]`} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
-                </label>
-                <button type="submit" disabled={busy || code.length !== 6} className={primaryBtn}>
-                  Doğrula
-                </button>
-                <button type="button" disabled={busy} onClick={() => call({ action: 'send' })} className={secondaryBtn}>
-                  Yeniden gönder
-                </button>
-              </form>
-            ) : (
-              <button
-                disabled={busy}
-                onClick={async () => {
-                  const r = await call({ action: 'send' });
-                  if (r) {
-                    setCodeSent(true);
-                    setMsg({ kind: 'ok', text: r.message });
-                  }
-                }}
-                className={primaryBtn}
-              >
-                <GraduationCap className="w-4 h-4" /> {status.studentEmail} adresine kod gönder
-              </button>
-            )
-          ) : (
-            <p className="text-xs text-muted">Kayıtlı öğrenci e-postanız üniversite uzantılı değil. Aşağıdaki bilgilerden düzeltebilir ya da belge yükleyebilirsiniz.</p>
-          )}
+          <p className="text-xs text-muted">Öğrenci e-postanıza gelen kodla doğrulayın; doğrulanan adresle giriş de yapabilirsiniz.</p>
+          <button type="button" onClick={() => setSettingsSection('guvenlik')} className={primaryBtn}>
+            <GraduationCap className="w-4 h-4" /> Güvenlik sekmesinde doğrula
+          </button>
         </div>
 
         <div className="space-y-2">

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { emailInUse } from '@/lib/loginEmail';
 import { comparePassword, requireAccountOwner, setSessionCookie, signSessionToken, sessionMaxAgeSeconds } from '@/lib/auth';
 import { handleRouteError, rateLimit, readJsonObject, requestHost, tooManyRequests } from '@/lib/apiUtils';
 import { consumeCode, issueCode, maskEmail, VerificationError } from '@/lib/verification';
@@ -49,8 +50,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email: newEmail } });
-    if (existingUser && existingUser.id !== session.userId) {
+    if (await emailInUse(newEmail, session.userId)) {
       return NextResponse.json(
         { error: 'Bu e-posta adresi başka bir hesap tarafından kullanılmaktadır.' },
         { status: 409 }

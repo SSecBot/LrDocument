@@ -2,13 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AcademicData } from '@/lib/academic/types';
+import type { University } from '@/lib/universities';
 
 export interface StudentProfileView {
   university: string;
+  universityId?: string | null;
   studentEmail: string;
   department: string;
   classYear: number;
   studentNo?: string | null;
+}
+
+/** The student's university from the catalog, with the calendar an admin published (if any). */
+export interface SchoolInfo extends University {
+  calendar: { updatedAt: string; sourceUrl: string | null; terms: string[] } | null;
 }
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -36,6 +43,7 @@ async function putData(data: AcademicData, keepalive = false): Promise<string | 
 export function useAcademicData() {
   const [data, setData] = useState<AcademicData | null>(null);
   const [profile, setProfile] = useState<StudentProfileView | null>(null);
+  const [school, setSchool] = useState<SchoolInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -69,6 +77,7 @@ export function useAcademicData() {
         if (cancelled) return;
         setData({ ...json.data, exams: json.data.exams ?? [] });
         setProfile(json.profile);
+        setSchool(json.school ?? null);
       })
       .catch((err: Error) => {
         if (!cancelled) setLoadError(err.message);
@@ -100,5 +109,5 @@ export function useAcademicData() {
     [flush]
   );
 
-  return { data, profile, loadError, saveState, saveError, update, retrySave: () => flush() };
+  return { data, profile, school, loadError, saveState, saveError, update, retrySave: () => flush() };
 }

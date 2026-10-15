@@ -92,7 +92,7 @@ export function PricingPlans({ pricing }: { pricing: PricingSettings }) {
       </div>
       <p className="text-center text-xs text-muted">
         {student
-          ? 'Öğrenci indirimi için kayıtta üniversite uzantılı e-posta adresiniz (ör. @ogr.ktu.edu.tr) istenir.'
+          ? 'Öğrenci indirimi için kayıtta üniversite uzantılı e-posta adresiniz (ör. @ogr.universite.edu.tr) istenir.'
           : corporate
             ? `Kurumsal paketler ${pricing.corporateMinSeats}–${pricing.corporateMaxSeats} kişi arasıdır; kayıtta kurum adı istenir.`
             : 'Kayıt talebiniz onaylandığında ödeme ve hesap açılışı için e-posta ile iletişime geçilir.'}

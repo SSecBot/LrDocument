@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, ensureDefaultAdmin, validateNewPassword } from '@/lib/auth';
 import { seedDefaultUserData } from '@/lib/userSeed';
 import { studentProfileSchema } from '@/lib/studentProfile';
+import { catalogFields } from '@/lib/universities';
+import { emailInUse } from '@/lib/loginEmail';
 import { encryptRow } from '@/lib/dataCrypto';
 import { normalizeAccountType } from '@/lib/pricing';
 import { getSystemSettings } from '@/lib/systemSettingsServer';
@@ -76,11 +78,10 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      studentProfile = parsed.data;
+      studentProfile = { ...parsed.data, ...catalogFields(parsed.data) };
     }
 
-    const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (existing) {
+    if (await emailInUse(cleanEmail)) {
       return NextResponse.json(
         { error: 'Bu e-posta adresiyle kayıtlı bir hesap zaten bulunmaktadır.' },
         { status: 400 }

@@ -240,7 +240,7 @@ export const DEFAULT_LANDING: LandingContent = {
     description:
       'Devamsızlık ve not ortalamasını hesaplayan ders takibi, LaTeX notlar, görevler, takvim, bütçe ve kurumsal ekip alanı. Verileriniz şifreli.',
     keywords:
-      'ders takibi, devamsızlık hesaplama, not ortalaması hesaplama, AGNO hesaplama, çan eğrisi, öğrenci ajandası, LaTeX not uygulaması, görev yönetimi, kanban, takvim, bütçe takibi, kurumsal müşteri takibi, KTÜ',
+      'ders takibi, devamsızlık hesaplama, not ortalaması hesaplama, AGNO hesaplama, çan eğrisi, öğrenci ajandası, LaTeX not uygulaması, görev yönetimi, kanban, takvim, bütçe takibi, kurumsal müşteri takibi, üniversite akademik takvimi, KTÜ',
   },
   hero: {
     eyebrow: 'Öğrenciler, eğitimciler ve içerik üreticileri için',
@@ -277,11 +277,12 @@ export const DEFAULT_LANDING: LandingContent = {
       'Akşamları genel bakışta yarının ders programı görünür.',
       'Hocanın çan eğrisini ders ders girin; harf notunuz ona göre hesaplanır.',
       'Alttan alınan derslerde nottan kalındıysa devam zorunluluğu aranmaz.',
-      'KTÜ yönetmeliği hazır; diğer üniversiteler için not sistemi düzenlenebilir.',
+      'Türkiye’deki 205 üniversite listede: okulunuzu seçin, yayınlanan akademik takvimi otomatik gelsin; siz yalnızca ders programınızı girin.',
+      'KTÜ not yönetmeliği hazır; diğer üniversiteler için not sistemi düzenlenebilir.',
     ],
     steps: [
       { icon: 'FileUp', title: 'Ders programı PDF’ini yükleyin', text: 'Bölümünüzün haftalık programından sınıfınızı ve şubenizi seçin; dersler, saatler ve derslikler otomatik eklenir.' },
-      { icon: 'CalendarRange', title: 'Akademik takvimi yükleyin', text: 'Dönem başı-sonu ve sınav haftaları işlenir; milli ve dinî bayramlar kendiliğinden eklenir.' },
+      { icon: 'CalendarRange', title: 'Okulunuzu seçin', text: 'Okulunuzun akademik takvimi yayındaysa dönem tarihleri ve sınav haftaları kendiliğinden gelir; değilse PDF’ini yükleyin. Bayramlar otomatik eklenir.' },
       { icon: 'BellRing', title: 'Gerisini takip edin', text: 'Kaç saat devamsızlık hakkınız kaldığını, geçmek için kaç almanız gerektiğini ve sınava kaç gün kaldığını görün.' },
     ],
   },

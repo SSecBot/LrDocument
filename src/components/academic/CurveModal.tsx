@@ -190,7 +190,7 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
 
         {error && <p className="text-xs text-rose-400">{error}</p>}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="modal-actions flex flex-wrap items-center justify-between gap-2">
           {course.curve ? (
             <button
               type="button"

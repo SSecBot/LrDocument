@@ -361,7 +361,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
         {warnings.length > 0 && !error && <p className="text-[11px] text-amber-300/90">{warnings.join(' ')}</p>}
         {error && <p className="text-xs text-rose-400">{error}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="modal-actions flex justify-end gap-2">
           <button type="button" className={btnSecondary} onClick={onClose}>Vazgeç</button>
           {rows && (
             <button type="button" className={btnPrimary} disabled={selected.length === 0} onClick={handleImport}>

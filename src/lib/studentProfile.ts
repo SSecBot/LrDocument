@@ -21,13 +21,20 @@ export function isAcademicEmail(email: string): boolean {
 }
 
 export const studentProfileSchema = z.object({
+  /** Catalog id (src/lib/universities.ts); the name is taken from the catalog when it is set. */
+  universityId: z
+    .string()
+    .trim()
+    .max(80)
+    .nullish()
+    .transform((v) => v || null),
   university: z.string().trim().min(2, 'Üniversite adı en az 2 karakter olmalıdır.').max(120),
   studentEmail: z
     .string()
     .trim()
     .toLowerCase()
     .max(254)
-    .refine(isAcademicEmail, 'Öğrenci e-postası üniversite uzantılı olmalıdır (ör. ad@ogr.ktu.edu.tr).'),
+    .refine(isAcademicEmail, 'Öğrenci e-postası üniversite uzantılı olmalıdır (ör. ad@ogr.universite.edu.tr).'),
   department: z.string().trim().min(2, 'Bölüm adı en az 2 karakter olmalıdır.').max(120),
   classYear: z.coerce.number().int().min(0).max(7),
   studentNo: z
@@ -39,8 +46,3 @@ export const studentProfileSchema = z.object({
 });
 
 export type StudentProfileInput = z.infer<typeof studentProfileSchema>;
-
-/** Admins use the student pages too; their e-mail does not have to be an academic address. */
-export const adminStudentProfileSchema = studentProfileSchema.extend({
-  studentEmail: z.string().trim().toLowerCase().max(254).email('Geçerli bir e-posta adresi girin.'),
-});

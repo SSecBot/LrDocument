@@ -55,6 +55,7 @@ model User {
   studentProfile StudentProfile?
   studentDocument StudentDocument?
   verificationCodes VerificationCode[]
+  feedback     Feedback[]
 
   @@index([status, subscriptionType])
   @@index([status, subscriptionPlan])
@@ -231,7 +232,12 @@ model StudentProfile {
   id           String   @id @default(cuid())
   userId       String   @unique
   university   String
+  /// Id from the university catalog (src/lib/universities.ts); null for a school typed by hand.
+  universityId String?
   studentEmail String
+  /// The student e-mail once confirmed with a code: the student can sign in with it as well.
+  /// Unique across accounts (checked in src/lib/loginEmail.ts; an index keeps db push non-destructive).
+  loginEmail   String?
   department   String
   classYear    Int      @default(1) // 0 = hazırlık
   studentNo    String?
@@ -244,6 +250,9 @@ model StudentProfile {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([loginEmail])
+  @@index([universityId])
 }
 
 /// Admin-editable system defaults (see src/lib/systemSettings.ts). One row, key "system".
@@ -328,4 +337,42 @@ model StudentDocument {
   data       String
   uploadedAt DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// İstek, öneri, hata bildirimi and requests that need an admin decision (account type change,
+/// a student's academic calendar proposed for their university). Shown in Yönetici Paneli › Talepler.
+model Feedback {
+  id         String    @id @default(cuid())
+  userId     String
+  /// "istek" | "oneri" | "hata" | "hesap-gecis" | "takvim"
+  kind       String
+  /// Who wrote it: a corporate member writes in the owner's account (memberId set).
+  authorName String
+  memberId   String?
+  subject    String
+  /// Encrypted with the user's key.
+  message    String
+  /// Encrypted JSON for request kinds (e.g. the proposed calendar).
+  payload    String?
+  /// "yeni" | "inceleniyor" | "cozuldu" | "reddedildi"
+  status     String    @default("yeni")
+  adminNote  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// Academic calendar of a university, published by an admin. Students of that university get the
+/// dates (term start/end, exam weeks, holidays) in Ders Takibi automatically.
+model UniversityCalendar {
+  universityId String   @id
+  /// JSON: SchoolTerm[] (see src/lib/universities.ts)
+  terms        String
+  sourceUrl    String?
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
 }

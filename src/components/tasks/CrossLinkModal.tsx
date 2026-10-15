@@ -75,7 +75,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
 
 
         {/* Footer actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
+        <div className="modal-actions flex items-center justify-end gap-2">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"

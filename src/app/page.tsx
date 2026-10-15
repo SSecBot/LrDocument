@@ -402,7 +402,10 @@ export default async function LandingPage() {
               <a href="https://digivideas.com" target="_blank" rel="noopener noreferrer" className="text-brand-light hover:text-fg underline underline-offset-4">
                 Digivideas
               </a>{' '}
-              and lrion&apos;s
+              and{' '}
+              <a href="https://www.lrwebs.com.tr" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:text-sky-300 underline underline-offset-4">
+                LrWebs
+              </a>
             </p>
           </div>
         </div>

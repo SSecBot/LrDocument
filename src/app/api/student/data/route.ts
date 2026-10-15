@@ -28,7 +28,7 @@ export async function PUT(req: Request) {
     }
     const json = encryptText(session.userId, plain);
 
-    // Admins can use the tracker without a student profile; one is created on first save.
+    // A student whose profile row is missing (e.g. switched to Öğrenci by an admin) gets one on first save.
     await prisma.studentProfile.upsert({
       where: { userId: session.userId },
       update: { data: json },

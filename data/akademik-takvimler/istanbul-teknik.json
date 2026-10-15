@@ -1,0 +1,53 @@
+{
+  "universityId": "istanbul-teknik",
+  "year": "2026-2027",
+  "sourceUrl": "https://www.takvim.sis.itu.edu.tr/AkademikTakvim/TR/akademik-takvim/AkademikTakvimTablo.php",
+  "kaynak": "kaynak/istanbul-teknik.html",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-28",
+      "end": "2026-12-31",
+      "holidays": [
+        {
+          "id": "ara-tatil",
+          "name": "Ara tatil",
+          "start": "2026-11-16",
+          "end": "2026-11-20",
+          "kind": "tatil"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-02",
+          "end": "2027-01-17",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-01",
+      "end": "2027-04-30",
+      "holidays": [
+        {
+          "id": "ara-tatil",
+          "name": "Ara tatil",
+          "start": "2027-03-08",
+          "end": "2027-03-12",
+          "kind": "tatil"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-02",
+          "end": "2027-05-14",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

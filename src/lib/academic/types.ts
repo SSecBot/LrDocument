@@ -122,6 +122,8 @@ export interface Holiday {
   auto?: boolean;
   /** Religious holiday date computed, not yet verified against Diyanet's calendar */
   estimated?: boolean;
+  /** Came from the university's published calendar (replaced when the admin updates it) */
+  school?: boolean;
 }
 
 export interface Term {
@@ -134,6 +136,11 @@ export interface Term {
   holidays?: Holiday[];
   /** Add national and religious holidays automatically (default true) */
   autoHolidays?: boolean;
+  /**
+   * Dates taken from the university calendar an admin published (src/lib/academic/schoolCalendar.ts).
+   * Removed when the student edits the dates by hand, so later updates do not overwrite them.
+   */
+  school?: { uni: string; term: string; at: string } | null;
 }
 
 export interface LetterGrade {

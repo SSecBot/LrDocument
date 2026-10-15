@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { useSearchParams } from 'next/navigation';
 import { EmailCodeStep } from '@/components/auth/EmailCodeStep';
+import { UniversityPicker } from '@/components/academic/UniversityPicker';
 import { CLASS_YEARS, isAcademicEmail } from '@/lib/studentProfile';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, planLabel, seatPrice, type AccountType } from '@/lib/pricing';
 import Link from 'next/link';
@@ -59,6 +60,7 @@ function RegisterForm() {
   const [seatsInput, setSeatsInput] = useState(() => searchParams.get('kisi') ?? '5');
   const seats = clampSeats(seatsInput, settings.pricing);
   const [university, setUniversity] = useState('');
+  const [universityId, setUniversityId] = useState<string | null>(null);
   const [studentEmail, setStudentEmail] = useState('');
   const [department, setDepartment] = useState('');
   const [classYear, setClassYear] = useState(1);
@@ -94,7 +96,7 @@ function RegisterForm() {
         return;
       }
       if (!isAcademicEmail(studentEmail)) {
-        setErrorMessage('Öğrenci e-postanız üniversite uzantılı olmalıdır (ör. 123456@ogr.ktu.edu.tr).');
+        setErrorMessage('Öğrenci e-postanız üniversite uzantılı olmalıdır (ör. 123456@ogr.universite.edu.tr).');
         return;
       }
     }
@@ -111,7 +113,7 @@ function RegisterForm() {
           password,
           subscriptionPlan,
           accountType,
-          ...(isStudent ? { student: { university, studentEmail, department, classYear } } : {}),
+          ...(isStudent ? { student: { university, universityId, studentEmail, department, classYear } } : {}),
           ...(isCorporate ? { organization: organization.trim(), seats } : {}),
         }),
       });
@@ -265,15 +267,23 @@ function RegisterForm() {
                 {isStudent && (
                   <div className="space-y-3 p-3 rounded-lg border border-line bg-app/50">
                     <div>
-                      <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Üniversite</label>
-                      <input className={fieldCls} required value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Ör. Karadeniz Teknik Üniversitesi" list="universities" />
-                      <datalist id="universities">
-                        <option value="Karadeniz Teknik Üniversitesi" />
-                      </datalist>
+                      <label htmlFor="kayit-universite" className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Üniversite</label>
+                      <UniversityPicker
+                        id="kayit-universite"
+                        required
+                        inputClassName={fieldCls}
+                        universityId={universityId}
+                        university={university}
+                        email={studentEmail || email}
+                        onChange={(v) => {
+                          setUniversityId(v.universityId);
+                          setUniversity(v.university);
+                        }}
+                      />
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Öğrenci e-postası</label>
-                      <input className={fieldCls} type="email" required value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} placeholder="ogrencino@ogr.ktu.edu.tr" />
+                      <input className={fieldCls} type="email" required value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} placeholder="ogrencino@ogr.universite.edu.tr" />
                     </div>
                     <div className="grid grid-cols-[1fr_120px] gap-2">
                       <div>

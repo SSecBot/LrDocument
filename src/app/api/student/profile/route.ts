@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireStudentAccess } from '@/lib/auth';
 import { handleRouteError, readJsonObject } from '@/lib/apiUtils';
-import { adminStudentProfileSchema, studentProfileSchema } from '@/lib/studentProfile';
+import { studentProfileSchema } from '@/lib/studentProfile';
 import { decryptText, encryptRow } from '@/lib/dataCrypto';
+import { catalogFields } from '@/lib/universities';
 
 export async function PATCH(req: Request) {
   try {
     const session = await requireStudentAccess();
-    const schema = session.role === 'ADMIN' ? adminStudentProfileSchema : studentProfileSchema;
-    const parsed = schema.safeParse(await readJsonObject(req));
+    const parsed = studentProfileSchema.safeParse(await readJsonObject(req));
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || 'Öğrenci bilgileri geçersiz.' },
@@ -17,16 +17,18 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const fields = encryptRow('studentProfile', session.userId, parsed.data);
-    // A verification by e-mail belongs to that address: a new student e-mail must be verified again.
+    const input = { ...parsed.data, ...catalogFields(parsed.data) };
+    const fields = encryptRow('studentProfile', session.userId, input);
+    // A confirmed student e-mail belongs to that address: a new one must be confirmed again, and the
+    // old address stops working for sign-in.
     const before = await prisma.studentProfile.findUnique({ where: { userId: session.userId }, select: { studentEmail: true, verifyMethod: true } });
-    const resetVerification =
-      before?.verifyMethod === 'email' && before.studentEmail.toLowerCase() !== String(parsed.data.studentEmail ?? '').toLowerCase()
-        ? { verifiedAt: null, verifyMethod: null }
-        : {};
+    const emailChanged = !!before && before.studentEmail.toLowerCase() !== input.studentEmail.toLowerCase();
+    const reset = emailChanged
+      ? { loginEmail: null, ...(before.verifyMethod === 'email' ? { verifiedAt: null, verifyMethod: null } : {}) }
+      : {};
     const profile = await prisma.studentProfile.upsert({
       where: { userId: session.userId },
-      update: { ...fields, ...resetVerification },
+      update: { ...fields, ...reset },
       create: { userId: session.userId, ...fields },
     });
 
@@ -35,6 +37,7 @@ export async function PATCH(req: Request) {
       message: 'Öğrenci bilgileriniz güncellendi.',
       profile: {
         university: profile.university,
+        universityId: profile.universityId,
         studentEmail: profile.studentEmail,
         department: profile.department,
         classYear: profile.classYear,

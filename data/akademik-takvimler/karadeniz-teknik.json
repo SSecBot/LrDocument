@@ -1,0 +1,67 @@
+{
+  "universityId": "karadeniz-teknik",
+  "year": "2026-2027",
+  "sourceUrl": "https://www.ktu.edu.tr/dosyalar/oidb_CiXIf.pdf",
+  "kaynak": "kaynak/karadeniz-teknik.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-21",
+      "end": "2027-01-02",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-16",
+          "end": "2026-11-22",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-04",
+          "end": "2027-01-17",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-25",
+          "end": "2027-01-31",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-08",
+      "end": "2027-06-04",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-04-12",
+          "end": "2027-04-18",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-06-07",
+          "end": "2027-06-20",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-06-28",
+          "end": "2027-07-04",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

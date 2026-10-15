@@ -113,7 +113,7 @@ export function CustomerModal({ customer, editable, onClose, onCreated }: Props)
       subtitle={customer ? `${formatTurkishDate(customer.startDate)} – ${formatTurkishDate(customer.endDate)} taahhüt` : 'İletişim, aylık ödeme ve taahhüt süresi'}
       maxWidth="max-w-3xl"
     >
-      <div className="overflow-y-auto p-4 sm:p-5 space-y-6">
+      <div className="space-y-6">
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             <Mini label="Taahhüt tutarı" value={formatCurrencyTRY(summary.contractValue)} />
@@ -222,7 +222,7 @@ export function CustomerModal({ customer, editable, onClose, onCreated }: Props)
           </fieldset>
 
           {editable && (
-            <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="modal-actions flex items-center justify-between gap-3">
               {customer ? (
                 confirmDelete ? (
                   <span className="flex items-center gap-2 text-xs">

@@ -1,0 +1,67 @@
+{
+  "universityId": "ondokuz-mayis",
+  "year": "2026-2027",
+  "sourceUrl": "https://oidb.omu.edu.tr/tr/ogrenci/akademik-takvimler/2026-2027-1.pdf",
+  "kaynak": "kaynak/ondokuz-mayis.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-21",
+      "end": "2026-12-31",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-14",
+          "end": "2026-11-22",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-02",
+          "end": "2027-01-15",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-23",
+          "end": "2027-01-31",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-08",
+      "end": "2027-05-28",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-04-03",
+          "end": "2027-04-11",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-29",
+          "end": "2027-06-11",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-06-19",
+          "end": "2027-06-27",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

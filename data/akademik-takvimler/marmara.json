@@ -1,0 +1,67 @@
+{
+  "universityId": "marmara",
+  "year": "2026-2027",
+  "sourceUrl": "https://takvim.marmara.edu.tr/year/2026",
+  "kaynak": "kaynak/marmara.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-28",
+      "end": "2027-01-03",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-16",
+          "end": "2026-11-22",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-04",
+          "end": "2027-01-17",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-18",
+          "end": "2027-01-24",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-01-25",
+      "end": "2027-05-02",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-03-22",
+          "end": "2027-03-28",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-03",
+          "end": "2027-05-15",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-05-24",
+          "end": "2027-05-30",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

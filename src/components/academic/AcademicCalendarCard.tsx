@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CalendarRange, FileUp, Plus, Trash2 } from 'lucide-react';
+import { CalendarCheck2, CalendarRange, FileUp, Plus, Send, Trash2 } from 'lucide-react';
 import type { AcademicData, Holiday, Term } from '@/lib/academic/types';
 import { DAYS_SHORT, calendarWeeks, hasCalendar, meetingsPerWeekday, newId, termHolidays } from '@/lib/academic/grading';
 import { formatTurkishDate } from '@/lib/utils';
 import { CalendarImportModal } from './CalendarImportModal';
 import { Card, CardHeader, btnSecondary, inputCls, labelCls } from './ui';
+import type { SchoolInfo } from './useAcademicData';
 
 interface Props {
   data: AcademicData;
   update: (fn: (d: AcademicData) => AcademicData) => void;
+  /** The student's university (catalog) and its published calendar */
+  school?: SchoolInfo | null;
 }
 
 const fmt = (h: Pick<Holiday, 'start' | 'end'>) =>
@@ -20,15 +23,52 @@ const fmt = (h: Pick<Holiday, 'start' | 'end'>) =>
  * Academic calendar per term: first/last day of classes, exam weeks and holidays. Attendance limits
  * are computed from the real class days instead of a fixed number of weeks.
  */
-export function AcademicCalendarCard({ data, update }: Props) {
+export function AcademicCalendarCard({ data, update, school }: Props) {
   const [termId, setTermId] = useState(data.activeTermId ?? data.terms[data.terms.length - 1].id);
   const term = data.terms.find((t) => t.id === termId) ?? data.terms[data.terms.length - 1];
   const [draft, setDraft] = useState<Omit<Holiday, 'id'>>({ name: '', start: '', end: '' });
   const [error, setError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [proposal, setProposal] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [proposing, setProposing] = useState(false);
 
   const setTerm = (patch: Partial<Term>) =>
     update((d) => ({ ...d, terms: d.terms.map((t) => (t.id === term.id ? { ...t, ...patch } : t)) }));
+  // Dates typed by hand win over the school calendar: later updates no longer overwrite this term.
+  const setTermDates = (patch: Pick<Term, 'start'> | Pick<Term, 'end'>) => setTerm({ ...patch, school: null });
+
+  /** Sends this term's calendar to the admin, to be published for every student of the university. */
+  const propose = async () => {
+    if (!hasCalendar(term)) return;
+    setProposing(true);
+    setProposal(null);
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'takvim',
+          terms: [
+            {
+              id: term.id,
+              name: term.name,
+              start: term.start,
+              end: term.end,
+              holidays: (term.holidays ?? []).map((h) => ({ id: h.id, name: h.name, start: h.start, end: h.end, ...(h.half ? { half: true } : {}), ...(h.kind ? { kind: h.kind } : {}) })),
+            },
+          ],
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      setProposal(res.ok ? { kind: 'ok', text: 'Takvim yöneticiye gönderildi. Onaylanınca okulunuzdaki tüm öğrencilere eklenecek.' } : { kind: 'error', text: json.error || 'Gönderilemedi.' });
+    } catch {
+      setProposal({ kind: 'error', text: 'Sunucuya ulaşılamadı.' });
+    } finally {
+      setProposing(false);
+    }
+  };
+  const fromSchool = !!term.school;
+  const schoolHasTerm = !!school?.calendar?.terms.some((n) => n.toLocaleLowerCase('tr-TR') === term.name.toLocaleLowerCase('tr-TR'));
 
   const holidays = termHolidays(term);
   const meetings = meetingsPerWeekday(term);
@@ -62,7 +102,7 @@ export function AcademicCalendarCard({ data, update }: Props) {
         icon={<CalendarRange className="w-4 h-4 text-subtle" />}
         action={
           data.terms.length > 1 && (
-            <select className={`${inputCls} w-auto h-8 text-xs`} value={term.id} onChange={(e) => setTermId(e.target.value)} aria-label="Dönem">
+            <select className={`${inputCls} w-auto max-w-[9.5rem] sm:max-w-none h-8 text-xs shrink-0`} value={term.id} onChange={(e) => setTermId(e.target.value)} aria-label="Dönem">
               {data.terms.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -71,6 +111,18 @@ export function AcademicCalendarCard({ data, update }: Props) {
         }
       />
       <div className="p-4 space-y-4">
+        {school && (
+          <div className={`rounded-lg border px-3 py-2.5 text-xs flex items-start gap-2 ${fromSchool ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-line bg-surface-2'}`}>
+            <CalendarCheck2 className={`w-4 h-4 shrink-0 mt-0.5 ${fromSchool ? 'text-emerald-400' : 'text-muted'}`} />
+            <p className="text-subtle">
+              {fromSchool
+                ? `Bu dönemin tarihleri ${school.name} akademik takviminden otomatik geldi. Tarihleri elle değiştirirseniz sizin girdikleriniz korunur.`
+                : school.calendar
+                  ? `${school.name} takviminde yayınlanan dönemler: ${school.calendar.terms.join(', ')}. Aynı adlı dönemleriniz otomatik doldurulur.`
+                  : `${school.name} için yayınlanmış bir akademik takvim yok. Aşağıdan PDF yükleyebilir, sonra okulunuz için önerebilirsiniz.`}
+            </p>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-dashed border-line p-3">
           <p className="text-[11px] text-muted flex-1">
             Üniversitenizin akademik takvim PDF’ini yükleyin: derslerin başlangıç ve bitiş tarihleri ile sınav haftaları otomatik girilir. Sınav
@@ -84,11 +136,11 @@ export function AcademicCalendarCard({ data, update }: Props) {
         <div className="grid grid-cols-2 gap-3 max-w-md">
           <div>
             <label className={labelCls}>Derslerin başlangıcı</label>
-            <input type="date" className={inputCls} value={term.start ?? ''} onChange={(e) => setTerm({ start: e.target.value || undefined })} />
+            <input type="date" className={inputCls} value={term.start ?? ''} onChange={(e) => setTermDates({ start: e.target.value || undefined })} />
           </div>
           <div>
             <label className={labelCls}>Derslerin bitişi</label>
-            <input type="date" className={inputCls} value={term.end ?? ''} min={term.start} onChange={(e) => setTerm({ end: e.target.value || undefined })} />
+            <input type="date" className={inputCls} value={term.end ?? ''} min={term.start} onChange={(e) => setTermDates({ end: e.target.value || undefined })} />
           </div>
         </div>
 
@@ -172,6 +224,18 @@ export function AcademicCalendarCard({ data, update }: Props) {
           </div>
           {error && <p className="text-xs text-rose-400">{error}</p>}
         </div>
+
+        {school && hasCalendar(term) && !fromSchool && !schoolHasTerm && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+            <p className="text-[11px] text-subtle flex-1">
+              Bu dönemin takvimini {school.name} için önerin: yönetici onaylarsa okulunuzdaki tüm öğrencilere otomatik eklenir.
+            </p>
+            <button className={btnSecondary} disabled={proposing} onClick={propose}>
+              <Send className="w-4 h-4" /> Okulum için öner
+            </button>
+          </div>
+        )}
+        {proposal && <p className={`text-xs ${proposal.kind === 'ok' ? 'text-emerald-300' : 'text-rose-400'}`}>{proposal.text}</p>}
       </div>
       <CalendarImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} data={data} update={update} />
     </Card>

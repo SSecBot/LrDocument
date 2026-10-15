@@ -19,7 +19,6 @@ import {
   ArrowRight,
   Clock,
   Star,
-  Kanban,
   Building2,
   Pin,
 } from 'lucide-react';
@@ -39,7 +38,6 @@ export const DashboardOverview: React.FC = () => {
     currentUser,
     notes,
     tasks,
-    kanbanCards,
     events,
     transactions,
     customers,
@@ -51,7 +49,6 @@ export const DashboardOverview: React.FC = () => {
 
   const todayStr = toLocalDateString();
   const pendingTasks = tasks.filter((t) => !t.completed).length;
-  const inProgressKanban = kanbanCards.filter((c) => c.columnId === 'devam_ediyor' || c.columnId === 'yapilacak').length;
   const futureEvents = events.filter((e) => e.date >= todayStr && e.status !== 'iptal');
 
   const totalIncome = transactions.filter((t) => t.type === 'gelir').reduce((sum, t) => sum + t.amount, 0);
@@ -75,7 +72,7 @@ export const DashboardOverview: React.FC = () => {
   const corporate = isCorporate(currentUser);
   const overdueCustomers = customers.filter((c) => customerSummary(c, todayStr).overdueMonths > 0).length;
 
-  const allStats: { key: string; tab: ActiveTab; board?: boolean; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
+  const allStats: { key: string; tab: ActiveTab; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
     { key: 'notes', tab: 'notes', label: corporate ? 'Ortak notlar' : 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
     {
       key: 'customers',
@@ -86,7 +83,6 @@ export const DashboardOverview: React.FC = () => {
       icon: Building2,
     },
     { key: 'tasks', tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
-    { key: 'kanban', tab: 'tasks', board: true, label: 'Kanban', value: kanbanCards.length, hint: `${inProgressKanban} aktif`, icon: Kanban },
     { key: 'calendar', tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
     {
       key: 'finance',
@@ -102,7 +98,6 @@ export const DashboardOverview: React.FC = () => {
     notes: 'notes',
     customers: 'customers',
     tasks: 'work',
-    kanban: 'work',
     calendar: 'calendar',
     finance: 'finance',
   };
@@ -169,12 +164,12 @@ export const DashboardOverview: React.FC = () => {
         {studentAccess && <StudentDashboardCard />}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-          {stats.map(({ key, tab, board, label, value, hint, icon: Icon }) => (
+        <div className={`grid grid-cols-2 gap-2 ${stats.length >= 5 ? 'sm:grid-cols-3 xl:grid-cols-5' : stats.length === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+          {stats.map(({ key, tab, label, value, hint, icon: Icon }) => (
             <button
               key={key}
               onClick={() => {
-                if (tab === 'tasks') setPreference('tasksView', board ? 'pano' : 'liste');
+                if (tab === 'tasks') setPreference('tasksView', 'liste');
                 setActiveTab(tab);
               }}
               className="text-left bg-surface hover:bg-surface-2 border border-line hover:border-line-strong rounded-lg px-3 py-2.5 transition-colors group"

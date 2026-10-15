@@ -145,6 +145,46 @@ body {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Dialogs (src/components/ui/Modal.tsx) */
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(24px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+@keyframes popIn { from { transform: translateY(8px) scale(0.985); opacity: 0; } to { transform: none; opacity: 1; } }
+.animate-backdrop { animation: backdropIn 0.15s ease-out; }
+.animate-sheet-up { animation: sheetUp 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+@media (min-width: 640px) {
+  .sm\:animate-pop-in { animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-backdrop, .animate-sheet-up, .sm\:animate-pop-in { animation: none; }
+}
+
+/* Action row of a dialog form: sticks to the bottom of the scrolling body, so the buttons stay
+   reachable on phones. Mark the row with "modal-actions". */
+.modal-body .modal-actions {
+  position: sticky;
+  bottom: calc(-1 * max(1rem, env(safe-area-inset-bottom)));
+  z-index: 2;
+  margin: 1rem -1rem calc(-1 * max(1rem, env(safe-area-inset-bottom)));
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-line);
+}
+@media (min-width: 640px) {
+  .modal-body .modal-actions {
+    bottom: -1.25rem;
+    margin: 1.25rem -1.25rem -1.25rem;
+    padding: 0.875rem 1.25rem 1rem;
+  }
+}
+/* Phones: full-width, thumb-sized buttons, primary action on top */
+@media (max-width: 639.98px) {
+  .modal-body .modal-actions,
+  .modal-body .modal-actions > div:not(:empty) { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 0.5rem; width: 100%; }
+  .modal-body .modal-actions > :empty { display: none; }
+  .modal-body .modal-actions button { width: 100%; min-height: 44px; justify-content: center; }
+  .modal-body .modal-actions > .modal-actions-start { order: -1; } /* bottom of the reversed column */
+}
+
 
 
 /* ------------------------------------------------------------------------- */

@@ -219,8 +219,8 @@ export const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         {/* Date, Time & Duration */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="col-span-2 sm:col-span-1">
             <label className="block text-xs font-semibold text-white mb-1">Tarih *</label>
             <input
               type="date"
@@ -331,7 +331,7 @@ export const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-line">
+        <div className="modal-actions flex items-center justify-between">
           {editEvent ? (
             <button
               type="button"

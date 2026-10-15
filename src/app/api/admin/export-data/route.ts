@@ -24,6 +24,7 @@ export async function GET() {
       kanbanCards,
       studentProfiles,
       customers,
+      universityCalendars,
     ] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: 'asc' },
@@ -62,6 +63,7 @@ export async function GET() {
         orderBy: { createdAt: 'asc' },
       }),
       prisma.customer.findMany({ orderBy: { createdAt: 'asc' } }),
+      prisma.universityCalendar.findMany(),
     ]);
 
     const backupPayload = {
@@ -95,6 +97,8 @@ export async function GET() {
         kanbanCards: plain('kanbanCard', kanbanCards),
         studentProfiles: plain('studentProfile', studentProfiles),
         customers: plain('customer', customers),
+        // Akademik takvimler published for universities (not personal data).
+        universityCalendars,
       },
     };
 

@@ -195,7 +195,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-2 border-t border-line">
+        <div className="modal-actions flex justify-end">
           <button
             type="button"
             onClick={onClose}

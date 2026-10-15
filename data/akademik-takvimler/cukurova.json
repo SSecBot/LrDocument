@@ -1,0 +1,67 @@
+{
+  "universityId": "cukurova",
+  "year": "2026-2027",
+  "sourceUrl": "https://www.cu.edu.tr/media/212daahw/2026genel.pdf",
+  "kaynak": "kaynak/cukurova.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-14",
+      "end": "2026-12-25",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-02",
+          "end": "2026-11-08",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2026-12-28",
+          "end": "2027-01-10",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-18",
+          "end": "2027-01-24",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-01",
+      "end": "2027-05-28",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-03-29",
+          "end": "2027-04-04",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-31",
+          "end": "2027-06-13",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-06-21",
+          "end": "2027-06-27",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

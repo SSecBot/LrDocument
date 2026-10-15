@@ -178,7 +178,7 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
 
         {error && <p className="text-xs text-rose-400">{error}</p>}
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="modal-actions flex items-center justify-between gap-2">
           {exam ? (
             <button
               type="button"

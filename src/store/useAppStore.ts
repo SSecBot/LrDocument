@@ -30,7 +30,7 @@ import {
   convertCurrencyToTRY,
 } from '@/lib/exchangeRates';
 
-export type SettingsSection = 'hesap' | 'guvenlik' | 'ogrenci' | 'ders' | 'tercihler';
+export type SettingsSection = 'hesap' | 'guvenlik' | 'ogrenci' | 'ders' | 'tercihler' | 'destek';
 
 export interface ToastMessage {
   id: string;
@@ -88,7 +88,8 @@ interface AppState {
   folders: FolderItem[];
   addFolder: (name: string, description?: string) => string;
   updateFolder: (id: string, name: string, description?: string) => void;
-  deleteFolder: (id: string) => void;
+  /** Removes a folder; its notes move to "Tüm notlar", or are deleted too with `withNotes`. */
+  deleteFolder: (id: string, options?: { withNotes?: boolean }) => void;
   addNote: (partial?: Partial<Note>) => string;
   updateNote: (id: string, partial: Partial<Note>) => void;
   deleteNote: (id: string) => void;
@@ -847,19 +848,28 @@ const updateFolder = (id: string, name: string, description?: string) => {
   notify();
 };
 
-const deleteFolder = (id: string) => {
+const deleteFolder = (id: string, options?: { withNotes?: boolean }) => {
   if (!guardEdit('notes')) return;
   globalState.folders = globalState.folders.filter((f) => f.id !== id);
   if (globalState.activeFolder === id) {
     globalState.activeFolder = 'all';
   }
-  // The notes stay; they just leave the deleted folder.
-  globalState.notes = globalState.notes.map((n) => {
-    if (n.folder !== id) return n;
-    const moved = { ...n, folder: '' };
-    mutateDB('note', 'upsert', n.id, moved);
-    return moved;
-  });
+  if (options?.withNotes) {
+    const removed = globalState.notes.filter((n) => n.folder === id);
+    globalState.notes = globalState.notes.filter((n) => n.folder !== id);
+    if (removed.some((n) => n.id === globalState.activeNoteId)) {
+      globalState.activeNoteId = globalState.notes[0]?.id || null;
+    }
+    for (const n of removed) mutateDB('note', 'delete', n.id);
+  } else {
+    // The notes stay; they just leave the deleted folder.
+    globalState.notes = globalState.notes.map((n) => {
+      if (n.folder !== id) return n;
+      const moved = { ...n, folder: '' };
+      mutateDB('note', 'upsert', n.id, moved);
+      return moved;
+    });
+  }
   mutateDB('folder', 'delete', id);
   notify();
 };

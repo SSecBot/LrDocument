@@ -1,0 +1,67 @@
+{
+  "universityId": "avrasya",
+  "year": "2026-2027",
+  "sourceUrl": "https://avrasya.edu.tr/wp-content/uploads/2026/06/2026-2027-Onlisans-Lisans-Akademik-Takvimi-09.05.2026.pdf",
+  "kaynak": "kaynak/avrasya.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-21",
+      "end": "2027-01-01",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-09",
+          "end": "2026-11-13",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-05",
+          "end": "2027-01-15",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-25",
+          "end": "2027-01-29",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-15",
+      "end": "2027-06-11",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-04-12",
+          "end": "2027-04-16",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-06-14",
+          "end": "2027-06-25",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-07-05",
+          "end": "2027-07-09",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { prisma } from './prisma';
 import { deriveSecret } from './dataCrypto';
 import { sendMail } from './mailer';
+import { mailShell } from './notices';
 export { isAcademicEmail } from './studentProfile';
 
 // ---------------------------------------------------------------------------
@@ -39,20 +40,15 @@ const SUBJECT: Record<CodePurpose, string> = {
 const INTRO: Record<CodePurpose, string> = {
   email: 'LrDocument hesabınızın e-posta adresini doğrulamak için aşağıdaki kodu girin.',
   'email-change': 'LrDocument hesabınızın e-posta adresini bu adresle değiştirmek için aşağıdaki kodu girin.',
-  'student-email': 'Öğrencilik durumunuzu doğrulamak için aşağıdaki kodu LrDocument’e girin.',
+  'student-email': 'Öğrenci e-postanızı doğrulamak için aşağıdaki kodu LrDocument’e girin. Doğrulanan adresle giriş de yapabilirsiniz.',
   'password-reset': 'LrDocument hesabınızın şifresini sıfırlamak için aşağıdaki kodu girin.',
 };
 
 function renderMail(purpose: CodePurpose, code: string) {
   const text = `${INTRO[purpose]}\n\nKod: ${code}\n\nKod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.`;
-  const html = `<!doctype html><html lang="tr"><body style="margin:0;background:#f4f5f6;font-family:Arial,Helvetica,sans-serif;color:#1d2125">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:8px;border:1px solid #e3e6e8" cellpadding="0" cellspacing="0">
-<tr><td style="padding:24px 28px 8px;font-size:18px;font-weight:bold">Σ LrDocument</td></tr>
-<tr><td style="padding:8px 28px;font-size:14px;line-height:1.6">${INTRO[purpose]}</td></tr>
+  const html = mailShell(`<tr><td style="padding:8px 28px;font-size:14px;line-height:1.6">${INTRO[purpose]}</td></tr>
 <tr><td style="padding:16px 28px"><div style="font-size:32px;letter-spacing:8px;font-weight:bold;text-align:center;background:#f4f5f6;border-radius:6px;padding:14px 0;color:#c25e12">${code}</div></td></tr>
-<tr><td style="padding:8px 28px 24px;font-size:12px;line-height:1.6;color:#6b7378">Kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda bir değişiklik yapılmaz.</td></tr>
-</table></td></tr></table></body></html>`;
+<tr><td style="padding:8px 28px 24px;font-size:12px;line-height:1.6;color:#6b7378">Kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda bir değişiklik yapılmaz.</td></tr>`);
   return { text, html };
 }
 

@@ -11,6 +11,8 @@ import { ORG_ROLE_LABEL } from '@/lib/corporate';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
 import { EmailSection, EmailVerificationPanel, TwoFactorSection } from './SecuritySections';
+import { StudentEmailSection } from './StudentEmailSection';
+import { AccountSwitchSection, SupportSection } from './SupportSections';
 
 export function SettingsView() {
   const { currentUser, settingsSection, setSettingsSection } = useAppStore();
@@ -23,6 +25,7 @@ export function SettingsView() {
     { id: 'ogrenci', label: 'Öğrenci bilgileri', show: student },
     { id: 'ders', label: 'Ders takibi', show: student },
     { id: 'tercihler', label: 'Tercihler', show: true },
+    { id: 'destek', label: 'Destek', show: true },
   ];
   const visible = tabs.filter((t) => t.show);
   const active = visible.some((t) => t.id === settingsSection) ? settingsSection : 'hesap';
@@ -51,11 +54,17 @@ export function SettingsView() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 sm:p-6 max-w-3xl w-full space-y-5" role="tabpanel" id={`ayar-panel-${active}`} aria-labelledby={`ayar-${active}`}>
-          {active === 'hesap' && <AccountSection />}
+          {active === 'hesap' && (
+            <>
+              <AccountSection />
+              {currentUser?.accountType === 'STUDENT' && !currentUser.memberId && <AccountSwitchSection />}
+            </>
+          )}
           {active === 'guvenlik' && (
             <>
               <EmailVerificationPanel />
               <EmailSection />
+              {currentUser?.accountType === 'STUDENT' && <StudentEmailSection />}
               <PasswordSection />
               <TwoFactorSection />
             </>
@@ -63,11 +72,12 @@ export function SettingsView() {
           {active === 'ogrenci' && (
             <>
               {currentUser?.accountType === 'STUDENT' && <StudentVerificationCard />}
-              <StudentProfileCard isAdmin={currentUser?.role === 'ADMIN'} />
+              <StudentProfileCard />
             </>
           )}
           {active === 'ders' && <AcademicSettingsCard />}
           {active === 'tercihler' && <PreferencesSection />}
+          {active === 'destek' && <SupportSection />}
         </div>
       </div>
     </div>

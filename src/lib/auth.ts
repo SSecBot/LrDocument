@@ -322,11 +322,11 @@ export async function requireAccountOwner(): Promise<UserJWTPayload> {
   return session;
 }
 
-/** Student tools are available to student accounts and to admins. */
+/** Student tools (Ders Takibi) are available to student accounts only. */
 export async function requireStudentAccess(): Promise<UserJWTPayload> {
   const session = await getCurrentSession();
   if (!session) throw new AuthError(401, 'Giriş yapmanız gerekmektedir.');
-  if (session.accountType !== 'STUDENT' && session.role !== 'ADMIN') {
+  if (session.accountType !== 'STUDENT') {
     throw new AuthError(403, 'Bu bölüm yalnızca öğrenci hesaplarına açıktır.');
   }
   return session;

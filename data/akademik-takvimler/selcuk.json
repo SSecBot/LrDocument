@@ -1,0 +1,67 @@
+{
+  "universityId": "selcuk",
+  "year": "2026-2027",
+  "sourceUrl": "https://www.selcuk.edu.tr/uploads/Contents/kurumsal-iletisim/Dosyalar/85/2026_2027_Akademik_Takvim_29072026140909.pdf",
+  "kaynak": "kaynak/selcuk.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-14",
+      "end": "2026-12-25",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-10-31",
+          "end": "2026-11-08",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2026-12-26",
+          "end": "2027-01-03",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-09",
+          "end": "2027-01-17",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-01-25",
+      "end": "2027-05-14",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-03-20",
+          "end": "2027-03-28",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-24",
+          "end": "2027-06-01",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-06-07",
+          "end": "2027-06-15",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

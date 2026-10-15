@@ -1,0 +1,53 @@
+{
+  "universityId": "istanbul",
+  "year": "2026-2027",
+  "sourceUrl": "https://cdn.istanbul.edu.tr/FileHandler2.ashx?f=son-2026-2027-egitim-ogretim-yili-onlisans-ve-lisans-akademik-takvimi.pdf",
+  "kaynak": "kaynak/istanbul.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-14",
+      "end": "2026-12-18",
+      "holidays": [
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2026-12-21",
+          "end": "2026-12-31",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-04",
+          "end": "2027-01-10",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-01-25",
+      "end": "2027-04-30",
+      "holidays": [
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-03",
+          "end": "2027-05-14",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-05-24",
+          "end": "2027-05-30",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

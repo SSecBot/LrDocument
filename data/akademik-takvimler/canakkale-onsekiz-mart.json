@@ -1,0 +1,67 @@
+{
+  "universityId": "canakkale-onsekiz-mart",
+  "year": "2026-2027",
+  "sourceUrl": "https://cdn.comu.edu.tr/cms/ogrenciisleri/files/852-genel-2026-2027-comu-akademik-takvimi.pdf",
+  "kaynak": "kaynak/canakkale-onsekiz-mart.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-14",
+      "end": "2026-12-25",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2026-11-02",
+          "end": "2026-11-06",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2026-12-28",
+          "end": "2027-01-08",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-18",
+          "end": "2027-01-22",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-15",
+      "end": "2027-06-04",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Ara sınav haftası",
+          "start": "2027-04-12",
+          "end": "2027-04-16",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-06-07",
+          "end": "2027-06-18",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-06-28",
+          "end": "2027-07-02",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

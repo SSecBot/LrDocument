@@ -15,7 +15,6 @@ import {
   Download,
   CreditCard,
   Plus,
-  X,
   Lock,
   Mail,
   User,
@@ -24,6 +23,8 @@ import {
   Archive,
   SlidersHorizontal,
   LayoutTemplate,
+  Inbox,
+  GraduationCap,
 } from 'lucide-react';
 import { AdminUserItem, AdminMetrics, SubscriptionPlan, UserRole, UserStatus } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -32,6 +33,9 @@ import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import { toLocalDateString } from '@/lib/utils';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, planLabel, type AccountType } from '@/lib/pricing';
 import { SystemDefaultsPanel } from './SystemDefaultsPanel';
+import { Modal } from '@/components/ui/Modal';
+import { FeedbackInbox } from './FeedbackInbox';
+import { UniversitiesPanel } from './UniversitiesPanel';
 import { LandingEditorPanel } from './LandingEditorPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 import { VerificationBadges, type VerificationAction } from './VerificationBadges';
@@ -59,7 +63,8 @@ export function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'defaults' | 'landing'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'requests' | 'universities' | 'defaults' | 'landing'>('pending');
+  const [openRequests, setOpenRequests] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [isExporting, setIsExporting] = useState(false);
@@ -116,6 +121,17 @@ export function AdminDashboard() {
       cancelled = true;
     };
   }, [addToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/feedback', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => !cancelled && setOpenRequests(json?.openCount ?? 0))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keep the live-user count (and the list) fresh while the panel is open and visible.
   useEffect(() => {
@@ -735,6 +751,31 @@ export function AdminDashboard() {
           </button>
 
           <button
+            onClick={() => setActiveTab('requests')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'requests'
+                ? 'bg-surface-3 text-white border border-line-strong'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5" />
+            <span>Talepler</span>
+            {openRequests > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] leading-[18px] text-center tabular-nums">{openRequests}</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('universities')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'universities'
+                ? 'bg-surface-3 text-white border border-line-strong'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Üniversiteler</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('defaults')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'defaults'
@@ -766,6 +807,8 @@ export function AdminDashboard() {
           </div>
         )}
         {activeTab === 'landing' && <LandingEditorPanel />}
+        {activeTab === 'requests' && <FeedbackInbox onCountChange={setOpenRequests} />}
+        {activeTab === 'universities' && <UniversitiesPanel />}
 
         {/* TAB 1: PENDING USERS CARDS */}
         {activeTab === 'pending' && (
@@ -1104,26 +1147,13 @@ export function AdminDashboard() {
       </div>
 
       {/* CREATE NEW USER MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-surface border border-line w-full max-w-md max-h-[85vh] overflow-y-auto rounded-xl p-5 sm:p-5 relative">
-            <button
-              onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-surface-3 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-emerald-400" />
-                <span>Yeni Kullanıcı Ekle</span>
-              </h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                Yönetici olarak doğrudan aktif veya onay bekleyen kullanıcı tanımlayın.
-              </p>
-            </div>
-
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Yeni kullanıcı ekle"
+        subtitle="Doğrudan aktif veya onay bekleyen bir kullanıcı tanımlayın."
+        maxWidth="max-w-md"
+      >
             <form onSubmit={handleCreateUserSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Ad Soyad</label>
@@ -1208,11 +1238,11 @@ export function AdminDashboard() {
                 </select>
               </div>
 
-              <div className="pt-2">
+              <div className="modal-actions flex justify-end">
                 <button
                   type="submit"
                   disabled={isCreatingUser}
-                  className="w-full py-3 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="sm:w-auto py-3 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isCreatingUser ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1225,9 +1255,7 @@ export function AdminDashboard() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

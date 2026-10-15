@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { emailInUse } from '@/lib/loginEmail';
 import { hashPassword, requireAdmin, validateNewPassword } from '@/lib/auth';
 import { seedDefaultUserData } from '@/lib/userSeed';
 import { handleRouteError, normalizeEmail, normalizeName, readJsonObject } from '@/lib/apiUtils';
@@ -33,8 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (existing) {
+    if (await emailInUse(cleanEmail)) {
       return NextResponse.json(
         { error: 'Bu e-posta adresiyle kayıtlı bir hesap zaten bulunmaktadır.' },
         { status: 400 }

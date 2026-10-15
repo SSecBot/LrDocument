@@ -98,6 +98,8 @@ export const NotesWorkspace: React.FC = () => {
   const [editFolderDesc, setEditFolderDesc] = useState('');
 
   const [deletingFolder, setDeletingFolder] = useState<FolderItem | null>(null);
+  const [deleteWithNotes, setDeleteWithNotes] = useState(false);
+  const deletingCount = deletingFolder ? notes.filter((n) => n.folder === deletingFolder.id).length : 0;
 
   // Collect all unique tags
   const allTags = Array.from(new Set(notes.flatMap(n => n.tags)));
@@ -157,12 +159,21 @@ export const NotesWorkspace: React.FC = () => {
     }
   };
 
+  const askDeleteFolder = (folder: FolderItem) => {
+    setDeleteWithNotes(false);
+    setDeletingFolder(folder);
+  };
+
   const handleDeleteFolderConfirm = () => {
     if (deletingFolder) {
-      deleteFolder(deletingFolder.id);
+      deleteFolder(deletingFolder.id, { withNotes: deleteWithNotes });
       setDeletingFolder(null);
     }
   };
+
+  // Always visible on touch screens; on desktop they appear on hover / keyboard focus.
+  const folderActionCls =
+    'w-7 h-7 items-center justify-center rounded text-muted hover:text-emerald-400 hover:bg-surface-3 inline-flex [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover/f:inline-flex [@media(hover:hover)]:group-focus-within/f:inline-flex';
 
   const getFolderIcon = (iconName?: string) => {
     const cls = 'w-3.5 h-3.5 text-muted';
@@ -351,15 +362,16 @@ export const NotesWorkspace: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[10px] text-muted group-hover/f:hidden">{count}</span>
+                    <span className={`text-[10px] text-muted ${editable ? '[@media(hover:hover)]:group-hover/f:hidden [@media(hover:hover)]:group-focus-within/f:hidden' : ''}`}>{count}</span>
 
                     {/* Edit folder */}
                     {editable && (
                       <>
                     <button
                       onClick={(e) => handleEditFolder(folder, e)}
-                      className="p-1 hover:text-emerald-400 rounded hidden group-hover/f:inline-block text-muted"
-                      title="Klasörü Düzenle"
+                      className={folderActionCls}
+                      title="Klasörü düzenle"
+                      aria-label={`${folder.name} klasörünü düzenle`}
                     >
                       <Edit2 className="w-3 h-3" />
                     </button>
@@ -368,10 +380,11 @@ export const NotesWorkspace: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDeletingFolder(folder);
+                        askDeleteFolder(folder);
                       }}
-                      className="p-1 hover:text-rose-400 rounded hidden group-hover/f:inline-block text-muted"
-                      title="Klasörü Sil"
+                      className={`${folderActionCls} hover:!text-rose-400`}
+                      title="Klasörü sil"
+                      aria-label={`${folder.name} klasörünü sil`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -527,7 +540,7 @@ export const NotesWorkspace: React.FC = () => {
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="modal-actions flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsNewFolderModalOpen(false)}
@@ -573,7 +586,18 @@ export const NotesWorkspace: React.FC = () => {
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="modal-actions flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const folder = editingFolder;
+                setEditingFolder(null);
+                if (folder) askDeleteFolder(folder);
+              }}
+              className="modal-actions-start sm:mr-auto min-h-[40px] px-3 py-2 text-xs font-medium text-rose-300 hover:bg-rose-500/10 rounded-lg inline-flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Klasörü sil
+            </button>
             <button
               type="button"
               onClick={() => setEditingFolder(null)}
@@ -595,15 +619,28 @@ export const NotesWorkspace: React.FC = () => {
       <Modal
         isOpen={!!deletingFolder}
         onClose={() => setDeletingFolder(null)}
-        title="Klasörü Sil"
-        subtitle="Bu klasörü silmek istediğinize emin misiniz? İçindeki notlar silinmez, kök dizine taşınır."
+        title="Klasörü sil"
+        subtitle={deletingFolder?.name}
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 pt-2">
-          <p className="text-xs text-body">
-            <strong>{deletingFolder?.name}</strong> klasörü silinecektir.
+        <div className="space-y-4">
+          <p className="text-sm text-body">
+            {deletingCount === 0
+              ? 'Klasör boş; silindiğinde hiçbir not etkilenmez.'
+              : deleteWithNotes
+                ? `Klasör ve içindeki ${deletingCount} not kalıcı olarak silinecek.`
+                : `Klasör silinecek; içindeki ${deletingCount} not “Tüm notlar” altında kalır.`}
           </p>
-          <div className="flex justify-end gap-2 pt-2">
+          {deletingCount > 0 && (
+            <label className="flex items-start gap-2.5 rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-body cursor-pointer">
+              <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[var(--color-rose-500)]" checked={deleteWithNotes} onChange={(e) => setDeleteWithNotes(e.target.checked)} />
+              <span>
+                İçindeki {deletingCount} notu da sil
+                <span className="block text-xs text-muted">Bu işlem geri alınamaz.</span>
+              </span>
+            </label>
+          )}
+          <div className="modal-actions flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setDeletingFolder(null)}
@@ -616,7 +653,7 @@ export const NotesWorkspace: React.FC = () => {
               onClick={handleDeleteFolderConfirm}
               className="min-h-[40px] px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white rounded-lg transition-colors"
             >
-              Evet, Sil
+              {deleteWithNotes && deletingCount > 0 ? 'Klasörü ve notları sil' : 'Klasörü sil'}
             </button>
           </div>
         </div>

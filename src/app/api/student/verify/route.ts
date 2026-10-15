@@ -5,9 +5,11 @@ import { handleRouteError, rateLimit, readJsonObject, requestHost, tooManyReques
 import { encryptText } from '@/lib/dataCrypto';
 import { consumeCode, isAcademicEmail, issueCode, maskEmail, VerificationError } from '@/lib/verification';
 import { siteHostFrom } from '@/lib/mailer';
+import { emailInUse } from '@/lib/loginEmail';
 
 // Öğrencilik doğrulaması:
-//  1. a code sent to the university e-mail (instant), or
+//  1. a code sent to the university e-mail (instant; Ayarlar › Güvenlik). The confirmed address can
+//     then be used to sign in as well, or
 //  2. an uploaded öğrenci belgesi (e-Devlet PDF or a photo), reviewed in Yönetici Paneli.
 
 const MAX_DOC_BYTES = 3 * 1024 * 1024;
@@ -29,8 +31,9 @@ export async function GET() {
 async function statusOf(userId: string) {
   const sp = await prisma.studentProfile.findUnique({
     where: { userId },
-    select: { studentEmail: true, verifiedAt: true, verifyMethod: true, documentStatus: true },
+    select: { studentEmail: true, verifiedAt: true, verifyMethod: true, documentStatus: true, loginEmail: true, user: { select: { email: true, emailVerifiedAt: true } } },
   });
+  const studentEmail = sp?.studentEmail.toLowerCase() ?? '';
   return {
     verified: !!sp?.verifiedAt,
     verifiedAt: sp?.verifiedAt?.toISOString() ?? null,
@@ -38,6 +41,10 @@ async function statusOf(userId: string) {
     documentStatus: sp?.documentStatus ?? null,
     studentEmail: sp?.studentEmail ?? null,
     academic: sp ? isAcademicEmail(sp.studentEmail) : false,
+    /** The student e-mail was confirmed with a code and signs in to this account. */
+    emailConfirmed: !!sp && (sp.loginEmail === studentEmail || (sp.user.email === studentEmail && !!sp.user.emailVerifiedAt)),
+    /** Same address as the account e-mail: nothing extra to confirm for sign-in. */
+    sameAsAccount: !!sp && sp.user.email === studentEmail,
   };
 }
 
@@ -50,22 +57,37 @@ export async function POST(req: Request) {
     const body = await readJsonObject(req, MAX_DOC_BYTES * 1.4 + 4096);
     const sp = await prisma.studentProfile.findUnique({ where: { userId: session.userId } });
     if (!sp) return NextResponse.json({ error: 'Önce öğrenci bilgilerinizi kaydedin.' }, { status: 400 });
-    if (sp.verifiedAt) return NextResponse.json({ success: true, ...(await statusOf(session.userId)) });
+    const studentEmail = sp.studentEmail.toLowerCase();
 
-    if (body.action === 'send') {
-      if (!isAcademicEmail(sp.studentEmail)) {
+    if (body.action === 'send' || body.action === 'confirm') {
+      const status = await statusOf(session.userId);
+      if (status.emailConfirmed) return NextResponse.json({ success: true, ...status });
+      if (status.sameAsAccount) {
+        return NextResponse.json({ error: 'Öğrenci e-postanız hesap e-postanızla aynı; önce hesap e-postanızı doğrulayın.' }, { status: 400 });
+      }
+      if (!isAcademicEmail(studentEmail)) {
         return NextResponse.json({ error: 'Öğrenci e-postanız üniversite uzantılı değil. Belge yükleyerek doğrulayın.' }, { status: 400 });
       }
-      await issueCode(session.userId, 'student-email', sp.studentEmail, siteHostFrom(requestHost(req)));
-      return NextResponse.json({ success: true, message: `Kod ${maskEmail(sp.studentEmail)} adresine gönderildi.` });
+      if (await emailInUse(studentEmail, session.userId)) {
+        return NextResponse.json({ error: 'Bu öğrenci e-postası başka bir hesapta kullanılıyor.' }, { status: 409 });
+      }
+    }
+
+    if (body.action === 'send') {
+      await issueCode(session.userId, 'student-email', studentEmail, siteHostFrom(requestHost(req)));
+      return NextResponse.json({ success: true, message: `Kod ${maskEmail(studentEmail)} adresine gönderildi.` });
     }
 
     if (body.action === 'confirm') {
-      await consumeCode(session.userId, 'student-email', body.code, sp.studentEmail);
-      await prisma.studentProfile.update({ where: { userId: session.userId }, data: { verifiedAt: new Date(), verifyMethod: 'email', documentStatus: null } });
-      await prisma.studentDocument.deleteMany({ where: { userId: session.userId } });
+      await consumeCode(session.userId, 'student-email', body.code, studentEmail);
+      // The address proves studentship (unless a document did already) and becomes a sign-in address.
+      const verified = sp.verifiedAt ? {} : { verifiedAt: new Date(), verifyMethod: 'email', documentStatus: null };
+      await prisma.studentProfile.update({ where: { userId: session.userId }, data: { ...verified, loginEmail: studentEmail } });
+      if (!sp.verifiedAt) await prisma.studentDocument.deleteMany({ where: { userId: session.userId } });
       return NextResponse.json({ success: true, ...(await statusOf(session.userId)) });
     }
+
+    if (sp.verifiedAt) return NextResponse.json({ success: true, ...(await statusOf(session.userId)) });
 
     if (body.action === 'document') {
       const mime = typeof body.mime === 'string' ? body.mime : '';

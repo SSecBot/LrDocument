@@ -326,7 +326,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
 
         {error && <p className="text-xs text-rose-400">{error}</p>}
 
-        <div className="flex items-center justify-between gap-2 pt-1">
+        <div className="modal-actions flex items-center justify-between gap-2">
           {course && onDelete ? (
             <button
               type="button"

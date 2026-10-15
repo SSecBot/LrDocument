@@ -29,7 +29,32 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu sürümle gelenler ve yapmanız gerekenler
+## Bu güncellemede gelenler (üniversiteler, talepler, öğrenci e-postası)
+
+Veritabanına yeni tablolar ve boş alanlar eklenir; mevcut veriler değişmez. Ek bir ayar gerekmez.
+
+- **Üniversiteler:** Türkiye'deki 205 üniversite listede. Öğrenci okulunu listeden seçer.
+  Yönetici Paneli › **Üniversiteler** sekmesinde bir okulun akademik takvimini bir kez yayınlayın
+  (takvim PDF'ini okutarak ya da elle). O okulun bütün öğrencilerinin ders takibine dönem tarihleri,
+  sınav haftaları ve tatiller otomatik eklenir; öğrenciler yalnızca ders programlarını girer.
+  Öğrenciler kendi yükledikleri takvimi "Okulum için öner" ile gönderebilir; bu öneri Talepler'e düşer.
+- **Hazır takvimler:** 20 üniversitenin (KTÜ, Trabzon Üniversitesi, Avrasya, ODTÜ, İTÜ, Boğaziçi, Hacettepe, Ankara, İstanbul,
+  Gazi, Ege, DEÜ, YTÜ, Marmara, Atatürk, Selçuk, Çukurova, Uludağ, OMÜ, ÇOMÜ) resmî 2026-2027 takvimleri
+  `data/akademik-takvimler/` klasöründe. Güncellemeden sonra ilk kullanımda kendiliğinden yayınlanır;
+  panelde "hazır" etiketiyle görünür. Düzenlediğiniz ya da kaldırdığınız takvim bir daha üzerine yazılmaz.
+- **Talepler:** Ayarlar › Destek'ten gelen istek, öneri ve hata bildirimleri ile öğrencilerin
+  bireysel hesaba geçiş talepleri Yönetici Paneli › **Talepler** sekmesinde. Sonuçlandırdığınızda
+  (notunuzla birlikte) kullanıcıya e-posta gider.
+- **Hesap onayı e-postası:** Bekleyen bir hesabı onayladığınızda kullanıcıya otomatik
+  "Hesabınız onaylandı" e-postası gönderilir.
+- **Öğrenci e-postasıyla giriş:** Öğrenciler Ayarlar › Güvenlik'te öğrenci e-postalarını kodla
+  doğrular; sonra o adresle de giriş yapabilir ve şifre sıfırlayabilir.
+- **Yönetici hesabı** artık bireysel hesapla aynı bölümleri görür (Ders Takibi yalnızca öğrenci
+  hesaplarında). Ders takibini denemek isterseniz kendi hesap türünüzü Öğrenci yapabilirsiniz.
+
+---
+
+## Önceki güncellemede gelenler
 
 ### E-posta doğrulama: ayar gerekmez
 
@@ -120,6 +145,24 @@ scp -r src public scripts prisma/schema.prisma package.json package-lock.json ne
 ```bash
 bash /var/www/LrDocument/scripts/update.sh
 ```
+
+---
+
+## Yönetici e-postasını / şifresini terminalden değiştirme
+
+`.env` içindeki `ADMIN_EMAIL` / `ADMIN_PASSWORD` yalnızca hiç yönetici yokken (ilk kurulumda) kullanılır;
+sonradan değiştirmek bir şey yapmaz. Sunucuda:
+
+```bash
+cd /var/www/LrDocument
+```
+
+```bash
+read -p "Yeni e-posta (aynı kalsın: Enter): " NEW_EMAIL && read -s -p "Yeni şifre (aynı kalsın: Enter): " NEW_PASS && echo && NEW_EMAIL="$NEW_EMAIL" NEW_PASS="$NEW_PASS" node -e 'const {PrismaClient}=require("@prisma/client");const b=require("bcryptjs");const p=new PrismaClient();(async()=>{const a=await p.user.findFirst({where:{role:"ADMIN"},orderBy:{createdAt:"asc"}});if(!a)throw new Error("Yönetici bulunamadı");const d={sessionVersion:{increment:1}};const e=(process.env.NEW_EMAIL||"").trim().toLowerCase();if(e){d.email=e;d.emailVerifiedAt=new Date()}const pw=process.env.NEW_PASS||"";if(pw){if(pw.length<8)throw new Error("Şifre en az 8 karakter olmalı");d.passwordHash=await b.hash(pw,12)}await p.user.update({where:{id:a.id},data:d});console.log("Güncellendi:",a.email,"->",d.email||a.email)})().catch(e=>{console.error("Hata:",e.message);process.exitCode=1}).finally(()=>p.$disconnect())'
+```
+
+Komut ilk oluşturulan yönetici hesabını günceller; şifre ekranda görünmez ve komut geçmişine yazılmaz.
+Yöneticinin açık oturumları kapanır. E-posta çalışıyorsa giriş sayfasındaki **Şifremi unuttum** da kullanılabilir.
 
 ---
 

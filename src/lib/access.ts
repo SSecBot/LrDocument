@@ -1,6 +1,9 @@
 import type { UserProfile } from '@/types';
 
-/** The course tracker is shown to student accounts and to admins. */
-export function hasStudentAccess(user: Pick<UserProfile, 'role' | 'accountType'> | null | undefined): boolean {
-  return !!user && (user.accountType === 'STUDENT' || user.role === 'ADMIN');
+/**
+ * The course tracker belongs to student accounts. An admin account works like an individual
+ * (bireysel) account plus Yönetici Paneli; set the admin's account type to Öğrenci to use it.
+ */
+export function hasStudentAccess(user: Pick<UserProfile, 'accountType'> | null | undefined): boolean {
+  return user?.accountType === 'STUDENT';
 }

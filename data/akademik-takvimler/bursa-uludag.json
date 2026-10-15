@@ -1,0 +1,60 @@
+{
+  "universityId": "bursa-uludag",
+  "year": "2026-2027",
+  "sourceUrl": "http://uludag.edu.tr/dosyalar/oidb/2026-2027%20%C3%96nlisans%20ve%20Lisans%20Akademik%20Takvimi.pdf",
+  "kaynak": "kaynak/bursa-uludag.pdf",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-28",
+      "end": "2027-01-08",
+      "holidays": [
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-11",
+          "end": "2027-01-22",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-02-01",
+          "end": "2027-02-06",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-22",
+      "end": "2027-06-11",
+      "holidays": [
+        {
+          "id": "ramazan-haftasi",
+          "name": "Ramazan Bayramı haftası",
+          "start": "2027-03-08",
+          "end": "2027-03-12",
+          "kind": "tatil"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-06-14",
+          "end": "2027-06-25",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-07-05",
+          "end": "2027-07-10",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

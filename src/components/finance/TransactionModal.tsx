@@ -691,7 +691,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-line">
+          <div className="modal-actions flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}

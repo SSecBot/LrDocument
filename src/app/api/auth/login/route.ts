@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { findUserByLoginEmail } from '@/lib/loginEmail';
 import { comparePassword, ensureDefaultAdmin } from '@/lib/auth';
 import { activateAccount, rememberedAccounts } from '@/lib/accountSession';
 import { withAccount } from '@/lib/accounts';
@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     const emailWait = rateLimit(`login-email:${cleanEmail}`, 8, 15 * 60_000);
     if (emailWait) return tooManyRequests(emailWait);
 
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    // Account e-mail, or the confirmed student e-mail of a student account.
+    const user = await findUserByLoginEmail(cleanEmail);
 
     // Always run bcrypt so response timing does not reveal whether the account exists.
     const isMatch = await comparePassword(password, user?.passwordHash);

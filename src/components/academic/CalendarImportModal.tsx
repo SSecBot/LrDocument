@@ -107,7 +107,9 @@ export function CalendarImportModal({ isOpen, onClose, data, update }: Props) {
           start: t.start ?? term.start,
           end: t.end ?? term.end,
           // Replace exam periods from an earlier import, keep the user's own holidays.
-          holidays: [...(term.holidays ?? []).filter((h) => h.kind !== 'sinav'), ...examEntries].slice(0, 60),
+          holidays: [...(term.holidays ?? []).filter((h) => h.kind !== 'sinav' && !h.school), ...examEntries].slice(0, 60),
+          // The imported dates are the student's own from now on.
+          school: null,
         });
         if (target === NEW_TERM) {
           if (terms.length >= 20) continue;
@@ -215,7 +217,7 @@ export function CalendarImportModal({ isOpen, onClose, data, update }: Props) {
 
         {error && <p className="text-xs text-rose-400">{error}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="modal-actions flex justify-end gap-2">
           <button type="button" className={btnSecondary} onClick={onClose}>Vazgeç</button>
           {found && (
             <button type="button" className={btnPrimary} onClick={apply} disabled={!Object.values(targets).some(Boolean)}>

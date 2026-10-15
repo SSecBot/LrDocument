@@ -238,7 +238,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t border-line">
+        <div className="modal-actions flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}

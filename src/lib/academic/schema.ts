@@ -77,6 +77,26 @@ const course = z.object({
   retake: z.object({ reason: z.enum(['not', 'devamsizlik']) }).nullable().optional(),
 });
 
+export const holidaySchema = z.object({
+  id,
+  name: shortText(80),
+  start: date,
+  end: date,
+  half: z.boolean().optional(),
+  kind: z.enum(['tatil', 'sinav']).optional(),
+  school: z.boolean().optional(),
+});
+
+export const termSchema = z.object({
+  id,
+  name: shortText(40).min(1),
+  start: date.optional(),
+  end: date.optional(),
+  holidays: z.array(holidaySchema).max(60).optional(),
+  autoHolidays: z.boolean().optional(),
+  school: z.object({ uni: shortText(80), term: id, at: shortText(40) }).nullable().optional(),
+});
+
 const letter = z.object({
   letter: z.string().trim().min(1).max(3),
   min: z.number().min(0).max(100),
@@ -103,31 +123,7 @@ const grading = z.object({
 export const academicDataSchema = z.object({
   version: z.literal(1),
   grading,
-  terms: z
-    .array(
-      z.object({
-        id,
-        name: shortText(40).min(1),
-        start: date.optional(),
-        end: date.optional(),
-        holidays: z
-          .array(
-            z.object({
-              id,
-              name: shortText(80),
-              start: date,
-              end: date,
-              half: z.boolean().optional(),
-              kind: z.enum(['tatil', 'sinav']).optional(),
-            })
-          )
-          .max(60)
-          .optional(),
-        autoHolidays: z.boolean().optional(),
-      })
-    )
-    .min(1)
-    .max(20),
+  terms: z.array(termSchema).min(1).max(20),
   activeTermId: id.nullable(),
   courses: z.array(course).max(150),
   targetGpa: z.number().min(0).max(5).nullable().optional(),

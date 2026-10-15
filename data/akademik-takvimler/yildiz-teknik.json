@@ -1,0 +1,67 @@
+{
+  "universityId": "yildiz-teknik",
+  "year": "2026-2027",
+  "sourceUrl": "https://ogi.yildiz.edu.tr/sites/ogi.yildiz.edu.tr/files/ytu-2026-2027-ytu-egitim-ogretim-yili-akademik-takvimi.xlsx",
+  "kaynak": "kaynak/yildiz-teknik.xlsx",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-28",
+      "end": "2026-12-26",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Vize sınavları",
+          "start": "2026-11-16",
+          "end": "2026-11-21",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2026-12-28",
+          "end": "2027-01-07",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-01-11",
+          "end": "2027-01-16",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-01",
+      "end": "2027-04-30",
+      "holidays": [
+        {
+          "id": "ara",
+          "name": "Vize sınavları",
+          "start": "2027-03-22",
+          "end": "2027-03-27",
+          "kind": "sinav"
+        },
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-05-03",
+          "end": "2027-05-13",
+          "kind": "sinav"
+        },
+        {
+          "id": "but",
+          "name": "Bütünleme sınavları",
+          "start": "2027-05-24",
+          "end": "2027-05-28",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

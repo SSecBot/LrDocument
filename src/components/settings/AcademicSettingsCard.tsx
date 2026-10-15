@@ -9,7 +9,7 @@ import { AcademicCalendarCard } from '@/components/academic/AcademicCalendarCard
 
 /** Ders Takibi parameters (grading system, attendance rules, terms) inside Settings. */
 export function AcademicSettingsCard() {
-  const { data, profile, loadError, saveState, saveError, update, retrySave } = useAcademicData();
+  const { data, profile, school, loadError, saveState, saveError, update, retrySave } = useAcademicData();
 
   return (
     <div id="ders-takibi-ayarlari" className="p-5 sm:p-6 rounded-xl bg-surface border border-line space-y-5 scroll-mt-4">
@@ -36,7 +36,7 @@ export function AcademicSettingsCard() {
         </div>
       ) : (
         <div className="space-y-4">
-          <AcademicCalendarCard data={data} update={update} />
+          <AcademicCalendarCard data={data} update={update} school={school} />
           <GradingSettingsTab data={data} update={update} university={profile?.university ?? ''} />
         </div>
       )}

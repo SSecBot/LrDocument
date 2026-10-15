@@ -338,13 +338,13 @@ export function TeamWorkspace() {
 
       {confirm && (
         <Modal isOpen onClose={() => setConfirm(null)} title={confirm.kind === 'remove' ? 'Kişiyi çıkar' : 'Yeni kod oluştur'} maxWidth="max-w-md">
-          <div className="p-5 space-y-4 text-sm text-body">
+          <div className="space-y-4 text-sm text-body">
             <p>
               {confirm.kind === 'remove'
                 ? `${confirm.member.name} kurumdan çıkarılacak ve oturumu kapanacak. Kurumdaki ortak veriler silinmez.`
                 : `${confirm.member.name} için yeni bir kod oluşturulacak. Eski kod hemen geçersiz olur ve açık oturumları kapanır.`}
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="modal-actions flex justify-end gap-2">
               <button onClick={() => setConfirm(null)} className="h-10 px-4 rounded-md border border-line text-subtle hover:text-fg">
                 Vazgeç
               </button>
@@ -403,7 +403,7 @@ function CodeDialog({ name, code, onClose }: { name: string; code: string; onClo
   };
   return (
     <Modal isOpen onClose={onClose} title="Kurumsal kod" subtitle={name} maxWidth="max-w-md">
-      <div className="p-5 space-y-4">
+      <div className="space-y-4">
         <div className="rounded-lg border border-line-strong bg-app p-4 text-center">
           <p className="font-mono text-xl sm:text-2xl tracking-wider text-fg select-all break-all">{code}</p>
         </div>
@@ -411,7 +411,7 @@ function CodeDialog({ name, code, onClose }: { name: string; code: string; onClo
           Bu kodu {name} ile güvenli bir yoldan paylaşın. Kod yalnızca şimdi gösterilir; sunucuda okunabilir hâli tutulmaz. Kaybedilirse
           “Yeni kod oluştur” ile değiştirebilirsiniz. Giriş: giriş sayfası › Kurumsal giriş.
         </p>
-        <div className="flex justify-end gap-2">
+        <div className="modal-actions flex justify-end gap-2">
           <button onClick={copy} className="h-10 px-4 rounded-md border border-line text-body hover:bg-surface-2 inline-flex items-center gap-2 text-sm">
             {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />} {copied ? 'Kopyalandı' : 'Kopyala'}
           </button>

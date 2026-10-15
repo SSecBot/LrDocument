@@ -7,6 +7,9 @@ import { handleRouteError, normalizeEmail, readJsonObject } from '@/lib/apiUtils
 // Full backups (all users, inline images) are much larger than ordinary requests.
 const MAX_BACKUP_BYTES = 200 * 1024 * 1024;
 import { academicDataSchema } from '@/lib/academic/schema';
+import { catalogFields, universityById } from '@/lib/universities';
+import { emailInUse } from '@/lib/loginEmail';
+import { saveSchoolCalendar } from '@/lib/schoolCalendarServer';
 import { decryptText, encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
 
 type Row = Record<string, unknown>;
@@ -287,8 +290,12 @@ export async function POST(req: Request) {
       } catch {
         academic = '{}';
       }
+      const school = catalogFields({ universityId: optStr(sp.universityId), university: str(sp.university).slice(0, 120) });
+      // A confirmed student sign-in address is kept unless another account uses it here.
+      const loginEmail = normalizeEmail(sp.loginEmail);
       const fields = {
-        university: str(sp.university).slice(0, 120),
+        ...school,
+        loginEmail: loginEmail && !(await emailInUse(loginEmail, userId)) ? loginEmail : null,
         studentEmail: str(sp.studentEmail).slice(0, 254),
         department: str(sp.department).slice(0, 120),
         classYear: Math.min(7, Math.max(0, Math.round(num(sp.classYear, 1)))),
@@ -298,6 +305,16 @@ export async function POST(req: Request) {
       const stored = encryptRow('studentProfile', userId, fields);
       await prisma.studentProfile.upsert({ where: { userId }, update: stored, create: { userId, ...stored } });
       summary.importedStudentProfiles++;
+    }
+
+    for (const cal of asRows(data.universityCalendars)) {
+      const university = universityById(str(cal.universityId));
+      if (!university) continue;
+      try {
+        await saveSchoolCalendar(university.id, JSON.parse(str(cal.terms, '[]')), optStr(cal.sourceUrl), str(cal.updatedBy, 'yedek'));
+      } catch {
+        // An invalid calendar in the backup is skipped; the admin can publish it again.
+      }
     }
 
     return NextResponse.json({

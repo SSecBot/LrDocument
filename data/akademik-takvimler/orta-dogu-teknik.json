@@ -1,0 +1,39 @@
+{
+  "universityId": "orta-dogu-teknik",
+  "year": "2026-2027",
+  "sourceUrl": "https://oidb.metu.edu.tr/tr/odtu-ankara-ve-erdemli-kampusleri-2026-2027-akademik-takvim",
+  "kaynak": "kaynak/orta-dogu-teknik.html",
+  "note": "Önlisans/lisans genel takvimi (tıp, diş hekimliği, hukuk, hazırlık gibi ayrı takvimli birimler hariç). Milli ve dinî bayramlar uygulamada otomatik eklenir.",
+  "terms": [
+    {
+      "id": "guz",
+      "name": "2026-2027 Güz",
+      "start": "2026-09-28",
+      "end": "2026-12-31",
+      "holidays": [
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-01-04",
+          "end": "2027-01-16",
+          "kind": "sinav"
+        }
+      ]
+    },
+    {
+      "id": "bahar",
+      "name": "2026-2027 Bahar",
+      "start": "2027-02-15",
+      "end": "2027-06-04",
+      "holidays": [
+        {
+          "id": "final",
+          "name": "Yarıyıl sonu sınavları",
+          "start": "2027-06-07",
+          "end": "2027-06-19",
+          "kind": "sinav"
+        }
+      ]
+    }
+  ]
+}

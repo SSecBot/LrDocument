@@ -28,7 +28,7 @@ export function Card({ children, className = '' }: { children: React.ReactNode; 
 export function CardHeader({ title, action, icon }: { title: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-line">
-      <h3 className="text-sm font-semibold text-fg flex items-center gap-2 min-w-0 truncate">
+      <h3 className="text-sm font-semibold text-fg flex items-center gap-2 min-w-0 truncate shrink">
         {icon}
         {title}
       </h3>
