@@ -22,7 +22,17 @@ import {
   Wallet,
   PanelRightClose,
   PanelRightOpen,
+  GraduationCap,
+  ClipboardList,
+  Flag,
+  Kanban,
+  Building2,
+  Layers,
 } from 'lucide-react';
+import { hasStudentAccess } from '@/lib/access';
+import { canView } from '@/lib/corporate';
+import { buildCalendarFeed, CALENDAR_LAYERS, CALENDAR_LAYER_LABEL, type CalendarLayer, type FeedItem } from '@/lib/calendarFeed';
+import { useAcademicSnapshot } from '@/components/academic/useAcademicSnapshot';
 import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
 import { isTransactionActiveOnDate } from '@/lib/recurringFinance';
 
@@ -31,6 +41,18 @@ const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 /** Months shown before / after the anchor month in the timeline. */
 const MONTHS_BEFORE = 2;
 const MONTHS_AFTER = 9;
+
+const LAYER_DOT: Record<CalendarLayer, string> = {
+  etkinlik: 'bg-brand',
+  gorev: 'bg-amber-400',
+  finans: 'bg-subtle',
+  ders: 'bg-sky-400',
+  sinav: 'bg-rose-400',
+  akademik: 'bg-violet-400',
+  resmi: 'bg-emerald-400',
+  kanban: 'bg-orange-300',
+  musteri: 'bg-teal-300',
+};
 
 const iso = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
@@ -51,6 +73,9 @@ export const CalendarWorkspace: React.FC = () => {
     preferences,
     setPreference,
     systemSettings,
+    kanbanCards,
+    customers,
+    currentUser,
   } = useAppStore();
 
   const today = toLocalDateString();
@@ -108,9 +133,40 @@ export const CalendarWorkspace: React.FC = () => {
     setSelectedDay(date);
   };
 
-  const eventsOn = (date: string) => events.filter((e) => e.date === date);
-  const tasksOn = (date: string) => tasks.filter((t) => t.dueDate === date);
-  const transactionsOn = (date: string) => transactions.filter((t) => isTransactionActiveOnDate(t, date));
+  // Layers the user switched off (Katmanlar menu); saved with the other preferences.
+  const hidden = new Set<CalendarLayer>(preferences.calendarHiddenLayers);
+  const shown = (layer: CalendarLayer) => !hidden.has(layer);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const toggleLayer = (layer: CalendarLayer) =>
+    setPreference('calendarHiddenLayers', shown(layer) ? [...hidden, layer] : [...hidden].filter((l) => l !== layer));
+
+  // Ders takibi, academic calendar, official holidays, Kanban and customer payment days.
+  const academic = useAcademicSnapshot(hasStudentAccess(currentUser));
+  const rangeStart = iso(months[0].year, months[0].month, 1);
+  const last = months[months.length - 1];
+  const rangeEnd = iso(last.year, last.month, last.totalDays);
+  // (The React compiler memoizes this; it only reruns when its inputs change.)
+  const feed = buildCalendarFeed({
+    start: rangeStart,
+    end: rangeEnd,
+    today,
+    academic,
+    kanbanCards: canView(currentUser, 'work') ? kanbanCards : [],
+    customers: canView(currentUser, 'customers') ? customers : [],
+  });
+  const feedOn = (date: string) => (feed.get(date) ?? []).filter((f) => shown(f.layer));
+  const availableLayers = CALENDAR_LAYERS.filter((l) => {
+    if (l === 'ders' || l === 'sinav' || l === 'akademik') return hasStudentAccess(currentUser);
+    if (l === 'musteri') return canView(currentUser, 'customers');
+    if (l === 'kanban' || l === 'gorev') return canView(currentUser, 'work');
+    if (l === 'finans') return canView(currentUser, 'finance');
+    if (l === 'etkinlik') return canView(currentUser, 'calendar');
+    return true;
+  });
+
+  const eventsOn = (date: string) => (shown('etkinlik') ? events.filter((e) => e.date === date) : []);
+  const tasksOn = (date: string) => (shown('gorev') ? tasks.filter((t) => t.dueDate === date) : []);
+  const transactionsOn = (date: string) => (shown('finans') ? transactions.filter((t) => isTransactionActiveOnDate(t, date)) : []);
   const notesOn = (date: string) => notes.filter((n) => n.updatedAt.startsWith(date) || n.createdAt.startsWith(date));
 
   const selectDay = (date: string) => {
@@ -184,6 +240,37 @@ export const CalendarWorkspace: React.FC = () => {
   const dayTasks = tasksOn(selectedDay);
   const dayTransactions = transactionsOn(selectedDay);
   const dayNotes = notesOn(selectedDay);
+  const dayFeed = feedOn(selectedDay);
+  const feedOf = (...layers: FeedItem['layer'][]) => dayFeed.filter((f) => layers.includes(f.layer));
+  const renderFeed = (items: FeedItem[]) =>
+    items.map((f) => (
+      <button
+        key={f.id}
+        onClick={() => setActiveTab(f.tab)}
+        className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line space-y-0.5"
+      >
+        <span className="flex items-start justify-between gap-2">
+          <span className="text-xs text-fg">{f.title}</span>
+          {f.overdue && <span className="text-[10px] text-rose-300 shrink-0">Gecikti</span>}
+        </span>
+        {(f.time || f.detail) && (
+          <span className="flex items-center gap-1.5 text-[11px] text-muted">
+            {f.time && (
+              <>
+                <Clock className="w-3 h-3" /> {f.time}
+              </>
+            )}
+            {f.time && f.detail && <span aria-hidden="true">·</span>}
+            {f.detail}
+          </span>
+        )}
+      </button>
+    ));
+  const academicDay = feedOf('akademik', 'resmi');
+  const classesDay = feedOf('ders');
+  const examsDay = feedOf('sinav');
+  const kanbanDay = feedOf('kanban');
+  const customerDay = feedOf('musteri');
 
   const panel = (
     <>
@@ -229,6 +316,21 @@ export const CalendarWorkspace: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {academicDay.length > 0 && (
+          <PanelSection icon={Flag} title="Özel gün" count={academicDay.length} empty="">
+            {renderFeed(academicDay)}
+          </PanelSection>
+        )}
+        {examsDay.length > 0 && (
+          <PanelSection icon={ClipboardList} title="Sınavlar" count={examsDay.length} empty="">
+            {renderFeed(examsDay)}
+          </PanelSection>
+        )}
+        {shown('ders') && hasStudentAccess(currentUser) && (
+          <PanelSection icon={GraduationCap} title="Dersler" count={classesDay.length} empty="Bu gün ders yok.">
+            {renderFeed(classesDay)}
+          </PanelSection>
+        )}
         <PanelSection icon={CalendarDays} title="Etkinlikler" count={dayEvents.length} empty="Bu güne planlanmış etkinlik yok.">
           {dayEvents.map((ev) => (
             <button
@@ -287,6 +389,17 @@ export const CalendarWorkspace: React.FC = () => {
           ))}
         </PanelSection>
 
+        {kanbanDay.length > 0 && (
+          <PanelSection icon={Kanban} title="Kanban" count={kanbanDay.length} empty="">
+            {renderFeed(kanbanDay)}
+          </PanelSection>
+        )}
+        {customerDay.length > 0 && (
+          <PanelSection icon={Building2} title="Müşteri ödemeleri" count={customerDay.length} empty="">
+            {renderFeed(customerDay)}
+          </PanelSection>
+        )}
+
         {dayNotes.length > 0 && (
           <PanelSection icon={FileText} title="Notlar" count={dayNotes.length} empty="">
             {dayNotes.map((n) => (
@@ -341,6 +454,32 @@ export const CalendarWorkspace: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5">
+            <div className="relative">
+              <button
+                onClick={() => setLayersOpen((o) => !o)}
+                aria-expanded={layersOpen}
+                className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
+                title="Takvimde gösterilecekler"
+              >
+                <Layers className="w-4 h-4" />
+                <span className="hidden sm:inline">Katmanlar</span>
+                {hidden.size > 0 && <span className="text-[10px] text-muted tabular-nums">{availableLayers.filter(shown).length}/{availableLayers.length}</span>}
+              </button>
+              {layersOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setLayersOpen(false)} aria-hidden="true" />
+                  <div className="absolute left-0 mt-2 z-40 w-56 p-1.5 bg-surface border border-line-strong rounded-lg shadow-xl" role="menu" aria-label="Katmanlar">
+                    {availableLayers.map((l) => (
+                      <label key={l} className="flex items-center gap-2.5 px-2.5 min-h-[36px] rounded-md text-[13px] text-body hover:bg-surface-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={shown(l)} onChange={() => toggleLayer(l)} />
+                        <span className={`w-2 h-2 rounded-full ${LAYER_DOT[l]}`} aria-hidden="true" />
+                        {CALENDAR_LAYER_LABEL[l]}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button
               onClick={() => fileInputRef.current?.click()}
               className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
@@ -410,6 +549,12 @@ export const CalendarWorkspace: React.FC = () => {
                     const evs = eventsOn(date);
                     const hasTasks = tasksOn(date).length > 0;
                     const hasMoney = transactionsOn(date).length > 0;
+                    const dayItems = feedOn(date);
+                    const label = dayItems.find((f) => f.dayLabel);
+                    const exams = dayItems.filter((f) => f.layer === 'sinav');
+                    const classCount = dayItems.filter((f) => f.layer === 'ders').length;
+                    const dots = [...new Set(dayItems.filter((f) => f.layer === 'kanban' || f.layer === 'musteri').map((f) => f.layer))];
+                    const dueOverdue = dayItems.some((f) => f.overdue);
                     const selected = selectedDay === date;
                     const isToday = date === today;
                     return (
@@ -451,9 +596,33 @@ export const CalendarWorkspace: React.FC = () => {
                           <span className="flex gap-0.5">
                             {hasTasks && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Görev var" />}
                             {hasMoney && <span className="w-1.5 h-1.5 rounded-full bg-subtle" title="Finans kaydı var" />}
+                            {dots.map((l) => (
+                              <span
+                                key={l}
+                                className={`w-1.5 h-1.5 rounded-full ${dueOverdue && l === 'musteri' ? 'bg-rose-400' : LAYER_DOT[l]}`}
+                                title={CALENDAR_LAYER_LABEL[l]}
+                              />
+                            ))}
+                            {classCount > 0 && <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-sky-400" title="Ders var" />}
                           </span>
                         </div>
+                        {label && (
+                          <span
+                            className={`text-[10px] px-1 py-px rounded truncate ${label.layer === 'resmi' ? 'bg-emerald-500/10 text-emerald-200' : 'bg-violet-500/10 text-violet-200'}`}
+                            title={label.title}
+                          >
+                            {label.title}
+                          </span>
+                        )}
                         <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
+                          {exams.slice(0, 1).map((f) => (
+                            <span key={f.id} className="text-[10px] px-1 py-px rounded border border-rose-500/50 bg-rose-500/10 text-rose-200 truncate" title={f.title}>
+                              {f.title}
+                            </span>
+                          ))}
+                          {classCount > 0 && (
+                            <span className="text-[10px] px-1 py-px rounded bg-sky-500/10 text-sky-200 truncate">{classCount} ders</span>
+                          )}
                           {evs.slice(0, 2).map((ev) => (
                             <span
                               key={ev.id}

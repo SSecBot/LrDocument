@@ -6,6 +6,8 @@ import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
 import { decryptRow, decryptText, encryptRow } from '@/lib/dataCrypto';
 import { encryptLegacyRows } from '@/lib/encryptLegacy';
 import { parsePreferences } from '@/lib/preferences';
+import { canView, type CorpModule } from '@/lib/corporate';
+import { readMemberPreferences } from '@/lib/memberPreferences';
 
 export async function GET() {
   try {
@@ -37,14 +39,29 @@ export async function GET() {
       categories = await prisma.financeCategory.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
     }
 
-    const [folders, dbNotes, dbTasks, dbKanban, dbEvents, dbTransactions] = await Promise.all([
-      prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-      prisma.note.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
-      prisma.task.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
-      prisma.kanbanCard.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
-      prisma.calendarEvent.findMany({ where: { userId }, orderBy: { date: 'asc' } }),
-      prisma.financeTransaction.findMany({ where: { userId }, orderBy: { date: 'desc' } }),
+    // Kurumsal: modules the member may not see are never sent (nor loaded).
+    const may = (m: CorpModule) => canView(session, m);
+    const none = Promise.resolve([] as never[]);
+    if (!may('finance')) categories = [];
+    const [folders, dbNotes, dbTasks, dbKanban, dbEvents, dbTransactions, dbCustomers] = await Promise.all([
+      may('notes') ? prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }) : none,
+      may('notes') ? prisma.note.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }) : none,
+      may('work') ? prisma.task.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }) : none,
+      may('work') ? prisma.kanbanCard.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }) : none,
+      may('calendar') ? prisma.calendarEvent.findMany({ where: { userId }, orderBy: { date: 'asc' } }) : none,
+      may('finance') ? prisma.financeTransaction.findMany({ where: { userId }, orderBy: { date: 'desc' } }) : none,
+      may('customers') ? prisma.customer.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }) : none,
     ]);
+
+    const customers = dbCustomers.map((raw) => {
+      const c = decryptRow('customer', userId, raw);
+      return {
+        ...c,
+        payments: safeJsonParse(c.payments, []),
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+      };
+    });
 
     const notes = dbNotes.map((raw) => {
       const n = decryptRow('note', userId, raw);
@@ -103,7 +120,8 @@ export async function GET() {
 
     let preferences: unknown = {};
     try {
-      preferences = user?.preferences ? JSON.parse(decryptText(userId, user.preferences) || '{}') : {};
+      if (session.memberId) preferences = await readMemberPreferences(session.memberId);
+      else preferences = user?.preferences ? JSON.parse(decryptText(userId, user.preferences) || '{}') : {};
     } catch {
       preferences = {};
     }
@@ -117,6 +135,7 @@ export async function GET() {
           kanbanCards,
           events,
           transactions,
+          customers,
           financeCategories: formattedCategories,
           folders: formattedFolders,
           preferences: parsePreferences(preferences),

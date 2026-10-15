@@ -8,7 +8,8 @@ import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } f
 type NumberField = { kind: 'number'; path: string; label: string; unit?: string; step?: number; min?: number; max?: number };
 type SelectField = { kind: 'select'; path: string; label: string; options: [string, string][] };
 type TimeField = { kind: 'time'; path: string; label: string };
-type Field = NumberField | SelectField | TimeField;
+type BoolField = { kind: 'bool'; path: string; label: string };
+type Field = NumberField | SelectField | TimeField | BoolField;
 
 const PRESET_FIELDS = (preset: 'ktu' | 'genel'): Field[] => [
   { kind: 'number', path: `academic.${preset}.finalWeight`, label: 'Final ağırlığı', unit: '%', min: 0, max: 100 },
@@ -62,8 +63,9 @@ const GROUPS: { title: string; hint?: string; fields: Field[] }[] = [
   },
   {
     title: 'Güvenlik',
-    hint: 'Şifre kuralı yeni ve değiştirilen şifrelere uygulanır. Oturum süresi yeni girişlerde geçerli olur.',
+    hint: 'Şifre kuralı yeni ve değiştirilen şifrelere uygulanır. Oturum süresi yeni girişlerde geçerli olur. E-posta doğrulaması açıkken doğrulanmamış hesaplar girişte e-postalarına gelen kodu girer (yöneticiler hariç).',
     fields: [
+      { kind: 'bool', path: 'security.requireEmailVerification', label: 'Girişte e-posta doğrulaması zorunlu' },
       { kind: 'number', path: 'security.passwordMinLength', label: 'En kısa şifre', unit: 'karakter', step: 1, min: 8, max: 64 },
       { kind: 'number', path: 'security.sessionDays', label: 'Oturum süresi', unit: 'gün', step: 1, min: 1, max: 90 },
     ],
@@ -165,6 +167,11 @@ export function SystemDefaultsPanel() {
                         max={f.max}
                         onChange={(e) => setDraft((d) => setAt(d, f.path, e.target.value === '' ? NaN : Number(e.target.value)))}
                       />
+                    ) : f.kind === 'bool' ? (
+                      <select className={inputCls} value={value ? 'true' : 'false'} onChange={(e) => setDraft((d) => setAt(d, f.path, e.target.value === 'true'))}>
+                        <option value="true">Açık</option>
+                        <option value="false">Kapalı</option>
+                      </select>
                     ) : f.kind === 'time' ? (
                       <input type="time" className={inputCls} value={String(value ?? '')} onChange={(e) => setDraft((d) => setAt(d, f.path, e.target.value))} />
                     ) : (

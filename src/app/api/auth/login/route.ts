@@ -3,10 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { comparePassword, ensureDefaultAdmin } from '@/lib/auth';
 import { activateAccount, rememberedAccounts } from '@/lib/accountSession';
 import { withAccount } from '@/lib/accounts';
-import { getClientIp, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
+import { getClientIp, handleRouteError, rateLimit, readJsonObject, requestHost, tooManyRequests } from '@/lib/apiUtils';
+import { getSystemSettings } from '@/lib/systemSettingsServer';
+import { issueCode, maskEmail, VerificationError } from '@/lib/verification';
+import { siteHostFrom } from '@/lib/mailer';
+import { signLoginChallenge } from '@/lib/loginChallenge';
 
 const INVALID_CREDENTIALS = 'Geçersiz e-posta veya şifre girdiniz.';
 
+/**
+ * E-mail + password sign-in. Order after a correct password: e-mail verification (code sent to the
+ * address), account approval, then İki adımlı doğrulama (authenticator code, see /api/auth/login/2fa).
+ */
 export async function POST(req: NextRequest) {
   try {
     await ensureDefaultAdmin();
@@ -35,6 +43,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
     }
 
+    // E-posta doğrulaması: the password is right, but the address was never confirmed.
+    const { security } = await getSystemSettings();
+    if (!user.emailVerifiedAt && user.role !== 'ADMIN' && security.requireEmailVerification) {
+      let mailError: string | undefined;
+      try {
+        await issueCode(user.id, 'email', user.email, siteHostFrom(requestHost(req)));
+      } catch (err) {
+        // A code sent less than a minute ago is still valid; only report real delivery problems.
+        if (err instanceof VerificationError && err.status === 502) mailError = err.message;
+      }
+      return NextResponse.json(
+        {
+          error: 'Giriş yapmadan önce e-posta adresinizi doğrulayın.',
+          status: 'EMAIL_UNVERIFIED',
+          email: maskEmail(user.email),
+          ...(mailError ? { mailError } : {}),
+        },
+        { status: 403 }
+      );
+    }
+
     if (user.status === 'PENDING') {
       return NextResponse.json(
         {
@@ -55,19 +84,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (user.twoFactorEnabledAt && user.twoFactorSecret) {
+      return NextResponse.json({ twoFactorRequired: true, challenge: await signLoginChallenge(user.id, user.sessionVersion) });
+    }
+
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-      },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
     });
     // Signing in keeps the other accounts remembered on this browser (Hesap ekle).
     const { list } = await rememberedAccounts();
-    await activateAccount(response, user, withAccount(list, { userId: user.id, sv: user.sessionVersion }));
+    await activateAccount(response, { userId: user.id, role: user.role, sessionVersion: user.sessionVersion }, withAccount(list, { userId: user.id, sv: user.sessionVersion }));
     return response;
   } catch (error) {
     return handleRouteError(error, 'Login error', 'Giriş yapılırken bir sunucu hatası oluştu.');

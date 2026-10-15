@@ -15,6 +15,7 @@ const DELEGATES: Record<EncryptedModel, () => Delegate> = {
   financeTransaction: () => prisma.financeTransaction as unknown as Delegate,
   folder: () => prisma.folder as unknown as Delegate,
   financeCategory: () => prisma.financeCategory as unknown as Delegate,
+  customer: () => prisma.customer as unknown as Delegate,
   studentProfile: () => prisma.studentProfile as unknown as Delegate,
 };
 

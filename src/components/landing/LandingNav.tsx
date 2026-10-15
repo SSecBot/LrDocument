@@ -20,7 +20,7 @@ export function LandingNav({ links }: { links: [string, string][] }) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-app/85 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-app/95 backdrop-blur pt-[env(safe-area-inset-top)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5 min-w-0" aria-label="LrDocument ana sayfa">
           <SigmaLogo size="sm" />

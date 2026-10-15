@@ -28,6 +28,7 @@ import { importNoteFile, ImportError, NOTE_IMPORT_ACCEPT } from '@/lib/noteImpor
 import { describePdfError } from '@/lib/academic/pdfErrors';
 import { formatTurkishDate } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
+import { canEdit, isCorporate } from '@/lib/corporate';
 
 export const NotesWorkspace: React.FC = () => {
   const {
@@ -44,7 +45,9 @@ export const NotesWorkspace: React.FC = () => {
     preferences,
     setPreference,
     addToast,
+    currentUser,
   } = useAppStore();
+  const editable = canEdit(currentUser, 'notes');
   const collapsed = preferences.notesPanelCollapsed;
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState<string | null>(null);
@@ -236,8 +239,10 @@ export const NotesWorkspace: React.FC = () => {
         {/* Header & Search */}
         <div className="p-3.5 sm:p-4 border-b border-line space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-fg tracking-tight">Notlar</h2>
+            <h2 className="text-sm font-semibold text-fg tracking-tight">{isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar'}</h2>
             <div className="flex items-center gap-1">
+              {editable && (
+                <>
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={!!importing}
@@ -254,6 +259,8 @@ export const NotesWorkspace: React.FC = () => {
                 <Plus className="w-3.5 h-3.5" />
                 <span>Yeni</span>
               </button>
+                </>
+              )}
               <button
                 onClick={() => setPreference('notesPanelCollapsed', true)}
                 className="hidden md:flex w-9 h-9 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
@@ -283,6 +290,7 @@ export const NotesWorkspace: React.FC = () => {
         <div className="px-3 py-2 border-b border-line bg-app">
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Klasörler</span>
+            {editable && (
             <button
               onClick={() => setIsNewFolderModalOpen(true)}
               className="text-muted hover:text-emerald-400 p-1 rounded transition-colors flex items-center gap-1 text-[11px]"
@@ -291,6 +299,7 @@ export const NotesWorkspace: React.FC = () => {
               <FolderPlus className="w-3.5 h-3.5" />
               <span>+ Klasör</span>
             </button>
+            )}
           </div>
           <div className="space-y-0.5 max-h-40 sm:max-h-48 overflow-y-auto pr-0.5 no-scrollbar">
             <button
@@ -345,6 +354,8 @@ export const NotesWorkspace: React.FC = () => {
                     <span className="text-[10px] text-muted group-hover/f:hidden">{count}</span>
 
                     {/* Edit folder */}
+                    {editable && (
+                      <>
                     <button
                       onClick={(e) => handleEditFolder(folder, e)}
                       className="p-1 hover:text-emerald-400 rounded hidden group-hover/f:inline-block text-muted"
@@ -364,6 +375,8 @@ export const NotesWorkspace: React.FC = () => {
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -398,7 +411,7 @@ export const NotesWorkspace: React.FC = () => {
             <div className="p-5 text-center text-muted text-xs space-y-2">
               <FileText className="w-8 h-8 text-muted mx-auto mb-1" />
               <p className="text-white font-medium">Henüz kayıtlı bir not bulunmuyor.</p>
-              <p className="text-[11px] text-subtle">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>
+              {editable && <p className="text-[11px] text-subtle">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>}
             </div>
           ) : (
             sortedNotes.map((n) => {
@@ -471,6 +484,7 @@ export const NotesWorkspace: React.FC = () => {
             <p className="text-xs max-w-md text-subtle leading-relaxed">
               Markdown formatında zengin notlar yazabilir, canlı KaTeX formülleri ($e^{'{'}i\pi{'}'} + 1 = 0$) ekleyebilir ve klasörlerle organize edebilirsiniz.
             </p>
+            {editable && (
             <button
               onClick={handleNewNoteMobile}
               className="mt-2 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all min-h-[44px]"
@@ -478,6 +492,7 @@ export const NotesWorkspace: React.FC = () => {
               <Plus className="w-4 h-4" />
               <span>İlk Notunuzu Başlatın</span>
             </button>
+            )}
           </div>
         )}
       </div>

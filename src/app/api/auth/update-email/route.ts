@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, requireAuth, setSessionCookie, signSessionToken, sessionMaxAgeSeconds } from '@/lib/auth';
-import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
+import { comparePassword, requireAccountOwner, setSessionCookie, signSessionToken, sessionMaxAgeSeconds } from '@/lib/auth';
+import { handleRouteError, rateLimit, readJsonObject, requestHost, tooManyRequests } from '@/lib/apiUtils';
+import { consumeCode, issueCode, maskEmail, VerificationError } from '@/lib/verification';
+import { siteHostFrom } from '@/lib/mailer';
 import { z } from 'zod';
 
 const updateEmailSchema = z.object({
@@ -13,11 +15,16 @@ const updateEmailSchema = z.object({
     .email('Lütfen geçerli bir e-posta adresi giriniz.')
     .transform((val) => val.toLowerCase()),
   currentPassword: z.string().optional(),
+  code: z.string().optional(),
 });
 
+/**
+ * Two steps: (1) new address + current password → a code is sent to the new address;
+ * (2) new address + code → the address changes (and counts as verified).
+ */
 export async function POST(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requireAccountOwner();
 
     const wait = rateLimit(`update-email:${session.userId}`, 10, 15 * 60_000);
     if (wait) return tooManyRequests(wait);
@@ -28,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
-    const { newEmail, currentPassword } = parseResult.data;
+    const { newEmail, currentPassword, code } = parseResult.data;
 
     if (newEmail === session.email.toLowerCase()) {
       return NextResponse.json(
@@ -42,14 +49,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
     }
 
-    // Changing the login e-mail is account-takeover sensitive: require the current password.
-    if (!currentPassword || !(await comparePassword(currentPassword, user.passwordHash))) {
-      return NextResponse.json(
-        { error: 'E-posta adresini değiştirmek için mevcut şifrenizi doğru giriniz.' },
-        { status: 400 }
-      );
-    }
-
     const existingUser = await prisma.user.findUnique({ where: { email: newEmail } });
     if (existingUser && existingUser.id !== session.userId) {
       return NextResponse.json(
@@ -58,9 +57,22 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!code) {
+      // Changing the login e-mail is account-takeover sensitive: require the current password.
+      if (!currentPassword || !(await comparePassword(currentPassword, user.passwordHash))) {
+        return NextResponse.json(
+          { error: 'E-posta adresini değiştirmek için mevcut şifrenizi doğru giriniz.' },
+          { status: 400 }
+        );
+      }
+      await issueCode(user.id, 'email-change', newEmail, siteHostFrom(requestHost(req)));
+      return NextResponse.json({ success: true, codeSent: true, message: `Doğrulama kodu ${maskEmail(newEmail)} adresine gönderildi.` });
+    }
+
+    await consumeCode(user.id, 'email-change', code, newEmail);
     const updatedUser = await prisma.user.update({
       where: { id: session.userId },
-      data: { email: newEmail },
+      data: { email: newEmail, emailVerifiedAt: new Date() },
     });
 
     const maxAge = await sessionMaxAgeSeconds();
@@ -76,7 +88,7 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({
       success: true,
-      message: 'E-posta adresiniz başarıyla güncellendi.',
+      message: 'E-posta adresiniz doğrulandı ve güncellendi.',
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
@@ -89,6 +101,7 @@ export async function POST(req: Request) {
     setSessionCookie(response, token, maxAge);
     return response;
   } catch (error) {
+    if (error instanceof VerificationError) return NextResponse.json({ error: error.message }, { status: error.status });
     return handleRouteError(error, 'Update email error', 'E-posta güncellenirken sunucu hatası oluştu.');
   }
 }

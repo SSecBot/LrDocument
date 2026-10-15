@@ -33,6 +33,8 @@ import { toLocalDateString } from '@/lib/utils';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, planLabel, type AccountType } from '@/lib/pricing';
 import { SystemDefaultsPanel } from './SystemDefaultsPanel';
 import { LandingEditorPanel } from './LandingEditorPanel';
+import { MailSettingsPanel } from './MailSettingsPanel';
+import { VerificationBadges, type VerificationAction } from './VerificationBadges';
 import { classYearLabel } from '@/lib/studentProfile';
 
 async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
@@ -323,17 +325,36 @@ export function AdminDashboard() {
     }
   };
 
-  const handleSetAccountType = async (user: AdminUserItem, accountType: AccountType, seats?: number) => {
+  const handleSetAccountType = async (user: AdminUserItem, accountType: AccountType, organization?: string) => {
     try {
       setActionLoadingId(user.id);
       const res = await fetch(`/api/admin/users/${user.id}/account-type`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountType, ...(seats !== undefined ? { seats } : {}) }),
+        body: JSON.stringify({ accountType, ...(organization !== undefined ? { organization } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Hesap tipi güncellenemedi.');
       addToast({ type: 'success', title: 'Hesap tipi güncellendi', message: data.message });
+      await fetchAdminData();
+    } catch (err) {
+      addToast({ type: 'error', title: 'Hata', message: errorMessage(err) });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleVerification = async (user: AdminUserItem, action: VerificationAction) => {
+    try {
+      setActionLoadingId(user.id);
+      const res = await fetch(`/api/admin/users/${user.id}/verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı.');
+      addToast({ type: 'success', title: 'Güncellendi', message: data.message });
       await fetchAdminData();
     } catch (err) {
       addToast({ type: 'error', title: 'Hata', message: errorMessage(err) });
@@ -543,9 +564,9 @@ export function AdminDashboard() {
             onClick={handleExportExcel}
             disabled={isExporting || users.length === 0}
             title="Kullanıcı Listesini Excel Olarak İndir (.xlsx)"
-            className="px-3.5 py-2.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold border border-emerald-500/40 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+            <FileSpreadsheet className="w-4 h-4 text-white" />
             <span>Excel (.xlsx)</span>
           </button>
 
@@ -738,7 +759,12 @@ export function AdminDashboard() {
           </button>
         </div>
 
-        {activeTab === 'defaults' && <SystemDefaultsPanel />}
+        {activeTab === 'defaults' && (
+          <div className="space-y-5">
+            <MailSettingsPanel />
+            <SystemDefaultsPanel />
+          </div>
+        )}
         {activeTab === 'landing' && <LandingEditorPanel />}
 
         {/* TAB 1: PENDING USERS CARDS */}
@@ -778,6 +804,7 @@ export function AdminDashboard() {
                       </div>
                       <h3 className="text-base font-bold text-white">{user.name}</h3>
                       <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.email}</p>
+                      <VerificationBadges user={user} busy={actionLoadingId === user.id} onAction={handleVerification} />
 
                       {user.accountType === 'CORPORATE' && (
                         <div className="mt-3 p-2.5 rounded-lg bg-surface-2 border border-line text-[11px] space-y-0.5">
@@ -926,6 +953,7 @@ export function AdminDashboard() {
                                     {classYearLabel(user.studentProfile.classYear)}
                                   </p>
                                 )}
+                                <VerificationBadges user={user} busy={actionLoadingId === user.id} onAction={handleVerification} />
                               </div>
                             </div>
                           </td>
@@ -958,21 +986,23 @@ export function AdminDashboard() {
                               ))}
                             </select>
                             {user.accountType === 'CORPORATE' && (
-                              <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
-                                Kişi
+                              <div className="mt-1.5 space-y-1 text-[11px] text-muted">
                                 <input
-                                  type="number"
-                                  min={systemSettings.pricing.corporateMinSeats}
-                                  max={systemSettings.pricing.corporateMaxSeats}
-                                  defaultValue={user.seats ?? systemSettings.pricing.corporateMinSeats}
+                                  defaultValue={user.organization ?? ''}
+                                  placeholder="Kurum adı"
+                                  aria-label={`${user.name} kurum adı`}
+                                  maxLength={120}
                                   disabled={actionLoadingId === user.id}
                                   onBlur={(e) => {
-                                    const n = Number(e.target.value);
-                                    if (n !== user.seats) handleSetAccountType(user, 'CORPORATE', n);
+                                    const v = e.target.value.trim();
+                                    if (v !== (user.organization ?? '')) handleSetAccountType(user, 'CORPORATE', v);
                                   }}
-                                  className="w-16 h-6 rounded border border-line-strong bg-surface-2 px-1.5 text-body tabular-nums focus:outline-none"
+                                  className="w-40 h-6 rounded border border-line-strong bg-surface-2 px-1.5 text-body focus:outline-none"
                                 />
-                              </label>
+                                <p title="Kişileri kurum sahibi ekler; ücret kişi sayısına göre otomatik güncellenir.">
+                                  {user.seats ?? 1} kişi · sahip + {user._count?.orgMembers ?? 0} üye
+                                </p>
+                              </div>
                             )}
                           </td>
 

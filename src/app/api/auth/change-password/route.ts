@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import {
   comparePassword,
   hashPassword,
-  requireAuth,
+  requireAccountOwner,
   setSessionCookie,
   signSessionToken,
   sessionMaxAgeSeconds,
@@ -13,7 +13,7 @@ import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requireAccountOwner();
 
     const wait = rateLimit(`change-password:${session.userId}`, 10, 15 * 60_000);
     if (wait) return tooManyRequests(wait);

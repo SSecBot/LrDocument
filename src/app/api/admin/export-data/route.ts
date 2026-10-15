@@ -23,11 +23,13 @@ export async function GET() {
       categories,
       kanbanCards,
       studentProfiles,
+      customers,
     ] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: 'asc' },
         // UI preferences are device-independent conveniences, not part of the backup.
-        omit: { preferences: true },
+        // 2FA secrets are encrypted with this server's key and useless elsewhere; users set 2FA up again.
+        omit: { preferences: true, twoFactorSecret: true, twoFactorPending: true, twoFactorRecovery: true, twoFactorLastStep: true },
       }),
       prisma.folder.findMany({
         orderBy: { createdAt: 'asc' },
@@ -59,6 +61,7 @@ export async function GET() {
       prisma.studentProfile.findMany({
         orderBy: { createdAt: 'asc' },
       }),
+      prisma.customer.findMany({ orderBy: { createdAt: 'asc' } }),
     ]);
 
     const backupPayload = {
@@ -77,6 +80,7 @@ export async function GET() {
         totalCategories: categories.length,
         totalKanbanCards: kanbanCards.length,
         totalStudentProfiles: studentProfiles.length,
+        totalCustomers: customers.length,
       },
       data: {
         users,
@@ -90,6 +94,7 @@ export async function GET() {
         categories: plain('financeCategory', categories),
         kanbanCards: plain('kanbanCard', kanbanCards),
         studentProfiles: plain('studentProfile', studentProfiles),
+        customers: plain('customer', customers),
       },
     };
 

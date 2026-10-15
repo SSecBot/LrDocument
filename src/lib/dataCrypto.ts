@@ -22,7 +22,7 @@ let masterKey: Buffer | null = null;
 const userKeys = new Map<string, Buffer>();
 
 /** Directory of the SQLite file (Prisma resolves relative paths against prisma/). */
-function databaseDir(): string {
+export function databaseDir(): string {
   const url = process.env.DATABASE_URL ?? 'file:./dev.db';
   const file = url.replace(/^file:/, '').split('?')[0];
   return path.dirname(path.isAbsolute(file) ? file : path.join(process.cwd(), 'prisma', file));
@@ -65,6 +65,11 @@ function keyFor(userId: string): Buffer {
   return key;
 }
 
+/** A purpose-bound secret derived from the master key (e.g. for HMAC lookups). */
+export function deriveSecret(purpose: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', getMasterKey(), Buffer.alloc(0), `lrdocument:${purpose}`, 32));
+}
+
 export function isEncrypted(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith(PREFIX);
 }
@@ -102,6 +107,7 @@ export const ENCRYPTED_FIELDS = {
   financeTransaction: ['title', 'description'],
   folder: ['name', 'description'],
   financeCategory: ['name'],
+  customer: ['name', 'contactName', 'phone', 'email', 'address', 'payments', 'notes'],
   studentProfile: ['data', 'studentNo'],
 } as const;
 

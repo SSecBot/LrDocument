@@ -53,3 +53,4 @@ prisma/*.db-journal
 
 # at-rest encryption key created next to the local SQLite DB (never commit)
 prisma/data-encryption.key
+prisma/dkim-private.pem

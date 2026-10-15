@@ -5,6 +5,8 @@ import type { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { getJwtSecretKey, COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from './jwtSecret';
 import { getSystemSettings } from './systemSettingsServer';
+import { decryptText } from './dataCrypto';
+import { FULL_PERMISSIONS, parsePermissions, type CorpPermissions, type OrgRole } from './corporate';
 
 export interface UserJWTPayload {
   userId: string;
@@ -20,6 +22,16 @@ export interface UserJWTPayload {
   seats?: number | null;
   /** Session version; bumping it in the DB invalidates every token issued before. */
   sv?: number;
+  /**
+   * Kurumsal üye (signed in with a corporate code). `userId` is then the owner's id — the shared
+   * data space — and the member's own session version is in `sv`.
+   */
+  memberId?: string;
+  orgRole?: OrgRole;
+  permissions?: CorpPermissions;
+  /** The login e-mail was confirmed with a code. */
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
 }
 
 const PRESENCE_WRITE_MS = 60_000;
@@ -87,7 +99,13 @@ export async function comparePassword(password: unknown, hash: string | null | u
  * read from the database (see getCurrentSession).
  */
 export async function signSessionToken(payload: UserJWTPayload, maxAgeSeconds = SESSION_MAX_AGE_SECONDS): Promise<string> {
-  return new SignJWT({ userId: payload.userId, role: payload.role, status: payload.status, sv: payload.sv ?? 0 })
+  return new SignJWT({
+    userId: payload.userId,
+    role: payload.role,
+    status: payload.status,
+    sv: payload.sv ?? 0,
+    ...(payload.memberId ? { mid: payload.memberId } : {}),
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${maxAgeSeconds}s`)
@@ -98,7 +116,8 @@ export async function verifySessionToken(token: string): Promise<UserJWTPayload 
   try {
     const { payload } = await jwtVerify(token, getJwtSecretKey(), { algorithms: ['HS256'] });
     if (typeof payload.userId !== 'string') return null;
-    return payload as unknown as UserJWTPayload;
+    const { mid, ...rest } = payload as Record<string, unknown>;
+    return { ...(rest as unknown as UserJWTPayload), ...(typeof mid === 'string' ? { memberId: mid } : {}) };
   } catch {
     return null;
   }
@@ -176,11 +195,20 @@ export function ensureDefaultAdmin(): Promise<void> {
 export async function getCurrentSession(): Promise<UserJWTPayload | null> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
+    return await sessionFromToken(cookieStore.get(COOKIE_NAME)?.value);
+  } catch {
+    return null;
+  }
+}
+
+/** Validates a session token against the database (also used by long-lived streams). */
+export async function sessionFromToken(token: string | undefined): Promise<UserJWTPayload | null> {
+  try {
     if (!token) return null;
 
     const payload = await verifySessionToken(token);
     if (!payload) return null;
+    if (payload.memberId) return await memberSession(payload);
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
@@ -198,6 +226,8 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
         organization: true,
         seats: true,
         lastSeenAt: true,
+        emailVerifiedAt: true,
+        twoFactorEnabledAt: true,
       },
     });
 
@@ -222,15 +252,73 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
       organization: user.organization,
       seats: user.seats,
       sv: user.sessionVersion,
+      emailVerified: !!user.emailVerifiedAt,
+      twoFactorEnabled: !!user.twoFactorEnabledAt,
+      ...(user.accountType === 'CORPORATE' ? { orgRole: 'OWNER' as const, permissions: FULL_PERMISSIONS } : {}),
     };
   } catch {
     return null;
   }
 }
 
+/** Session of a corporate member: valid while the member exists and the owner's account is active. */
+async function memberSession(payload: UserJWTPayload): Promise<UserJWTPayload | null> {
+  const member = await prisma.orgMember.findUnique({
+    where: { id: payload.memberId },
+    select: {
+      id: true,
+      ownerId: true,
+      name: true,
+      role: true,
+      permissions: true,
+      sessionVersion: true,
+      lastSeenAt: true,
+      owner: {
+        select: { status: true, accountType: true, organization: true, seats: true, subscriptionPlan: true, subscriptionType: true, paymentStatus: true },
+      },
+    },
+  });
+  if (!member || member.ownerId !== payload.userId) return null;
+  if (member.owner.status !== 'APPROVED' || member.owner.accountType !== 'CORPORATE') return null;
+  if ((payload.sv ?? 0) !== member.sessionVersion) return null;
+
+  if (!member.lastSeenAt || Date.now() - member.lastSeenAt.getTime() > PRESENCE_WRITE_MS) {
+    prisma.orgMember.update({ where: { id: member.id }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
+  }
+
+  const role: OrgRole = member.role === 'MANAGER' ? 'MANAGER' : 'MEMBER';
+  return {
+    userId: member.ownerId,
+    memberId: member.id,
+    email: '',
+    name: decryptText(member.ownerId, member.name),
+    role: 'USER',
+    status: 'APPROVED',
+    subscriptionPlan: (member.owner.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
+    subscriptionType: (member.owner.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
+    paymentStatus: (member.owner.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
+    accountType: 'CORPORATE',
+    organization: member.owner.organization,
+    seats: member.owner.seats,
+    sv: member.sessionVersion,
+    orgRole: role,
+    permissions: role === 'MANAGER' ? FULL_PERMISSIONS : parsePermissions(member.permissions),
+  };
+}
+
 export async function requireAuth(): Promise<UserJWTPayload> {
   const session = await getCurrentSession();
   if (!session) throw new AuthError(401, 'Giriş yapmanız gerekmektedir.');
+  return session;
+}
+
+/**
+ * Actions on the login itself (password, e-mail): not for corporate members, who sign in with the
+ * code their owner manages and must never act on the owner's account.
+ */
+export async function requireAccountOwner(): Promise<UserJWTPayload> {
+  const session = await requireAuth();
+  if (session.memberId) throw new AuthError(403, 'Bu işlem kurumsal üye hesaplarında kullanılamaz.');
   return session;
 }
 

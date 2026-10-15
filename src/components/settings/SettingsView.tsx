@@ -4,15 +4,13 @@ import React, { useState } from 'react';
 import { useAppStore, type SettingsSection } from '@/store/useAppStore';
 import { ACCOUNT_TYPE_LABEL, formatPlanPrice } from '@/lib/pricing';
 import { StudentProfileCard } from './StudentProfileCard';
+import { StudentVerificationCard } from './StudentVerificationCard';
 import { AcademicSettingsCard } from './AcademicSettingsCard';
 import { hasStudentAccess } from '@/lib/access';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-
-const fieldCls =
-  'w-full h-10 bg-app border border-line rounded-md px-3 text-sm text-fg placeholder-muted focus:outline-none focus:border-line-strong';
-const labelCls = 'block text-xs font-medium text-subtle mb-1.5';
-const primaryBtn =
-  'h-10 px-4 rounded-md bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2';
+import { ORG_ROLE_LABEL } from '@/lib/corporate';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
+import { EmailSection, EmailVerificationPanel, TwoFactorSection } from './SecuritySections';
 
 export function SettingsView() {
   const { currentUser, settingsSection, setSettingsSection } = useAppStore();
@@ -20,7 +18,8 @@ export function SettingsView() {
 
   const tabs: { id: SettingsSection; label: string; show: boolean }[] = [
     { id: 'hesap', label: 'Hesap', show: true },
-    { id: 'guvenlik', label: 'Güvenlik', show: true },
+    // Corporate members sign in with the code their owner manages; no e-mail / password of their own.
+    { id: 'guvenlik', label: 'Güvenlik', show: !currentUser?.memberId },
     { id: 'ogrenci', label: 'Öğrenci bilgileri', show: student },
     { id: 'ders', label: 'Ders takibi', show: student },
     { id: 'tercihler', label: 'Tercihler', show: true },
@@ -55,11 +54,18 @@ export function SettingsView() {
           {active === 'hesap' && <AccountSection />}
           {active === 'guvenlik' && (
             <>
+              <EmailVerificationPanel />
               <EmailSection />
               <PasswordSection />
+              <TwoFactorSection />
             </>
           )}
-          {active === 'ogrenci' && <StudentProfileCard isAdmin={currentUser?.role === 'ADMIN'} />}
+          {active === 'ogrenci' && (
+            <>
+              {currentUser?.accountType === 'STUDENT' && <StudentVerificationCard />}
+              <StudentProfileCard isAdmin={currentUser?.role === 'ADMIN'} />
+            </>
+          )}
           {active === 'ders' && <AcademicSettingsCard />}
           {active === 'tercihler' && <PreferencesSection />}
         </div>
@@ -68,34 +74,30 @@ export function SettingsView() {
   );
 }
 
-function Panel({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-lg bg-surface border border-line">
-      <header className="px-5 py-4 border-b border-line">
-        <h2 className="text-sm font-semibold text-fg">{title}</h2>
-        {description && <p className="text-xs text-muted mt-1">{description}</p>}
-      </header>
-      <div className="p-5">{children}</div>
-    </section>
-  );
-}
-
-function Message({ kind, text }: { kind: 'ok' | 'error'; text: string }) {
-  return (
-    <p
-      role={kind === 'error' ? 'alert' : 'status'}
-      className={`text-xs flex items-center gap-2 ${kind === 'ok' ? 'text-emerald-300' : 'text-rose-300'}`}
-    >
-      {kind === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-      {text}
-    </p>
-  );
-}
-
 function AccountSection() {
   const { currentUser, systemSettings } = useAppStore();
   const lifetime = currentUser?.subscriptionPlan === 'Tek Seferlik';
   const type = currentUser?.accountType ?? 'STANDARD';
+  if (currentUser?.memberId) {
+    const memberRows: [string, React.ReactNode][] = [
+      ['Ad soyad', currentUser.name],
+      ['Kurum', currentUser.organization || '—'],
+      ['Rol', ORG_ROLE_LABEL[currentUser.orgRole ?? 'MEMBER']],
+      ['Giriş', 'Kişisel kurumsal kod'],
+    ];
+    return (
+      <Panel title="Hesap" description="Kurumsal üyesiniz. Adınızı, rolünüzü ve izinlerinizi kurum sahibi düzenler; kodunuzu kaybederseniz ondan yeni kod isteyin.">
+        <dl className="divide-y divide-line text-sm">
+          {memberRows.map(([k, v]) => (
+            <div key={k} className="py-2.5 grid grid-cols-[140px_1fr] gap-3">
+              <dt className="text-muted">{k}</dt>
+              <dd className="text-body min-w-0 truncate">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
+    );
+  }
   const rows: [string, React.ReactNode][] = [
     ['Ad soyad', currentUser?.name],
     ['E-posta', currentUser?.email],
@@ -122,62 +124,6 @@ function AccountSection() {
           </div>
         ))}
       </dl>
-    </Panel>
-  );
-}
-
-function EmailSection() {
-  const { currentUser, checkAuth, addToast } = useAppStore();
-  const [newEmail, setNewEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(null);
-    const email = newEmail.trim().toLowerCase();
-    if (email === currentUser?.email?.toLowerCase()) return setMsg({ kind: 'error', text: 'Yeni adres mevcut adresinizle aynı.' });
-    setBusy(true);
-    try {
-      const res = await fetch('/api/auth/update-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newEmail: email, currentPassword: password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMsg({ kind: 'error', text: data.error || 'E-posta güncellenemedi.' });
-        return;
-      }
-      setNewEmail('');
-      setPassword('');
-      setMsg({ kind: 'ok', text: 'E-posta adresiniz güncellendi.' });
-      addToast({ type: 'success', title: 'E-posta güncellendi', message: email });
-      await checkAuth(true);
-    } catch {
-      setMsg({ kind: 'error', text: 'Sunucuya ulaşılamadı.' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Panel title="E-posta adresi" description={`Şu an: ${currentUser?.email ?? '—'}`}>
-      <form onSubmit={submit} className="space-y-4 max-w-md">
-        <label className="block">
-          <span className={labelCls}>Yeni e-posta</span>
-          <input className={fieldCls} type="email" required autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-        </label>
-        <label className="block">
-          <span className={labelCls}>Mevcut şifre</span>
-          <input className={fieldCls} type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {msg && <Message {...msg} />}
-        <button type="submit" disabled={busy} className={primaryBtn}>
-          {busy ? 'Kaydediliyor…' : 'E-postayı güncelle'}
-        </button>
-      </form>
     </Panel>
   );
 }

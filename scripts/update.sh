@@ -7,6 +7,7 @@
 #
 # Varsayılanlar ortam değişkenleriyle değiştirilebilir:
 #   APP_DIR=/var/www/LrDocument PM2_NAME=<pm2 adı> BRANCH=master PORT=3000 DATA_DIR=/var/lib/lrdocument
+#   BIND_HOST=127.0.0.1   (uygulama yalnızca nginx üzerinden erişilsin; doğrudan erişim için 0.0.0.0)
 #
 # APP_DIR verilmezse: betiğin bulunduğu proje, o da yoksa içinde bulunulan klasör (LrDocument
 # projesiyse), o da değilse /var/www/LrDocument kullanılır. PM2_NAME verilmezse PM2'de bu klasörde
@@ -19,7 +20,7 @@
 #   3. .env içindeki JWT_SECRET zayıf/eksikse güçlü bir anahtar üretir; veri şifreleme anahtarı
 #      (DATA_ENCRYPTION_KEY) yoksa bir kez üretir ve $DATA_DIR/keys altına yedekler
 #   4. Kodu günceller (git varsa), bağımlılıkları kurar, şemayı uygular, derler
-#   5. PM2 sürecini yeniden başlatır ve sağlık kontrolü yapar
+#   5. PM2 sürecini yeniden başlatır (yalnızca 127.0.0.1'i dinler) ve sağlık kontrolü yapar
 # =============================================================================
 set -euo pipefail
 
@@ -220,10 +221,31 @@ npm run build
 # ---------------------------------------------------------------------------
 step "6/6 Uygulama yeniden başlatılıyor"
 # ---------------------------------------------------------------------------
+BIND_HOST="${BIND_HOST:-127.0.0.1}"
+# Uygulama yalnızca BIND_HOST adresini dinler (varsayılan 127.0.0.1): dışarıdan yalnızca nginx/HTTPS
+# üzerinden erişilir, 3000 portu internete açık kalmaz. Eski süreç bu ayar olmadan başlatıldıysa
+# bir kez yeniden oluşturulur.
+pm2_args() {
+  pm2 jlist 2>/dev/null | node -e '
+    let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+      try {
+        const list = JSON.parse(s.slice(s.indexOf("[")));
+        const p = list.find((x) => x.name === process.argv[1]);
+        const a = p && p.pm2_env && p.pm2_env.args;
+        process.stdout.write(Array.isArray(a) ? a.join(" ") : String(a || ""));
+      } catch { process.stdout.write(""); }
+    });' "$PM2_NAME"
+}
 if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
-  pm2 restart "$PM2_NAME" --update-env
+  if pm2_args | grep -q -- "-H $BIND_HOST"; then
+    pm2 restart "$PM2_NAME" --update-env
+  else
+    warn "PM2 süreci $BIND_HOST adresine bağlanacak şekilde yeniden oluşturuluyor."
+    pm2 delete "$PM2_NAME" >/dev/null
+    pm2 start npm --name "$PM2_NAME" -- start -- -p "$PORT" -H "$BIND_HOST"
+  fi
 else
-  pm2 start npm --name "$PM2_NAME" -- start -- -p "$PORT"
+  pm2 start npm --name "$PM2_NAME" -- start -- -p "$PORT" -H "$BIND_HOST"
 fi
 pm2 save >/dev/null
 

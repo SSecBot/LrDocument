@@ -18,8 +18,11 @@ import {
   ChevronsUpDown,
   Settings,
   GraduationCap,
+  Users,
+  Building2,
 } from 'lucide-react';
 import { hasStudentAccess } from '@/lib/access';
+import { canView, isCorporate } from '@/lib/corporate';
 import { AccountSwitcher } from './AccountSwitcher';
 
 interface NavItem {
@@ -38,30 +41,38 @@ export const Sidebar: React.FC = () => {
     notes,
     tasks,
     kanbanCards,
+    customers,
     setIsCommandPaletteOpen,
     currentUser,
     preferences,
     setPreference,
   } = useAppStore();
   const collapsed = preferences.sidebarCollapsed;
+  const corporate = isCorporate(currentUser);
   const [accountMenuOpen, setAccountMenuOpen] = React.useState(false);
   const openWork = tasks.filter((t) => !t.completed).length + kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length;
 
   const groups: { title: string; items: NavItem[] }[] = [
     {
-      title: 'Çalışma alanı',
+      title: corporate ? currentUser?.organization || 'Kurum' : 'Çalışma alanı',
       items: [
         { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
-        { id: 'notes', label: 'Notlar', icon: FileText, badge: notes.length },
-        { id: 'tasks', label: 'Görevler ve Kanban', icon: CheckSquare, badge: openWork },
-        { id: 'calendar', label: 'Takvim', icon: Calendar },
+        // In a corporate workspace the notes are shared by the whole team.
+        ...(canView(currentUser, 'notes') ? [{ id: 'notes' as ActiveTab, label: corporate ? 'Ortak Notlar' : 'Notlar', icon: FileText, badge: notes.length }] : []),
+        ...(canView(currentUser, 'customers') ? [{ id: 'customers' as ActiveTab, label: 'Müşteriler', icon: Building2, badge: customers.length }] : []),
+        ...(canView(currentUser, 'work') ? [{ id: 'tasks' as ActiveTab, label: 'Görevler ve Kanban', icon: CheckSquare, badge: openWork }] : []),
+        ...(canView(currentUser, 'calendar') ? [{ id: 'calendar' as ActiveTab, label: 'Takvim', icon: Calendar }] : []),
         ...(hasStudentAccess(currentUser) ? [{ id: 'academic' as ActiveTab, label: 'Ders Takibi', icon: GraduationCap }] : []),
-        { id: 'finance', label: 'Gelir ve Gider', icon: Wallet },
+        ...(canView(currentUser, 'finance') ? [{ id: 'finance' as ActiveTab, label: 'Gelir ve Gider', icon: Wallet }] : []),
       ],
     },
   ];
 
-  const accountItems: NavItem[] = [{ id: 'settings', label: 'Ayarlar', icon: Settings }];
+  const accountItems: NavItem[] = [];
+  if (corporate && (currentUser?.orgRole === 'OWNER' || currentUser?.orgRole === 'MANAGER')) {
+    accountItems.push({ id: 'team', label: 'Kurum ve Ekip', icon: Users });
+  }
+  accountItems.push({ id: 'settings', label: 'Ayarlar', icon: Settings });
   if (currentUser?.role === 'ADMIN') {
     accountItems.push({ id: 'admin', label: 'Yönetici Paneli', icon: ShieldCheck });
   }
@@ -209,7 +220,9 @@ export const Sidebar: React.FC = () => {
             {!mini && (
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-medium text-fg truncate">{currentUser.name}</span>
-                <span className="block text-[11px] text-muted truncate">{currentUser.email}</span>
+                <span className="block text-[11px] text-muted truncate">
+                  {currentUser.memberId ? `${currentUser.organization || 'Kurum'} · kurumsal` : currentUser.email}
+                </span>
               </span>
             )}
             {!mini && <ChevronsUpDown className="w-4 h-4 text-muted shrink-0" />}

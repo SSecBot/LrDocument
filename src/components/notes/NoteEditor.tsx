@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useLayoutEffect, useState, useRef } from 'react';
+import { useNow } from '@/components/academic/useNow';
 import { Note } from '@/types';
+import { canEdit } from '@/lib/corporate';
 import { useAppStore } from '@/store/useAppStore';
 import { KatexPreview } from './KatexPreview';
 import { MathSymbolBar } from './MathDrawer';
@@ -42,14 +44,44 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     preferences,
     setPreference,
     systemSettings,
+    currentUser,
+    remoteEdits,
   } = useAppStore();
+  // Kurumsal: members with view-only access to Ortak Notlar read the note, they cannot change it.
+  const editable = canEdit(currentUser, 'notes');
 
-  const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split');
+  const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>(editable ? 'split' : 'preview');
   const symbolsOpen = preferences.mathDrawerOpen;
   const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Kurumsal live editing: a teammate's saved change replaces the content while this note is open.
+  // Keep the caret where it was (shifted by the inserted / removed text before it).
+  const prevContent = useRef(note.content);
+  const localContent = useRef(note.content);
+  const selection = useRef({ start: 0, end: 0 });
+  useLayoutEffect(() => {
+    const old = prevContent.current;
+    const next = note.content;
+    prevContent.current = next;
+    if (next === localContent.current) return;
+    localContent.current = next;
+    const ta = textareaRef.current;
+    if (!ta || document.activeElement !== ta) return;
+    let p = 0;
+    while (p < old.length && p < next.length && old[p] === next[p]) p++;
+    const shift = next.length - old.length;
+    const adjust = (i: number) => (i <= p ? i : Math.max(p, i + shift));
+    ta.setSelectionRange(adjust(selection.current.start), adjust(selection.current.end));
+  }, [note.content]);
+
+  const remote = remoteEdits[`note:${note.id}`];
+  const now = useNow(2000);
+  const remoteLive = !!remote && now.getTime() - remote.at < 6000;
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    localContent.current = e.target.value;
+    prevContent.current = e.target.value;
     updateNote(note.id, { content: e.target.value });
   };
 
@@ -147,6 +179,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             type="text"
             value={note.title}
             onChange={handleTitleChange}
+            readOnly={!editable}
             placeholder="Not Başlığı..."
             className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-line-strong focus:border-brand focus:outline-none px-1 py-0.5 w-full transition-colors truncate"
           />
@@ -203,6 +236,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           </div>
 
           {/* Pin & Favorite */}
+          {editable && (
+            <>
           <button
             onClick={() => togglePinNote(note.id)}
             className={`min-h-[38px] min-w-[38px] p-2 rounded-xl border transition-colors flex items-center justify-center ${
@@ -226,6 +261,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           >
             <Star className={`w-4 h-4 ${note.isFavorite ? 'fill-amber-400' : ''}`} />
           </button>
+            </>
+          )}
 
           {/* Quick Actions */}
           <button
@@ -253,6 +290,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <span>Görev Oluştur</span>
           </button>
 
+          {editable && (
           <button
             onClick={() => {
               deleteNote(note.id);
@@ -263,6 +301,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           >
             <Trash2 className="w-4 h-4" />
           </button>
+          )}
         </div>
       </div>
 
@@ -274,6 +313,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <select
             value={note.folder}
             onChange={(e) => updateNote(note.id, { folder: e.target.value })}
+            disabled={!editable}
             className="bg-surface-2 text-body border border-line-strong rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand min-h-[34px]"
           >
             <option value="">Klasörsüz</option>
@@ -295,14 +335,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               className="inline-flex items-center gap-1 bg-surface-2 border border-line-strong px-2 py-0.5 rounded text-[11px] text-body"
             >
               #{tag}
+              {editable && (
               <button
                 onClick={() => handleRemoveTag(tag)}
                 className="text-muted hover:text-rose-400 ml-0.5"
               >
                 ×
               </button>
+              )}
             </span>
           ))}
+          {editable && (
           <input
             type="text"
             value={newTagInput}
@@ -311,9 +354,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             placeholder="+ Etiket ekle (Enter)"
             className="bg-transparent border border-dashed border-line-strong focus:border-brand rounded-lg px-2 py-1 text-[11px] text-body focus:outline-none w-28 min-h-[32px]"
           />
+          )}
         </div>
 
         {/* Updated Date */}
+        {remote && (
+          <div className="flex items-center gap-1.5 text-[11px] text-subtle" role="status" aria-live="polite">
+            <span className={`w-1.5 h-1.5 rounded-full ${remoteLive ? 'bg-emerald-400 animate-pulse' : 'bg-surface-4'}`} aria-hidden="true" />
+            {remoteLive ? `${remote.by} düzenliyor` : `Son değişiklik: ${remote.by}`}
+          </div>
+        )}
         <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted">
           <Calendar className="w-3 h-3" />
           <span>Son düzenleme: {formatTurkishDate(note.updatedAt)}</span>
@@ -332,6 +382,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               ref={textareaRef}
               value={note.content}
               onChange={handleContentChange}
+              onSelect={(e) => {
+                selection.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd };
+              }}
+              readOnly={!editable}
               placeholder="Notunuzu buraya yazın... Matematik formülleri için $..$ veya $$..$$ kullanın."
               className="flex-1 w-full p-4 sm:p-5 bg-app text-fg font-mono text-sm leading-relaxed resize-none focus:outline-none overflow-y-auto selection:bg-brand selection:text-white"
             />

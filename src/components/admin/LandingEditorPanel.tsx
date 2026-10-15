@@ -96,6 +96,15 @@ export function LandingEditorPanel() {
       </div>
       {error && <p className="text-xs text-rose-300" role="alert">{error}</p>}
 
+      <Section title="Arama motorları (SEO)">
+        <p className="text-[11px] text-muted leading-relaxed">
+          Google sonuçlarında ve paylaşılan bağlantılarda görünen başlık ve açıklama. Başlık 60, açıklama 160 karakter civarında kalırsa kesilmeden görünür.
+        </p>
+        <Field label="Sayfa başlığı" value={draft.seo.title} max={70} onChange={(v) => set('seo', { title: v })} />
+        <Field label="Açıklama" multiline value={draft.seo.description} max={170} onChange={(v) => set('seo', { description: v })} />
+        <Field label="Anahtar kelimeler (virgülle)" multiline value={draft.seo.keywords} max={400} onChange={(v) => set('seo', { keywords: v })} />
+      </Section>
+
       <Section title="Giriş (üst bölüm)">
         <Field label="Üst etiket" value={draft.hero.eyebrow} max={120} onChange={(v) => set('hero', { eyebrow: v })} />
         <div className="grid sm:grid-cols-2 gap-3">
@@ -114,6 +123,16 @@ export function LandingEditorPanel() {
       <Section title="Özellikler" visible={draft.features.visible} onVisible={(v) => set('features', { visible: v })}>
         <SectionHeadFields value={draft.features} onChange={(p) => set('features', p)} />
         <IconList items={draft.features.items} max={12} onChange={(v) => set('features', { items: v })} />
+      </Section>
+
+      <Section title="Kurumsal" visible={draft.corporate.visible} onVisible={(v) => set('corporate', { visible: v })}>
+        <SectionHeadFields value={draft.corporate} onChange={(p) => set('corporate', p)} />
+        <IconList items={draft.corporate.items} max={8} onChange={(v) => set('corporate', { items: v })} />
+      </Section>
+
+      <Section title="Güvenlik" visible={draft.security.visible} onVisible={(v) => set('security', { visible: v })}>
+        <SectionHeadFields value={draft.security} onChange={(p) => set('security', p)} />
+        <IconList items={draft.security.items} max={8} onChange={(v) => set('security', { items: v })} />
       </Section>
 
       <Section title="Öğrenciler" visible={draft.students.visible} onVisible={(v) => set('students', { visible: v })}>
@@ -156,6 +175,29 @@ export function LandingEditorPanel() {
       <Section title="Alt bilgi">
         <Field label="Not (ör. şirket adı, boş bırakılabilir)" value={draft.footer.note} max={200} onChange={(v) => set('footer', { note: v })} />
       </Section>
+
+      <Section title="Yasal metinler">
+        <p className="text-[11px] text-muted leading-relaxed">
+          Alt bilgideki KVKK, Gizlilik Politikası, Mesafeli Satış ve İade Koşulları ile Kullanım Şartları bağlantıları bu metinleri gösterir.
+          Metinlerde {'{veriSorumlusu}'}, {'{iletisim}'} ve {'{saticiBilgileri}'} yazan yerlere aşağıdaki bilgiler yerleşir. “## ” ile başlayan satır başlık, “- ” ile başlayan satır madde olur. Yayına almadan önce veri sorumlusu ve
+          iletişim bilgisini, satış yapıyorsanız satıcı bilgilerini kendi bilgilerinizle doldurun.
+        </p>
+        <Field label="Veri sorumlusu (kişi veya şirket unvanı)" value={draft.legal.controller} max={200} onChange={(v) => set('legal', { controller: v })} />
+        <Field label="İletişim (KVKK başvuruları için e-posta)" value={draft.legal.contact} max={254} onChange={(v) => set('legal', { contact: v })} />
+        <Field
+          label="Satıcı bilgileri (unvan, adres, telefon, vergi dairesi / no, MERSİS no)"
+          multiline
+          rows={4}
+          value={draft.legal.seller}
+          max={2000}
+          onChange={(v) => set('legal', { seller: v })}
+        />
+        <Field label="Son güncelleme tarihi" value={draft.legal.updated} max={40} onChange={(v) => set('legal', { updated: v })} />
+        <Field label="KVKK aydınlatma metni" multiline rows={14} value={draft.legal.kvkk} max={40000} onChange={(v) => set('legal', { kvkk: v })} />
+        <Field label="Gizlilik politikası" multiline rows={14} value={draft.legal.privacy} max={40000} onChange={(v) => set('legal', { privacy: v })} />
+        <Field label="Mesafeli satış sözleşmesi ve iade koşulları" multiline rows={14} value={draft.legal.sales} max={40000} onChange={(v) => set('legal', { sales: v })} />
+        <Field label="Kullanım şartları" multiline rows={14} value={draft.legal.terms} max={40000} onChange={(v) => set('legal', { terms: v })} />
+      </Section>
     </div>
   );
 }
@@ -172,7 +214,21 @@ function Section({ title, visible, onVisible, children }: { title: string; visib
   );
 }
 
-function Field({ label, value, onChange, max, multiline }: { label: string; value: string; onChange: (v: string) => void; max: number; multiline?: boolean }) {
+function Field({
+  label,
+  value,
+  onChange,
+  max,
+  multiline,
+  rows = 3,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  max: number;
+  multiline?: boolean;
+  rows?: number;
+}) {
   return (
     <label className="block">
       <span className="flex justify-between text-[11px] text-subtle mb-1">
@@ -182,7 +238,7 @@ function Field({ label, value, onChange, max, multiline }: { label: string; valu
         </span>
       </span>
       {multiline ? (
-        <textarea className={areaCls} rows={3} maxLength={max} value={value} onChange={(e) => onChange(e.target.value)} />
+        <textarea className={areaCls} rows={rows} maxLength={max} value={value} onChange={(e) => onChange(e.target.value)} />
       ) : (
         <input className={inputCls} maxLength={max} value={value} onChange={(e) => onChange(e.target.value)} />
       )}

@@ -9,6 +9,8 @@ const fields = {
   notesPanelCollapsed: z.boolean(),
   mathDrawerOpen: z.boolean(),
   calendarPanelCollapsed: z.boolean(),
+  /** Calendar layers the user turned off (see src/lib/calendarFeed.ts). */
+  calendarHiddenLayers: z.array(z.enum(['etkinlik', 'gorev', 'finans', 'ders', 'sinav', 'akademik', 'resmi', 'kanban', 'musteri'])).max(20),
   tasksView: z.enum(['liste', 'pano']),
   exchangeMarkupTRY: z.number().min(0).max(1000).nullable(),
   readNotificationIds: z.array(z.string().max(200)).max(500),
@@ -22,6 +24,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   notesPanelCollapsed: false,
   mathDrawerOpen: false,
   calendarPanelCollapsed: false,
+  calendarHiddenLayers: [],
   tasksView: 'liste',
   exchangeMarkupTRY: null,
   readNotificationIds: [],

@@ -98,6 +98,7 @@ export async function POST(req: Request) {
       importedCategories: 0,
       importedKanbanCards: 0,
       importedStudentProfiles: 0,
+      importedCustomers: 0,
     };
 
     // Backup user id -> actual DB user id (an account with the same e-mail may already exist under another id).
@@ -121,6 +122,8 @@ export async function POST(req: Request) {
         accountType: oneOf(u.accountType, ['STANDARD', 'STUDENT', 'CORPORATE'] as const, 'STANDARD'),
         organization: optStr(u.organization)?.slice(0, 120) ?? null,
         seats: optNum(u.seats) === null ? null : Math.max(1, Math.round(optNum(u.seats)!)),
+        // A verified address stays verified after a restore (2FA secrets are server-bound and are not restored).
+        ...(typeof u.emailVerifiedAt === 'string' && !Number.isNaN(Date.parse(u.emailVerifiedAt)) ? { emailVerifiedAt: new Date(u.emailVerifiedAt) } : {}),
       };
 
       const existing = await prisma.user.findUnique({ where: { email } });
@@ -256,6 +259,20 @@ export async function POST(req: Request) {
       linkedScriptId: optStr(k.linkedScriptId),
       linkedNoteId: optStr(k.linkedNoteId),
     }), 'kanbanCard');
+
+    summary.importedCustomers = await importOwnedRows(asRows(data.customers), prisma.customer as unknown as Delegate, userIdMap, (c) => ({
+      name: str(c.name, 'Müşteri'),
+      contactName: optStr(c.contactName),
+      phone: optStr(c.phone),
+      email: optStr(c.email),
+      address: optStr(c.address),
+      monthlyFee: Math.max(0, num(c.monthlyFee, 0)),
+      paymentDay: Math.min(31, Math.max(1, Math.round(num(c.paymentDay, 1)))),
+      startDate: str(c.startDate).slice(0, 10),
+      endDate: str(c.endDate).slice(0, 10),
+      payments: jsonStr(c.payments),
+      notes: optStr(c.notes),
+    }), 'customer');
 
     // Student profiles are 1:1 with users, keyed by userId.
     for (const sp of asRows(data.studentProfiles)) {

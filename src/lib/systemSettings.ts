@@ -55,6 +55,8 @@ export const systemSettingsSchema = z.object({
   security: z.object({
     passwordMinLength: z.number().int().min(8).max(64),
     sessionDays: z.number().int().min(1).max(90),
+    /** Accounts must confirm their e-mail with a code before signing in (admins exempt). */
+    requireEmailVerification: z.boolean(),
   }),
 });
 
@@ -72,7 +74,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   },
   calendar: { defaultEventDurationMinutes: 30, defaultEventTime: '10:00' },
   tasks: { defaultPriority: 'orta' },
-  security: { passwordMinLength: 8, sessionDays: 30 },
+  security: { passwordMinLength: 8, sessionDays: 30, requireEmailVerification: true },
 };
 
 type Plain = Record<string, unknown>;

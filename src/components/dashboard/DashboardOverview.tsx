@@ -4,8 +4,11 @@ import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { PlatformBadge } from '@/components/ui/Badge';
 import { AlertBanner } from './AlertBanner';
+import { VerificationBanner } from './VerificationBanner';
 import { StudentDashboardCard } from '@/components/academic/StudentDashboardCard';
 import { hasStudentAccess } from '@/lib/access';
+import { canEdit, canView, isCorporate } from '@/lib/corporate';
+import { customerSummary } from '@/lib/customers';
 import {
   FileText,
   GraduationCap,
@@ -17,6 +20,7 @@ import {
   Clock,
   Star,
   Kanban,
+  Building2,
   Pin,
 } from 'lucide-react';
 import { ActiveTab } from '@/types';
@@ -38,6 +42,7 @@ export const DashboardOverview: React.FC = () => {
     kanbanCards,
     events,
     transactions,
+    customers,
     setActiveTab,
     setPreference,
     setActiveNoteId,
@@ -67,8 +72,19 @@ export const DashboardOverview: React.FC = () => {
     setActiveTab('notes');
   };
 
-  const stats: { key: string; tab: ActiveTab; board?: boolean; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
-    { key: 'notes', tab: 'notes', label: 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
+  const corporate = isCorporate(currentUser);
+  const overdueCustomers = customers.filter((c) => customerSummary(c, todayStr).overdueMonths > 0).length;
+
+  const allStats: { key: string; tab: ActiveTab; board?: boolean; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
+    { key: 'notes', tab: 'notes', label: corporate ? 'Ortak notlar' : 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
+    {
+      key: 'customers',
+      tab: 'customers',
+      label: 'Müşteriler',
+      value: customers.length,
+      hint: overdueCustomers ? `${overdueCustomers} ödeme gecikti` : 'ödemeler güncel',
+      icon: Building2,
+    },
     { key: 'tasks', tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
     { key: 'kanban', tab: 'tasks', board: true, label: 'Kanban', value: kanbanCards.length, hint: `${inProgressKanban} aktif`, icon: Kanban },
     { key: 'calendar', tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
@@ -81,6 +97,16 @@ export const DashboardOverview: React.FC = () => {
       icon: Wallet,
     },
   ];
+  // Kurumsal: only the modules this person may see.
+  const MODULE_OF: Record<string, Parameters<typeof canView>[1]> = {
+    notes: 'notes',
+    customers: 'customers',
+    tasks: 'work',
+    kanban: 'work',
+    calendar: 'calendar',
+    finance: 'finance',
+  };
+  const stats = allStats.filter((s) => canView(currentUser, MODULE_OF[s.key]));
 
   const firstName = currentUser?.name?.split(' ')[0];
   const studentAccess = hasStudentAccess(currentUser);
@@ -88,6 +114,7 @@ export const DashboardOverview: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto bg-app p-4 sm:p-5 lg:p-6">
       <div className="max-w-6xl mx-auto space-y-4">
+        <VerificationBanner />
         <AlertBanner />
 
         {/* Greeting + quick actions */}
@@ -100,6 +127,7 @@ export const DashboardOverview: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+            {canEdit(currentUser, 'notes') && (
             <button
               onClick={startNote}
               className="shrink-0 h-9 px-3.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
@@ -107,6 +135,7 @@ export const DashboardOverview: React.FC = () => {
               <Plus className="w-4 h-4" />
               Yeni not
             </button>
+            )}
             {studentAccess && (
               <button
                 onClick={() => setActiveTab('academic')}
@@ -116,6 +145,7 @@ export const DashboardOverview: React.FC = () => {
                 Ders Takibi
               </button>
             )}
+            {canView(currentUser, 'work') && (
             <button
               onClick={() => setActiveTab('tasks')}
               className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
@@ -123,6 +153,8 @@ export const DashboardOverview: React.FC = () => {
               <CheckSquare className="w-4 h-4 text-subtle" />
               Görev
             </button>
+            )}
+            {canView(currentUser, 'finance') && (
             <button
               onClick={() => setActiveTab('finance')}
               className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
@@ -130,6 +162,7 @@ export const DashboardOverview: React.FC = () => {
               <Wallet className="w-4 h-4 text-subtle" />
               İşlem
             </button>
+            )}
           </div>
         </div>
 
@@ -158,11 +191,12 @@ export const DashboardOverview: React.FC = () => {
 
         {/* Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {canView(currentUser, 'notes') && (
           <section className="bg-surface border border-line rounded-xl">
             <header className="flex items-center justify-between px-4 h-11 border-b border-line">
               <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
                 <FileText className="w-4 h-4 text-subtle" />
-                Son notlar
+                {corporate ? 'Son ortak notlar' : 'Son notlar'}
               </h2>
               <button
                 onClick={() => setActiveTab('notes')}
@@ -174,9 +208,11 @@ export const DashboardOverview: React.FC = () => {
             {recentNotes.length === 0 ? (
               <div className="px-4 py-8 text-center text-xs text-muted space-y-2">
                 <p>Henüz not yok.</p>
-                <button onClick={startNote} className="text-emerald-400 hover:underline font-medium inline-flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> İlk notunu oluştur
-                </button>
+                {canEdit(currentUser, 'notes') && (
+                  <button onClick={startNote} className="text-emerald-400 hover:underline font-medium inline-flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> İlk notunu oluştur
+                  </button>
+                )}
               </div>
             ) : (
               <ul className="divide-y divide-line">
@@ -208,7 +244,9 @@ export const DashboardOverview: React.FC = () => {
               </ul>
             )}
           </section>
+          )}
 
+          {canView(currentUser, 'calendar') && (
           <section className="bg-surface border border-line rounded-xl">
             <header className="flex items-center justify-between px-4 h-11 border-b border-line">
               <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
@@ -260,6 +298,7 @@ export const DashboardOverview: React.FC = () => {
               </ul>
             )}
           </section>
+          )}
         </div>
       </div>
     </div>

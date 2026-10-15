@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 import { decryptText, encryptText } from '@/lib/dataCrypto';
 import { parsePreferences, preferencesPatchSchema } from '@/lib/preferences';
+import { readMemberPreferences, writeMemberPreferences } from '@/lib/memberPreferences';
 
 // Read-modify-write per user is serialized so two quick updates cannot overwrite each other.
 const queues = new Map<string, Promise<unknown>>();
@@ -18,11 +19,21 @@ function serialized<T>(userId: string, job: () => Promise<T>): Promise<T> {
 export async function PATCH(req: Request) {
   try {
     const session = await requireAuth();
-    const wait = rateLimit(`prefs:${session.userId}`, 120, 60_000);
+    const wait = rateLimit(`prefs:${session.memberId ?? session.userId}`, 120, 60_000);
     if (wait) return tooManyRequests(wait);
 
     const patch = preferencesPatchSchema.safeParse(await readJsonObject(req, 64 * 1024));
     if (!patch.success) return NextResponse.json({ error: 'Geçersiz tercih.' }, { status: 400 });
+
+    const memberId = session.memberId;
+    if (memberId) {
+      const merged = await serialized(`member:${memberId}`, async () => {
+        const next = parsePreferences({ ...parsePreferences(await readMemberPreferences(memberId)), ...patch.data });
+        await writeMemberPreferences(memberId, next);
+        return next;
+      });
+      return NextResponse.json({ success: true, preferences: merged });
+    }
 
     const next = await serialized(session.userId, async () => {
       const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });

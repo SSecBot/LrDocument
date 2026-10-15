@@ -28,7 +28,12 @@ export async function PATCH(
       const { pricing } = await getSystemSettings();
       const organization =
         typeof body.organization === 'string' ? body.organization.trim().slice(0, 120) : user.organization ?? '';
-      corporate = { organization: organization || null, seats: clampSeats(body.seats ?? user.seats, pricing) };
+      // Once the owner has added people, the seat count follows the team (owner + members).
+      const members = await prisma.orgMember.count({ where: { ownerId: id } });
+      corporate = {
+        organization: organization || null,
+        seats: members > 0 ? members + 1 : clampSeats(body.seats ?? user.seats, pricing),
+      };
     }
 
     // The student profile (and its course data) is kept when switching back, so nothing is lost.

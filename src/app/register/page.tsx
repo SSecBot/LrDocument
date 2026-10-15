@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { useSearchParams } from 'next/navigation';
+import { EmailCodeStep } from '@/components/auth/EmailCodeStep';
 import { CLASS_YEARS, isAcademicEmail } from '@/lib/studentProfile';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, planLabel, seatPrice, type AccountType } from '@/lib/pricing';
 import Link from 'next/link';
@@ -64,6 +65,9 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  // After sign-up the e-mail is confirmed with the code sent to it.
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [mailError, setMailError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +124,7 @@ function RegisterForm() {
         return;
       }
 
+      setMailError(data.verification && !data.verification.sent ? data.verification.error || 'Doğrulama e-postası gönderilemedi.' : null);
       setIsSubmitted(true);
       setLoading(false);
     } catch {
@@ -146,7 +151,12 @@ function RegisterForm() {
 
         {/* Card */}
         <div className="bg-surface/90 border border-line backdrop-blur-xl rounded-xl p-6 relative">
-          {isSubmitted ? (
+          {isSubmitted && !emailVerified ? (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-fg">E-postanızı doğrulayın</h2>
+              <EmailCodeStep email={email.trim().toLowerCase()} initialError={mailError} onVerified={() => setEmailVerified(true)} />
+            </div>
+          ) : isSubmitted ? (
             /* Successful Registration - Message as required */
             <div className="text-center py-4 space-y-5 animate-in zoom-in-95 duration-300">
               <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
@@ -154,7 +164,7 @@ function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-white">Başvurunuz Alındı</h2>
+                <h2 className="text-xl font-bold text-white">E-postanız doğrulandı</h2>
                 <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm font-semibold">
                   Talebiniz oluşturuldu. Mail üzerinden iletişime geçilecektir.
                 </div>
@@ -211,7 +221,8 @@ function RegisterForm() {
                   )}
                   {isCorporate && (
                     <p className="mt-2 text-[11px] text-subtle">
-                      Kurumsal fiyat kişi başı normal fiyatın %{settings.pricing.corporatePercent}’i üzerinden, kişi sayısına göre hesaplanır.
+                      Kurumsal hesabı yönetici inceleyip açar. Açıldıktan sonra ekibinizi siz eklersiniz; her kişiye özel bir kurumsal kod verilir.
+                      Ücret, kişi başı normal fiyatın %{settings.pricing.corporatePercent}’i üzerinden eklediğiniz kişi sayısına göre güncellenir.
                     </p>
                   )}
                 </div>
@@ -224,7 +235,7 @@ function RegisterForm() {
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-subtle mb-1.5">
-                        Kişi sayısı ({settings.pricing.corporateMinSeats}–{settings.pricing.corporateMaxSeats})
+                        Tahmini kişi sayısı ({settings.pricing.corporateMinSeats}–{settings.pricing.corporateMaxSeats}, siz dahil)
                       </label>
                       <input
                         className={fieldCls}
@@ -379,6 +390,26 @@ function RegisterForm() {
                     />
                   </div>
                 </div>
+
+                <p className="text-[11px] text-muted leading-relaxed">
+                  Kayıt talebi göndererek{' '}
+                  <Link href="/kullanim-sartlari" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
+                    Kullanım Şartları
+                  </Link>{' '}
+                  ile{' '}
+                  <Link href="/mesafeli-satis" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
+                    Mesafeli Satış Sözleşmesi ve İade Koşulları
+                  </Link>
+                  ’nı kabul etmiş olursunuz; kişisel verilerinizin{' '}
+                  <Link href="/kvkk" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
+                    KVKK Aydınlatma Metni
+                  </Link>{' '}
+                  ve{' '}
+                  <Link href="/gizlilik" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
+                    Gizlilik Politikası
+                  </Link>{' '}
+                  kapsamında işleneceğini bildiğinizi onaylarsınız.
+                </p>
 
                 <button
                   type="submit"

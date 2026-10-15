@@ -16,12 +16,12 @@ export async function POST(req: Request) {
   const valid = await validAccountUsers(rest);
   const next = valid[0];
 
-  const response = NextResponse.json({ success: true, message: 'Çıkış yapıldı.', switchedTo: next ? { id: next.id, name: next.name } : null });
+  const response = NextResponse.json({ success: true, message: 'Çıkış yapıldı.', switchedTo: next ? { id: next.key, name: next.name } : null });
   if (next) {
     await activateAccount(
       response,
       next,
-      valid.map((u) => ({ userId: u.id, sv: u.sessionVersion }))
+      valid.map((u) => ({ userId: u.key, sv: u.sessionVersion }))
     );
   } else {
     clearSessionCookie(response);

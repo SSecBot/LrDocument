@@ -1,3 +1,5 @@
+import type { CorpPermissions, OrgRole } from '@/lib/corporate';
+
 export type NoteFolder = 'matematik' | 'taslaklar' | 'arsiv' | 'ders-notlari' | 'formuller' | string;
 
 export interface Note {
@@ -162,6 +164,31 @@ export interface KanbanCard {
   updatedAt: string;
 }
 
+/** Kurumsal › Müşteriler: one paid month of the commitment. */
+export interface CustomerPayment {
+  month: string; // YYYY-MM
+  paidAt: string; // YYYY-MM-DD
+  amount: number;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  monthlyFee: number;
+  /** Day of the month the payment is due. */
+  paymentDay: number;
+  startDate: string; // YYYY-MM-DD (taahhüt başlangıcı)
+  endDate: string; // YYYY-MM-DD (taahhüt bitişi)
+  payments: CustomerPayment[];
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
@@ -181,6 +208,12 @@ export interface UserProfile {
   accountType?: AccountType;
   organization?: string | null;
   seats?: number | null;
+  /** Kurumsal üye (signed in with a corporate code). */
+  memberId?: string;
+  orgRole?: OrgRole;
+  permissions?: CorpPermissions;
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
 }
 
 export interface AdminUserItem {
@@ -196,12 +229,18 @@ export interface AdminUserItem {
   organization?: string | null;
   seats?: number | null;
   lastSeenAt?: string | null;
+  emailVerifiedAt?: string | null;
+  twoFactorEnabledAt?: string | null;
+  studentDocument?: { fileName: string; mime: string; uploadedAt: string } | null;
   studentProfile?: {
     university: string;
     studentEmail: string;
     department: string;
     classYear: number;
     studentNo?: string | null;
+    verifiedAt?: string | null;
+    verifyMethod?: string | null;
+    documentStatus?: string | null;
   } | null;
   createdAt: string;
   updatedAt: string;
@@ -212,6 +251,7 @@ export interface AdminUserItem {
     events: number;
     mediaItems: number;
     transactions: number;
+    orgMembers?: number;
   };
 }
 
@@ -232,6 +272,8 @@ export type ActiveTab =
   | 'tasks'
   | 'calendar'
   | 'finance'
+  | 'customers'
+  | 'team'
   | 'academic'
   | 'admin'
   | 'settings';

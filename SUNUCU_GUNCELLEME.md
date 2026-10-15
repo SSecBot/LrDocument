@@ -1,76 +1,100 @@
 # Sunucudaki Kurulumu Güncelleme Rehberi
 
-Bu rehber, sunucuda **ilk sürümü** (v1.3.0) çalışan LrDocument kurulumunu verileri kaybetmeden
-yeni sürüme (güvenlik düzeltmeleri + yeni tasarım) geçirmek içindir.
-
-Kurulum klasörü: `/var/www/LrDocument`, port `3000`. Betik, PM2'de bu klasörde çalışan süreci
-kendisi bulur. Aşağıdaki komutlarda geçen `PM2_ADI` yerine `pm2 list` çıktısındaki adı yazın.
-
-> **Neden özel bir adım gerekiyor?** Eski sürümde veritabanı (`prisma/dev.db`) git deposunun içinde
-> izleniyordu. Yeni sürümde veritabanı depodan çıkarıldı. Sunucuda düz bir `git pull` yaparsanız
-> **canlı veritabanınız silinebilir**. `scripts/update.sh` betiği önce yedek alır, veritabanını
-> `/var/lib/lrdocument/prod.db` konumuna taşır, sonra kodu günceller. Bu yüzden ilk güncellemeyi
-> mutlaka aşağıdaki yolla yapın.
+Kurulum klasörü: `/var/www/LrDocument`, veritabanı ve anahtarlar: `/var/lib/lrdocument`.
+Güncellemeyi `scripts/update.sh` yapar; PM2'de bu klasörde çalışan süreci kendisi bulur.
+Aşağıda geçen `PM2_ADI` yerine `pm2 list` çıktısındaki adı yazın.
 
 ---
 
-## 0. Bilgisayarınızda: kodu GitHub'a gönderin
+## Her güncellemede (2 adım)
+
+**1. Bilgisayarınızda** kodu GitHub'a gönderin:
 
 ```bash
 git add -A
-git commit -m "v2.0.0: güvenlik düzeltmeleri ve sade tasarım"
+git commit -m "Güncelleme"
 git push origin master
 ```
 
----
-
-## 1. Sunucuda: ilk güncelleme (bir kez)
+**2. Sunucuda** tek komut:
 
 ```bash
 ssh root@SUNUCU_IP_ADRESINIZ
+bash /var/www/LrDocument/scripts/update.sh
+```
+
+Betik sırasıyla: veritabanını yedekler → kodu çeker → `npm ci` → yeni tabloları ekler
+(`prisma db push`, veri silmez) → derler → PM2'yi yeniden başlatır → sitenin yanıt verdiğini kontrol eder.
+Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/lrdocument/backups/` altında durur.
+
+---
+
+## Bu sürümle gelenler ve yapmanız gerekenler
+
+### E-posta doğrulama: ayar gerekmez
+
+- Doğrulama, şifre sıfırlama ve öğrenci kodları **hiçbir e-posta hizmeti kurmadan** gönderilir:
+  sunucu iletiyi doğrudan alıcının posta sunucusuna (Gmail, Outlook…) teslim eder.
+- Gönderen adres otomatik olarak `no-reply@alanadiniz` olur.
+- **İlk iş:** Yönetici Paneli › Varsayılanlar › *E-posta gönderimi* › **Bana test e-postası gönder**.
+  - E-posta geldiyse her şey hazır; spam klasörüne de bakın.
+  - "25 numaralı çıkış portu kapalı olabilir" hatası alırsanız sunucu firmanız e-posta portunu
+    engelliyordur. Birçok VPS firması (DigitalOcean, Hetzner, AWS…) bunu varsayılan olarak yapar;
+    panelden ya da destek talebiyle açtırabilirsiniz.
+  - Port açılana kadar: Varsayılanlar › Güvenlik › *Girişte e-posta doğrulaması zorunlu* → **Kapalı**.
+    Bunu yapmazsanız doğrulanmamış kullanıcılar giriş yapamaz. Kayıt bekleyen kullanıcıları listede
+    **Doğrulanmış say** ile onaylayabilirsiniz.
+- **İsteğe bağlı, spam'e düşmeyi azaltır:** aynı paneldeki üç TXT kaydını (SPF, DKIM, DMARC) alan
+  adınızın DNS ayarlarına ekleyin.
+- **İsteğe bağlı:** kendi e-posta sunucunuzu kullanmak isterseniz `.env` dosyasına
+  `SMTP_URL="smtps://kullanici:sifre@smtp.ornek.com"` ekleyin.
+- DKIM anahtarı ilk gönderimde `/var/lib/lrdocument/dkim-private.pem` olarak oluşur. Bu dosyayı
+  silmeyin; silerseniz DNS'teki DKIM kaydının yenilenmesi gerekir.
+
+### Mevcut kullanıcılar
+
+E-postası henüz doğrulanmamış kullanıcılar ilk girişte e-postalarına gelen 6 haneli kodu girer.
+Bu bir kez yapılır. Yöneticiler bundan muaftır.
+
+### Güvenlik değişikliği: uygulama yalnızca 127.0.0.1'i dinler
+
+- Betik PM2 sürecini bu sürümde **bir kez silip yeniden oluşturur** (`-H 127.0.0.1`).
+- Böylece 3000 portu internete açık kalmaz; site yalnızca nginx/HTTPS üzerinden açılır.
+- nginx yapılandırmanız `proxy_pass http://127.0.0.1:3000;` ise başka bir şey yapmanız gerekmez.
+- Siteyi nginx olmadan `http://IP:3000` ile açıyorsanız betiği şöyle çalıştırın:
+
+```bash
+BIND_HOST=0.0.0.0 bash /var/www/LrDocument/scripts/update.sh
+```
+
+### SEO
+
+- `https://alanadiniz/sitemap.xml` ve `/robots.txt` otomatik üretilir.
+- Google Search Console'a sitenizi ekleyip sitemap adresini bildirin.
+- Arama sonuçlarındaki başlık ve açıklamayı Yönetici Paneli › Açılış sayfası › *Arama motorları (SEO)*
+  bölümünden değiştirebilirsiniz.
+- Sunucu adı otomatik algılanır. İsterseniz `.env` dosyasına `SITE_URL="https://alanadiniz.com"` ekleyin.
+
+### Yasal metinler
+
+Yönetici Paneli › Açılış sayfası › *Yasal metinler* bölümünde **veri sorumlusu**, **iletişim e-postası**
+ve **satıcı bilgileri** (unvan, adres, vergi no) alanlarını doldurun. Bunlar KVKK ve mesafeli satış
+metinlerinde yasal olarak gereklidir.
+
+---
+
+## Eski kurulumdan ilk geçiş (yalnızca v1.3.0'dan geliyorsanız)
+
+Eski sürümde veritabanı (`prisma/dev.db`) git deposunun içindeydi. Düz `git pull` canlı veritabanını
+silebileceği için ilk geçişi betiğin en yeni hâliyle yapın:
+
+```bash
 cd /var/www/LrDocument
-
-# (önerilir) sqlite3 kurulu olsun: çalışan veritabanından tutarlı yedek alır
 sudo apt install -y sqlite3
-
-# Yeni betiği, sunucudaki kodu henüz değiştirmeden indirin ve çalıştırın
 git fetch origin master
 git show origin/master:scripts/update.sh > /tmp/lrdocument-update.sh
 bash /tmp/lrdocument-update.sh
 ```
-
-Betik sırasıyla şunları yapar ve her adımı ekrana yazar:
-
-| Adım | İşlem |
-|---|---|
-| 1 | Veritabanını `/var/lib/lrdocument/backups/` altına zaman damgalı olarak yedekler |
-| 2 | `prisma/dev.db` dosyasını `/var/lib/lrdocument/prod.db` konumuna taşır ve `.env` içindeki `DATABASE_URL` değerini günceller |
-| 3 | `JWT_SECRET` eski/zayıfsa yeni, güçlü bir anahtar üretir |
-| 4 | Kodu `master` dalından çeker |
-| 5 | `npm ci`, `prisma generate`, `prisma db push` (yeni `sessionVersion` kolonu) ve `npm run build` |
-| 6 | PM2'yi yeniden başlatır ve uygulamanın yanıt verdiğini kontrol eder |
-
-Uygulama 2. adımdan derleme bitene kadar (genelde 1–3 dakika) kapalı kalır.
-
-### Güncellemeden hemen sonra
-
-1. **Tüm kullanıcılar bir kez yeniden giriş yapacak** (JWT anahtarı değiştiği için).
-2. **Yönetici şifresini değiştirin:** `admin@lrdocument.com` hesabının eski şifresi kodun içinde
-   açıkça yazılıydı. Giriş yapın → *Hesap & Güvenlik* → *Şifre Güncelleme*.
-3. Sitenin açıldığını kontrol edin: `https://lrion.com.tr`
-
----
-
-## 2. Sonraki güncellemeler
-
-İlk güncellemeden sonra betik depoda olduğu için tek komut yeterli:
-
-```bash
-bash /var/www/LrDocument/scripts/update.sh
-```
-
-Eski rehberdeki `update.sh` dosyası `main` dalını çekiyordu; depo `master` dalını kullanıyor.
-Eski dosyayı silebilirsiniz: `rm /var/www/LrDocument/update.sh`
 
 ---
 
@@ -108,6 +132,9 @@ bash /var/www/LrDocument/scripts/update.sh
 | Uygulama açılmıyor | `pm2 logs PM2_ADI --lines 100`. Üretimde `JWT_SECRET` 32 karakterden kısaysa uygulama bilerek başlamaz. |
 | Güncelleme yarıda kaldı | Veriler yedektedir. `pm2 restart PM2_ADI` ile önceki derlemeyle devam edip sorunu giderdikten sonra betiği tekrar çalıştırın. |
 | Yedekten geri dönmek | `pm2 stop PM2_ADI && cp /var/lib/lrdocument/backups/lrdocument-TARIH.db /var/lib/lrdocument/prod.db && pm2 start PM2_ADI` |
-| Giriş denemeleri engellendi | Güvenlik için aynı e-postaya 15 dakikada 8, aynı IP'den 20 hatalı deneme sınırı var; süre dolunca açılır veya `pm2 restart PM2_ADI` ile sıfırlanır. |
+| Giriş denemeleri engellendi | Güvenlik için aynı e-postaya 15 dakikada 8, aynı IP'den 20 hatalı deneme sınırı var (kurumsal kod: IP başına 10); süre dolunca açılır veya `pm2 restart PM2_ADI` ile sıfırlanır. |
+| Doğrulama e-postası gelmiyor | Yönetici Paneli › Varsayılanlar › E-posta gönderimi'nde son hatayı görün. Port 25 kapalıysa sunucu firmanızdan açtırın veya `SMTP_URL` tanımlayın; bu sırada girişte e-posta doğrulamasını kapatabilirsiniz. |
+| Kullanıcı telefonunu kaybetti (iki adımlı doğrulama) | Kurtarma kodlarından biriyle girebilir. Kodları da yoksa Yönetici Paneli › Kullanıcılar › **2 adımlı › Sıfırla**. |
+| Güncellemeden sonra site açılmıyor ama `pm2 list` "online" | nginx `proxy_pass` adresinin `http://127.0.0.1:3000` olduğunu kontrol edin (`sudo nginx -t && sudo systemctl reload nginx`). |
 
 Betik her çalışmada son 20 yedeği `/var/lib/lrdocument/backups/` altında tutar.

@@ -21,9 +21,21 @@ export async function GET() {
         organization: true,
         seats: true,
         lastSeenAt: true,
+        emailVerifiedAt: true,
+        twoFactorEnabledAt: true,
         studentProfile: {
-          select: { university: true, studentEmail: true, department: true, classYear: true, studentNo: true },
+          select: {
+            university: true,
+            studentEmail: true,
+            department: true,
+            classYear: true,
+            studentNo: true,
+            verifiedAt: true,
+            verifyMethod: true,
+            documentStatus: true,
+          },
         },
+        studentDocument: { select: { fileName: true, mime: true, uploadedAt: true } },
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -34,6 +46,7 @@ export async function GET() {
             events: true,
             mediaItems: true,
             transactions: true,
+            orgMembers: true,
           },
         },
       },
@@ -49,7 +62,12 @@ export async function GET() {
 
     // Signed-in users seen within the last two minutes (the app pings once a minute).
     const liveSince = Date.now() - LIVE_WINDOW_MS;
-    const liveUsers = users.filter((u) => u.status === 'APPROVED' && u.lastSeenAt && u.lastSeenAt.getTime() >= liveSince).length;
+    const liveMembers = await prisma.orgMember.count({
+      where: { lastSeenAt: { gte: new Date(liveSince) }, owner: { status: 'APPROVED', accountType: 'CORPORATE' } },
+    });
+    // Corporate members (code sign-in) count as live users too.
+    const liveUsers =
+      users.filter((u) => u.status === 'APPROVED' && u.lastSeenAt && u.lastSeenAt.getTime() >= liveSince).length + liveMembers;
 
     const [totalNotes, totalTasks] = await Promise.all([
       prisma.note.count(),

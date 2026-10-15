@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { BadRequestError, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 import { encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
+import { ENTITY_MODULE, accessOf } from '@/lib/corporate';
+import { publish, toClientShape } from '@/lib/realtime';
 
 type Row = Record<string, unknown>;
 
@@ -61,6 +63,25 @@ function ref(v: unknown): string | null {
 }
 
 const PRIORITIES = ['yuksek', 'orta', 'dusuk'] as const;
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function date(v: unknown, fallback: string): string {
+  return typeof v === 'string' && DATE_RE.test(v) ? v : fallback;
+}
+/** Customer payments: one entry per paid month of the commitment. */
+function payments(v: unknown): string {
+  const list = Array.isArray(v) ? v : [];
+  const out: { month: string; paidAt: string; amount: number }[] = [];
+  const seen = new Set<string>();
+  for (const p of list.slice(0, 600)) {
+    if (!p || typeof p !== 'object') continue;
+    const { month, paidAt, amount } = p as Record<string, unknown>;
+    if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month) || seen.has(month)) continue;
+    seen.add(month);
+    out.push({ month, paidAt: date(paidAt, `${month}-01`), amount: Math.max(0, float(amount, 0)) });
+  }
+  return JSON.stringify(out);
+}
 
 // ---------------------------------------------------------------------------
 // Entity definitions. `fields` maps client data to DB columns (never userId/id).
@@ -170,6 +191,27 @@ const ENTITIES: Record<string, EntityDef> = {
       minPaymentRate: d.type === 'gider' && d.isDebt ? rate(d.minPaymentRate, 100) : null,
     }),
   },
+  customer: {
+    delegate: () => prisma.customer as unknown as Delegate,
+    model: 'customer',
+    fields: (d) => {
+      const startDate = date(d.startDate, new Date().toISOString().slice(0, 10));
+      const endDate = date(d.endDate, startDate);
+      return {
+        name: text(d.name, 200) || 'Adsız müşteri',
+        contactName: optText(d.contactName, 200),
+        phone: optText(d.phone, 40),
+        email: optText(d.email, 254),
+        address: optText(d.address, 1000),
+        monthlyFee: Math.max(0, float(d.monthlyFee, 0)),
+        paymentDay: int(d.paymentDay, 1, 1, 31),
+        startDate,
+        endDate: endDate < startDate ? startDate : endDate,
+        payments: payments(d.payments),
+        notes: optText(d.notes, MAX_SHORT),
+      };
+    },
+  },
   folder: {
     namespaced: true,
     delegate: () => prisma.folder as unknown as Delegate,
@@ -198,7 +240,7 @@ export async function POST(req: Request) {
     const session = await requireAuth();
     const userId = session.userId;
 
-    const wait = rateLimit(`mutate:${userId}`, 600, 60_000);
+    const wait = rateLimit(`mutate:${session.memberId ?? userId}`, 600, 60_000);
     if (wait) return tooManyRequests(wait);
 
     const body = await readJsonObject(req);
@@ -213,6 +255,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
     }
 
+    // Kurumsal: the owner / managers may edit everything, members per module (see Kurum page).
+    // Müşteriler exists only for corporate accounts (accessOf returns 'none' otherwise).
+    if (accessOf(session, ENTITY_MODULE[entity as string]) !== 'edit') {
+      return NextResponse.json({ error: 'Bu bölümde değişiklik yapma yetkiniz yok.' }, { status: 403 });
+    }
+
     const rawId = typeof body.id === 'string' && body.id ? body.id : data.id;
     if (typeof rawId !== 'string' || !rawId || rawId.length > MAX_ID) {
       return NextResponse.json({ error: 'Geçersiz kayıt kimliği.' }, { status: 400 });
@@ -220,8 +268,16 @@ export async function POST(req: Request) {
     const dbId = def.namespaced ? `${userId}_${rawId}` : rawId;
     const delegate = def.delegate();
 
+    // Kurumsal: push the change to the team's other open tabs (see /api/realtime).
+    const origin = (req.headers.get('x-client-id') ?? '').slice(0, 64);
+    const broadcast = (payload?: Record<string, unknown>) => {
+      if (session.accountType !== 'CORPORATE') return;
+      publish(userId, { entity: entity as string, action, id: rawId, data: payload, by: session.name, origin });
+    };
+
     if (action === 'delete') {
       await delegate.deleteMany({ where: { id: dbId, userId } });
+      broadcast();
       return NextResponse.json({ success: true });
     }
 
@@ -231,13 +287,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
     }
 
-    const fields = encryptRow(def.model, userId, def.fields(data));
+    const plain = def.fields(data);
+    const fields = encryptRow(def.model, userId, plain);
     await delegate.upsert({
       where: { id: dbId },
       update: fields,
       create: { id: dbId, userId, ...fields, ...(def.createOnly?.(data) ?? {}) },
     });
 
+    const now = new Date().toISOString();
+    broadcast({
+      ...toClientShape({ ...plain, ...(existing ? {} : (def.createOnly?.(data) ?? {})) }),
+      id: rawId,
+      updatedAt: now,
+      ...(existing ? {} : { createdAt: now }),
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleRouteError(error, 'Data mutate error', 'Veri kaydedilirken hata oluştu.');

@@ -18,9 +18,15 @@ export async function PATCH(req: Request) {
     }
 
     const fields = encryptRow('studentProfile', session.userId, parsed.data);
+    // A verification by e-mail belongs to that address: a new student e-mail must be verified again.
+    const before = await prisma.studentProfile.findUnique({ where: { userId: session.userId }, select: { studentEmail: true, verifyMethod: true } });
+    const resetVerification =
+      before?.verifyMethod === 'email' && before.studentEmail.toLowerCase() !== String(parsed.data.studentEmail ?? '').toLowerCase()
+        ? { verifiedAt: null, verifyMethod: null }
+        : {};
     const profile = await prisma.studentProfile.upsert({
       where: { userId: session.userId },
-      update: fields,
+      update: { ...fields, ...resetVerification },
       create: { userId: session.userId, ...fields },
     });
 

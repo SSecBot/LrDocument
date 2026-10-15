@@ -28,6 +28,16 @@ model User {
   preferences      String              @default("")
   /// Set once all of the user's existing rows were encrypted (see src/lib/dataCrypto.ts).
   dataEncryptedAt  DateTime?
+  /// The login e-mail was confirmed with a code sent to it (src/lib/verification.ts).
+  emailVerifiedAt  DateTime?
+  /// İki adımlı doğrulama (TOTP, authenticator app). Secrets are encrypted with the user's key.
+  twoFactorSecret     String?
+  twoFactorPending    String?
+  twoFactorEnabledAt  DateTime?
+  /// Last accepted 30-second step, so a code cannot be replayed.
+  twoFactorLastStep   Int?
+  /// JSON array of HMACs of unused recovery codes.
+  twoFactorRecovery   String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -40,7 +50,11 @@ model User {
   transactions FinanceTransaction[]
   categories   FinanceCategory[]
   kanbanCards  KanbanCard[]
+  customers    Customer[]
+  orgMembers   OrgMember[]
   studentProfile StudentProfile?
+  studentDocument StudentDocument?
+  verificationCodes VerificationCode[]
 
   @@index([status, subscriptionType])
   @@index([status, subscriptionPlan])
@@ -222,6 +236,11 @@ model StudentProfile {
   classYear    Int      @default(1) // 0 = hazırlık
   studentNo    String?
   data         String   @default("{}") // JSON: AcademicData (see src/lib/academic/types.ts)
+  /// Öğrencilik doğrulaması: "email" (code to the university address) or "document" (approved by an admin).
+  verifiedAt   DateTime?
+  verifyMethod String?
+  /// Uploaded student certificate awaiting review: "pending" | "rejected".
+  documentStatus String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -232,4 +251,81 @@ model SystemSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Kurumsal: a person the corporate owner added. Members sign in with their personal code and work
+/// in the owner's (shared) data space with the permissions the owner / managers gave them.
+model OrgMember {
+  id             String    @id @default(cuid())
+  ownerId        String
+  name           String
+  /// HMAC-SHA256 of the personal corporate code; the code itself is only shown once.
+  codeHash       String    @unique
+  /// Last characters of the code, so the owner can tell codes apart.
+  codeHint       String
+  role           String    @default("MEMBER") // "MANAGER" | "MEMBER"
+  /// JSON: module -> "none" | "view" | "edit" (see src/lib/corporate.ts)
+  permissions    String    @default("{}")
+  /// Encrypted JSON of the member's own UI preferences.
+  preferences    String    @default("")
+  sessionVersion Int       @default(0)
+  lastSeenAt     DateTime?
+  createdAt      DateTime  @default(now())
+  owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+/// Kurumsal › Müşteriler: monthly fee and commitment period; payments are tracked per month.
+model Customer {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  monthlyFee  Float    @default(0)
+  /// Day of the month the payment is due (1-31; clamped to the month's length).
+  paymentDay  Int      @default(1)
+  startDate   String   // YYYY-MM-DD, commitment start
+  endDate     String   // YYYY-MM-DD, commitment end
+  /// JSON: [{ month: "YYYY-MM", paidAt: "YYYY-MM-DD", amount }]
+  payments    String   @default("[]")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// One-time codes sent by e-mail (account e-mail, e-mail change, student e-mail). Only an HMAC of
+/// the code is stored; codes expire and allow a few attempts.
+model VerificationCode {
+  id         String    @id @default(cuid())
+  userId     String
+  purpose    String    // "email" | "email-change" | "student-email"
+  /// Address the code was sent to (lower-case).
+  target     String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+/// Öğrenci belgesi uploaded for manual verification (encrypted; deleted once reviewed).
+model StudentDocument {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  fileName   String
+  mime       String
+  /// Base64 of the file, encrypted with the user's key.
+  data       String
+  uploadedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

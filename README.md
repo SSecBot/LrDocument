@@ -114,7 +114,7 @@ Derlenen uygulamayı PM2 üzerinden başlatalım ve sunucu yeniden başladığı
 
 ```bash
 # Uygulamayı 3000 portunda başlatın
-pm2 start npm --name "lrdocument" -- start -- -p 3000
+pm2 start npm --name "lrdocument" -- start -- -p 3000 -H 127.0.0.1
 
 # PM2 başlangıç ayarını yapın ve kaydedin
 pm2 startup

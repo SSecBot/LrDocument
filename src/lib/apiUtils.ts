@@ -69,6 +69,11 @@ export function getClientIp(req: NextRequest): string {
   return 'unknown';
 }
 
+/** Host the visitor used (nginx passes it as Host); used for the e-mail sender domain. */
+export function requestHost(req: Request): string | null {
+  return req.headers.get('x-forwarded-host') || req.headers.get('host');
+}
+
 /** Returns the number of seconds to wait, or 0 when the request is allowed. */
 export function rateLimit(key: string, limit: number, windowMs: number): number {
   const now = Date.now();

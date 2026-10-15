@@ -15,8 +15,19 @@ import { FinanceWorkspace } from '@/components/finance/FinanceWorkspace';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { AcademicWorkspace } from '@/components/academic/AcademicWorkspace';
+import { CustomersWorkspace } from '@/components/customers/CustomersWorkspace';
+import { TeamWorkspace } from '@/components/team/TeamWorkspace';
 import { hasStudentAccess } from '@/lib/access';
-import { ShieldCheck } from 'lucide-react';
+import { accessOf, CORP_MODULE_LABEL, type CorpModule } from '@/lib/corporate';
+import { Eye, ShieldCheck } from 'lucide-react';
+
+const TAB_MODULE: Partial<Record<string, CorpModule>> = {
+  notes: 'notes',
+  customers: 'customers',
+  tasks: 'work',
+  calendar: 'calendar',
+  finance: 'finance',
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -46,6 +57,10 @@ export default function DashboardPage() {
     return null;
   }
 
+  // Kurumsal: modules hidden from this member fall back to the overview; read-only ones get a notice.
+  const tabModule = TAB_MODULE[activeTab];
+  const access = tabModule ? accessOf(currentUser, tabModule) : 'edit';
+
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-app text-fg">
       <CommandPalette />
@@ -55,12 +70,21 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Header />
 
+        {access === 'view' && tabModule && (
+          <div className="shrink-0 border-b border-line bg-surface-2 px-4 py-2 text-xs text-subtle flex items-center gap-2" role="status">
+            <Eye className="w-3.5 h-3.5" />
+            {CORP_MODULE_LABEL[tabModule]} bölümünü görüntüleyebilirsiniz; değişiklik yetkisini kurum sahibi veya yöneticiler verir.
+          </div>
+        )}
+
         <main className="flex-1 flex overflow-hidden">
-          {activeTab === 'dashboard' && <DashboardOverview />}
-          {activeTab === 'notes' && <NotesWorkspace />}
-          {activeTab === 'tasks' && <WorkWorkspace />}
-          {activeTab === 'calendar' && <CalendarWorkspace />}
-          {activeTab === 'finance' && <FinanceWorkspace />}
+          {(activeTab === 'dashboard' || access === 'none') && <DashboardOverview />}
+          {activeTab === 'notes' && access !== 'none' && <NotesWorkspace />}
+          {activeTab === 'customers' && access !== 'none' && <CustomersWorkspace />}
+          {activeTab === 'tasks' && access !== 'none' && <WorkWorkspace />}
+          {activeTab === 'calendar' && access !== 'none' && <CalendarWorkspace />}
+          {activeTab === 'finance' && access !== 'none' && <FinanceWorkspace />}
+          {activeTab === 'team' && (currentUser?.orgRole === 'OWNER' || currentUser?.orgRole === 'MANAGER') && <TeamWorkspace />}
           {activeTab === 'academic' && hasStudentAccess(currentUser) && <AcademicWorkspace />}
           {activeTab === 'settings' && <SettingsView />}
           {activeTab === 'admin' && currentUser?.role === 'ADMIN' && <AdminDashboard />}

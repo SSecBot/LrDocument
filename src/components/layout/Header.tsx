@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { canEdit, isCorporate } from '@/lib/corporate';
 import { AccountSwitcher } from './AccountSwitcher';
 import {
   Menu,
@@ -56,7 +57,11 @@ export const Header: React.FC = () => {
       case 'dashboard':
         return { title: 'Genel Bakış' };
       case 'notes':
-        return { title: 'Notlar' };
+        return { title: isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar' };
+      case 'customers':
+        return { title: 'Müşteriler' };
+      case 'team':
+        return { title: 'Kurum ve Ekip' };
       case 'tasks':
         return { title: 'Görevler' };
       case 'calendar':
@@ -255,6 +260,7 @@ export const Header: React.FC = () => {
                 onClick={() => setIsNewMenuOpen(false)}
               />
               <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-surface border border-line rounded-lg shadow-xl p-1.5 z-40 space-y-1 animate-fade-in max-w-[calc(100vw-24px)]">
+                {canEdit(currentUser, 'notes') && (
                 <button
                   onClick={() => {
                     const id = addNote();
@@ -267,7 +273,9 @@ export const Header: React.FC = () => {
                   <FileText className="w-4 h-4 text-emerald-400" />
                   <span>Yeni Not</span>
                 </button>
+                )}
 
+                {canEdit(currentUser, 'work') && (
                 <button
                   onClick={() => {
                     addKanbanCard({
@@ -286,7 +294,9 @@ export const Header: React.FC = () => {
                   <Kanban className="w-4 h-4 text-emerald-400" />
                   <span>Yeni Kanban Kartı</span>
                 </button>
+                )}
 
+                {canEdit(currentUser, 'work') && (
                 <button
                   onClick={() => {
                     addTask({ title: 'Yeni Görev', completed: false, priority: systemSettings.tasks.defaultPriority });
@@ -299,7 +309,9 @@ export const Header: React.FC = () => {
                   <CheckSquare className="w-4 h-4 text-amber-400" />
                   <span>Yeni Görev</span>
                 </button>
+                )}
 
+                {canEdit(currentUser, 'calendar') && (
                 <button
                   onClick={() => {
                     setActiveTab('calendar');
@@ -310,7 +322,9 @@ export const Header: React.FC = () => {
                   <Calendar className="w-4 h-4 text-purple-400" />
                   <span>Takvime Etkinlik Ekle</span>
                 </button>
+                )}
 
+                {canEdit(currentUser, 'finance') && (
                 <button
                   onClick={() => {
                     setActiveTab('finance');
@@ -321,6 +335,7 @@ export const Header: React.FC = () => {
                   <Wallet className="w-4 h-4 text-emerald-400" />
                   <span>Yeni Gelir / Gider</span>
                 </button>
+                )}
               </div>
             </>
           )}

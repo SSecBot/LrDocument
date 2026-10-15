@@ -7,7 +7,7 @@ import { activateAccount, rememberedAccounts, validAccountUsers } from '@/lib/ac
 export async function POST(req: Request) {
   try {
     const { userId } = await readJsonObject(req, 1024);
-    if (typeof userId !== 'string' || !userId) {
+    if (typeof userId !== 'string' || !userId || userId.length > 200) {
       return NextResponse.json({ error: 'Geçersiz hesap.' }, { status: 400 });
     }
     const { list, active } = await rememberedAccounts();
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       );
     }
     const response = NextResponse.json({ success: true });
-    await activateAccount(response, target, withAccount(list, { userId: target.id, sv: target.sessionVersion }));
+    await activateAccount(response, target, withAccount(list, { userId: target.key, sv: target.sessionVersion }));
     return response;
   } catch (error) {
     return handleRouteError(error, 'Account switch error', 'Hesap değiştirilemedi.');

@@ -20,7 +20,8 @@ export async function GET() {
     // Shape matches the client-side UserProfile type (id, not userId); the session-version
     // counter is internal and not exposed.
     const { userId, sv: _sv, ...rest } = session;
-    const user = { id: userId, ...rest };
+    // A corporate member is identified by its member key; `userId` is the shared data owner.
+    const user = { id: rest.memberId ? `m:${rest.memberId}` : userId, ...rest };
 
     return NextResponse.json(
       { authenticated: true, user },

@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Σ LrDocument — Matematik & İçerik Üretim Çalışma Alanı',
-  description: 'Matematik meraklıları, içerik üreticileri ve öğrenciler için hepsi bir arada LaTeX notları, ders ve sınav takibi, görev yönetimi ve yayın takvimi platformu.',
+  // Pages set their own title; "%s · LrDocument" keeps the brand in every tab and search result.
+  title: { default: 'LrDocument — Ders takibi, LaTeX notlar, görev ve takvim', template: '%s · LrDocument' },
+  description: 'Öğrenciler için ders, devamsızlık ve not takibi; LaTeX notlar, görevler, takvim, bütçe ve kurumsal ekipler için ortak çalışma alanı.',
+  applicationName: 'LrDocument',
+  formatDetection: { telephone: false },
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -35,7 +38,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#101113',
+  themeColor: '#0e0f11',
   colorScheme: 'dark',
 };
 

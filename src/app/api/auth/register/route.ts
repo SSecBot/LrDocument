@@ -6,6 +6,8 @@ import { studentProfileSchema } from '@/lib/studentProfile';
 import { encryptRow } from '@/lib/dataCrypto';
 import { normalizeAccountType } from '@/lib/pricing';
 import { getSystemSettings } from '@/lib/systemSettingsServer';
+import { issueCode } from '@/lib/verification';
+import { siteHostFrom } from '@/lib/mailer';
 import {
   getClientIp,
   handleRouteError,
@@ -13,6 +15,7 @@ import {
   normalizeName,
   rateLimit,
   readJsonObject,
+  requestHost,
   tooManyRequests,
 } from '@/lib/apiUtils';
 
@@ -125,9 +128,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // E-posta doğrulaması: the code is sent right away; the sign-up screen asks for it.
+    let verification: { sent: boolean; error?: string } = { sent: true };
+    try {
+      await issueCode(newUser.id, 'email', newUser.email, siteHostFrom(requestHost(req)));
+    } catch (err) {
+      verification = { sent: false, error: (err as Error).message };
+    }
+
     return NextResponse.json(
       {
         success: true,
+        verification,
         message: 'Talebiniz oluşturuldu. Mail üzerinden iletişime geçilecektir.',
         status: 'PENDING',
         user: {

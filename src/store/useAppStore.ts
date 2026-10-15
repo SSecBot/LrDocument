@@ -17,11 +17,13 @@ import {
   AppNotification,
   ExchangeRates,
   UserProfile,
+  Customer,
 } from '@/types';
 import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
 import { DEFAULT_PREFERENCES, parsePreferences, type UserPreferences } from '@/lib/preferences';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { generateId, toLocalDateString } from '@/lib/utils';
+import { CORP_MODULE_LABEL, ENTITY_MODULE, canEdit, isCorporate, type CorpModule } from '@/lib/corporate';
 import {
   DEFAULT_EXCHANGE_RATES,
   fetchLiveExchangeRates,
@@ -46,7 +48,7 @@ interface AppState {
   checkAuth: (force?: boolean) => Promise<void>;
   logout: (all?: boolean) => Promise<void>;
   switchAccount: (userId: string) => Promise<string | null>;
-  loadUserData: () => Promise<void>;
+  loadUserData: (silent?: boolean) => Promise<void>;
 
   // Admin-defined defaults and the user's server-side UI preferences
   systemSettings: SystemSettings;
@@ -119,6 +121,12 @@ interface AppState {
   transactions: FinanceTransaction[];
   financeCategories: FinanceCategoryItem[];
   exchangeRates: ExchangeRates;
+  customers: Customer[];
+  /** Kurumsal: who changed a record from another tab, and when (live updates). */
+  remoteEdits: Record<string, { by: string; at: number }>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateCustomer: (id: string, partial: Partial<Customer>) => void;
+  deleteCustomer: (id: string) => void;
   fetchExchangeRates: () => Promise<void>;
   setExchangeRateMarkup: (markup: number) => void;
   addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => string;
@@ -134,7 +142,7 @@ interface AppState {
 let isAuthCheckStarted = false;
 let isAuthInitialized = false;
 
-const globalState: {
+type GlobalState = {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
@@ -157,7 +165,11 @@ const globalState: {
   transactions: FinanceTransaction[];
   financeCategories: FinanceCategoryItem[];
   exchangeRates: ExchangeRates;
-} = {
+  customers: Customer[];
+  remoteEdits: Record<string, { by: string; at: number }>;
+};
+
+const globalState: GlobalState = {
   currentUser: null,
   isAuthenticated: false,
   isLoadingAuth: true,
@@ -180,6 +192,8 @@ const globalState: {
   transactions: [],
   financeCategories: INITIAL_FINANCE_CATEGORIES,
   exchangeRates: DEFAULT_EXCHANGE_RATES,
+  customers: [],
+  remoteEdits: {},
 };
 
 const listeners = new Set<() => void>();
@@ -188,12 +202,25 @@ function notify() {
   listeners.forEach((fn) => fn());
 }
 
-type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder' | 'category';
+type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder' | 'category' | 'customer';
+
+/**
+ * Kurumsal: a member without edit permission for a module gets a notice instead of a local change
+ * that the server would reject anyway.
+ */
+function guardEdit(module: CorpModule): boolean {
+  if (canEdit(globalState.currentUser, module)) return true;
+  pushToast({ type: 'warning', title: 'Yetkiniz yok', message: `${CORP_MODULE_LABEL[module]} bölümünü yalnızca görüntüleyebilirsiniz.` });
+  return false;
+}
 
 // Upserts are debounced per record so typing in an editor sends one request per pause, not per keystroke.
 const UPSERT_DEBOUNCE_MS = 500;
 const pendingUpserts = new Map<string, { timer: ReturnType<typeof setTimeout>; send: (keepalive?: boolean) => Promise<void> }>();
 let lastSyncErrorAt = 0;
+/** Identifies this tab so it can ignore the live echo of its own changes. */
+const CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+let inFlightMutations = 0;
 
 function reportSyncError(message: string) {
   // Throttle so a flaky connection does not flood the screen with toasts.
@@ -210,11 +237,12 @@ async function sendMutation(
   data?: unknown,
   keepalive = false
 ) {
+  inFlightMutations++;
   try {
     const body = JSON.stringify({ entity, action, id, data });
     const res = await fetch('/api/data/mutate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': CLIENT_ID },
       body,
       // keepalive lets the request finish while the page unloads (browsers cap it at 64 KB).
       keepalive: keepalive && body.length < 60_000,
@@ -229,10 +257,14 @@ async function sendMutation(
     }
   } catch {
     reportSyncError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.');
+  } finally {
+    inFlightMutations--;
   }
 }
 
 function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete', id?: string, data?: unknown) {
+  // Side effects into a module the member may not edit (e.g. a task's calendar entry) stay local.
+  if (!canEdit(globalState.currentUser, ENTITY_MODULE[entity])) return;
   const key = `${entity}:${id}`;
   const pending = pendingUpserts.get(key);
   if (pending) {
@@ -492,6 +524,7 @@ const checkAuth = async (force: boolean = false) => {
       globalState.isAuthenticated = true;
       startPresence();
       await loadUserData();
+      if (isCorporate(globalState.currentUser)) startRealtime();
     } else {
       globalState.currentUser = null;
       globalState.isAuthenticated = false;
@@ -506,10 +539,12 @@ const checkAuth = async (force: boolean = false) => {
   }
 };
 
-const loadUserData = async () => {
+const loadUserData = async (silent = false) => {
   try {
-    globalState.isLoadingData = true;
-    notify();
+    if (!silent) {
+      globalState.isLoadingData = true;
+      notify();
+    }
     const res = await fetch('/api/data');
     if (res.ok) {
       const json = await res.json();
@@ -519,6 +554,7 @@ const loadUserData = async () => {
         globalState.kanbanCards = json.data.kanbanCards || [];
         globalState.events = json.data.events || [];
         globalState.transactions = json.data.transactions || [];
+        globalState.customers = json.data.customers || [];
         globalState.folders = json.data.folders || [];
         globalState.preferences = parsePreferences(json.data.preferences);
         if (globalState.preferences.exchangeMarkupTRY !== null) {
@@ -554,6 +590,7 @@ const loadUserData = async () => {
 
 /** Clears every in-memory record and reloads, so no data of the previous account survives. */
 function leaveTo(path: string) {
+  stopRealtime();
   globalState.currentUser = null;
   globalState.isAuthenticated = false;
   isAuthInitialized = false;
@@ -563,6 +600,7 @@ function leaveTo(path: string) {
   globalState.kanbanCards = [];
   globalState.events = [];
   globalState.transactions = [];
+  globalState.customers = [];
   globalState.folders = [];
   globalState.preferences = DEFAULT_PREFERENCES;
   notify();
@@ -604,6 +642,78 @@ const switchAccount = async (userId: string): Promise<string | null> => {
   return null;
 };
 
+// ---------------------------------------------------------------------------
+// Kurumsal live updates: teammates' saved changes arrive over /api/realtime and are merged into
+// the store. A record this tab is still editing (unsent debounced write) keeps the local version.
+// ---------------------------------------------------------------------------
+type RealtimeEvent = {
+  entity: MutationEntity;
+  action: 'create' | 'upsert' | 'delete';
+  id: string;
+  data?: Record<string, unknown>;
+  by: string;
+  origin: string;
+};
+
+const ENTITY_STATE: Record<MutationEntity, keyof GlobalState> = {
+  note: 'notes',
+  task: 'tasks',
+  kanban: 'kanbanCards',
+  event: 'events',
+  finance: 'transactions',
+  folder: 'folders',
+  category: 'financeCategories',
+  customer: 'customers',
+};
+
+function applyRealtimeEvent(evt: RealtimeEvent) {
+  if (evt.origin === CLIENT_ID) return;
+  const key = ENTITY_STATE[evt.entity];
+  if (!key || typeof evt.id !== 'string') return;
+  const list = globalState[key] as unknown as { id: string }[];
+  if (evt.action === 'delete') {
+    globalState[key] = list.filter((r) => r.id !== evt.id) as never;
+    if (evt.entity === 'note' && globalState.activeNoteId === evt.id) globalState.activeNoteId = null;
+  } else {
+    if (pendingUpserts.has(`${evt.entity}:${evt.id}`) || !evt.data) return;
+    const current = list.find((r) => r.id === evt.id);
+    const merged = { ...(current ?? {}), ...evt.data, id: evt.id };
+    globalState[key] = (current
+      ? list.map((r) => (r.id === evt.id ? merged : r))
+      : evt.entity === 'note'
+        ? [merged, ...list]
+        : [...list, merged]) as never;
+  }
+  globalState.remoteEdits = { ...globalState.remoteEdits, [`${evt.entity}:${evt.id}`]: { by: evt.by, at: Date.now() } };
+  notify();
+}
+
+let realtimeSource: EventSource | null = null;
+function startRealtime() {
+  if (realtimeSource || typeof window === 'undefined' || typeof EventSource === 'undefined') return;
+  let dropped = false;
+  const source = new EventSource('/api/realtime');
+  realtimeSource = source;
+  source.onmessage = (e) => {
+    try {
+      applyRealtimeEvent(JSON.parse(e.data));
+    } catch {}
+  };
+  source.onerror = () => {
+    dropped = true;
+  };
+  source.onopen = () => {
+    // After a dropped connection, catch up on what was missed meanwhile.
+    if (dropped && pendingUpserts.size === 0 && inFlightMutations === 0) loadUserData(true);
+    dropped = false;
+  };
+}
+
+function stopRealtime() {
+  realtimeSource?.close();
+  realtimeSource = null;
+}
+
 // Presence ping for the admin's live-user count (every minute while the tab is visible).
 let presenceTimer: ReturnType<typeof setInterval> | null = null;
 function startPresence() {
@@ -614,7 +724,19 @@ function startPresence() {
     }
   };
   presenceTimer = setInterval(ping, 60_000);
-  document.addEventListener('visibilitychange', ping);
+  document.addEventListener('visibilitychange', () => {
+    ping();
+    // Kurumsal: the workspace is shared, so pick up teammates' changes when the tab is shown again
+    // (only when none of this tab's own edits are still on their way to the server).
+    if (
+      document.visibilityState === 'visible' &&
+      isCorporate(globalState.currentUser) &&
+      pendingUpserts.size === 0 &&
+      inFlightMutations === 0
+    ) {
+      loadUserData(true);
+    }
+  });
 }
 
 
@@ -700,6 +822,7 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
 };
 
 const addFolder = (name: string, description?: string): string => {
+  if (!guardEdit('notes')) return '';
   const id = generateId();
   const newFolder: FolderItem = {
     id,
@@ -715,6 +838,7 @@ const addFolder = (name: string, description?: string): string => {
 };
 
 const updateFolder = (id: string, name: string, description?: string) => {
+  if (!guardEdit('notes')) return;
   globalState.folders = globalState.folders.map((f) =>
     f.id === id ? { ...f, name, description } : f
   );
@@ -724,6 +848,7 @@ const updateFolder = (id: string, name: string, description?: string) => {
 };
 
 const deleteFolder = (id: string) => {
+  if (!guardEdit('notes')) return;
   globalState.folders = globalState.folders.filter((f) => f.id !== id);
   if (globalState.activeFolder === id) {
     globalState.activeFolder = 'all';
@@ -740,6 +865,7 @@ const deleteFolder = (id: string) => {
 };
 
 const addNote = (partial?: Partial<Note>): string => {
+  if (!guardEdit('notes')) return '';
   const id = generateId();
   const newNote: Note = {
     id,
@@ -760,6 +886,7 @@ const addNote = (partial?: Partial<Note>): string => {
 };
 
 const updateNote = (id: string, partial: Partial<Note>) => {
+  if (!guardEdit('notes')) return;
   globalState.notes = globalState.notes.map((n) =>
     n.id === id ? { ...n, ...partial, updatedAt: new Date().toISOString() } : n
   );
@@ -769,6 +896,7 @@ const updateNote = (id: string, partial: Partial<Note>) => {
 };
 
 const deleteNote = (id: string) => {
+  if (!guardEdit('notes')) return;
   globalState.notes = globalState.notes.filter((n) => n.id !== id);
   if (globalState.activeNoteId === id) {
     globalState.activeNoteId = globalState.notes[0]?.id || null;
@@ -778,6 +906,7 @@ const deleteNote = (id: string) => {
 };
 
 const toggleFavoriteNote = (id: string) => {
+  if (!guardEdit('notes')) return;
   globalState.notes = globalState.notes.map((n) =>
     n.id === id ? { ...n, isFavorite: !n.isFavorite, updatedAt: new Date().toISOString() } : n
   );
@@ -787,6 +916,7 @@ const toggleFavoriteNote = (id: string) => {
 };
 
 const togglePinNote = (id: string) => {
+  if (!guardEdit('notes')) return;
   globalState.notes = globalState.notes.map((n) =>
     n.id === id ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() } : n
   );
@@ -796,6 +926,7 @@ const togglePinNote = (id: string) => {
 };
 
 const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
+  if (!guardEdit('work')) return '';
   const id = generateId();
   const newTask: Task = {
     ...task,
@@ -810,6 +941,7 @@ const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
 };
 
 const updateTask = (id: string, partial: Partial<Task>) => {
+  if (!guardEdit('work')) return;
   globalState.tasks = globalState.tasks.map((t) => (t.id === id ? { ...t, ...partial } : t));
   const updated = globalState.tasks.find((t) => t.id === id);
   if (updated) {
@@ -820,6 +952,7 @@ const updateTask = (id: string, partial: Partial<Task>) => {
 };
 
 const toggleTask = (id: string) => {
+  if (!guardEdit('work')) return;
   globalState.tasks = globalState.tasks.map((t) => {
     if (t.id !== id) return t;
     const completed = !t.completed;
@@ -838,6 +971,7 @@ const toggleTask = (id: string) => {
 };
 
 const deleteTask = (id: string) => {
+  if (!guardEdit('work')) return;
   const taskToDelete = globalState.tasks.find((t) => t.id === id);
   if (taskToDelete) syncTaskToCalendar(taskToDelete, true);
   globalState.tasks = globalState.tasks.filter((t) => t.id !== id);
@@ -846,6 +980,7 @@ const deleteTask = (id: string) => {
 };
 
 const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>): string => {
+  if (!guardEdit('work')) return '';
   const id = generateId();
   const newCard: KanbanCard = {
     ...card,
@@ -860,6 +995,7 @@ const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>)
 };
 
 const updateKanbanCard = (id: string, partial: Partial<KanbanCard>) => {
+  if (!guardEdit('work')) return;
   globalState.kanbanCards = globalState.kanbanCards.map((c) =>
     c.id === id ? { ...c, ...partial, updatedAt: new Date().toISOString() } : c
   );
@@ -869,12 +1005,14 @@ const updateKanbanCard = (id: string, partial: Partial<KanbanCard>) => {
 };
 
 const deleteKanbanCard = (id: string) => {
+  if (!guardEdit('work')) return;
   globalState.kanbanCards = globalState.kanbanCards.filter((c) => c.id !== id);
   mutateDB('kanban', 'delete', id);
   notify();
 };
 
 const moveKanbanCard = (id: string, columnId: KanbanColumnId) => {
+  if (!guardEdit('work')) return;
   globalState.kanbanCards = globalState.kanbanCards.map((c) =>
     c.id === id ? { ...c, columnId, updatedAt: new Date().toISOString() } : c
   );
@@ -884,6 +1022,7 @@ const moveKanbanCard = (id: string, columnId: KanbanColumnId) => {
 };
 
 const addEvent = (event: Omit<CalendarEvent, 'id' | 'createdAt'>): string => {
+  if (!guardEdit('calendar')) return '';
   const id = generateId();
   const newEvent: CalendarEvent = {
     ...event,
@@ -897,6 +1036,7 @@ const addEvent = (event: Omit<CalendarEvent, 'id' | 'createdAt'>): string => {
 };
 
 const updateEvent = (id: string, partial: Partial<CalendarEvent>) => {
+  if (!guardEdit('calendar')) return;
   globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, ...partial } : e));
   const updated = globalState.events.find((e) => e.id === id);
   if (updated) mutateDB('event', 'upsert', id, updated);
@@ -904,12 +1044,14 @@ const updateEvent = (id: string, partial: Partial<CalendarEvent>) => {
 };
 
 const deleteEvent = (id: string) => {
+  if (!guardEdit('calendar')) return;
   globalState.events = globalState.events.filter((e) => e.id !== id);
   mutateDB('event', 'delete', id);
   notify();
 };
 
 const updateEventStatus = (id: string, status: EventStatus) => {
+  if (!guardEdit('calendar')) return;
   globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, status } : e));
   const updated = globalState.events.find((e) => e.id === id);
   if (updated) mutateDB('event', 'upsert', id, updated);
@@ -917,6 +1059,7 @@ const updateEventStatus = (id: string, status: EventStatus) => {
 };
 
 const rescheduleEvent = (id: string, newDate: string) => {
+  if (!guardEdit('calendar')) return;
   globalState.events = globalState.events.map((e) => (e.id === id ? { ...e, date: newDate } : e));
   const updated = globalState.events.find((e) => e.id === id);
   if (updated) mutateDB('event', 'upsert', id, updated);
@@ -949,6 +1092,7 @@ const setExchangeRateMarkup = (markup: number) => {
 };
 
 const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string => {
+  if (!guardEdit('finance')) return '';
   const id = generateId();
   const currency = transaction.currency || 'TRY';
   let amountInTRY = transaction.amount;
@@ -981,6 +1125,7 @@ const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'
 };
 
 const updateTransaction = (id: string, partial: Partial<FinanceTransaction>) => {
+  if (!guardEdit('finance')) return;
   globalState.transactions = globalState.transactions.map((t) => {
     if (t.id !== id) return t;
     const currency = partial.currency || t.currency || 'TRY';
@@ -1008,12 +1153,14 @@ const updateTransaction = (id: string, partial: Partial<FinanceTransaction>) => 
 };
 
 const deleteTransaction = (id: string) => {
+  if (!guardEdit('finance')) return;
   globalState.transactions = globalState.transactions.filter((t) => t.id !== id);
   mutateDB('finance', 'delete', id);
   notify();
 };
 
 const toggleTransactionConfirmation = (id: string) => {
+  if (!guardEdit('finance')) return;
   globalState.transactions = globalState.transactions.map((t) =>
     t.id === id ? { ...t, isConfirmed: !t.isConfirmed } : t
   );
@@ -1022,7 +1169,36 @@ const toggleTransactionConfirmation = (id: string) => {
   notify();
 };
 
+const addCustomer = (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): string => {
+  if (!guardEdit('customers')) return '';
+  const id = generateId();
+  const now = new Date().toISOString();
+  const created: Customer = { ...customer, id, createdAt: now, updatedAt: now };
+  globalState.customers = [...globalState.customers, created];
+  mutateDB('customer', 'create', id, created);
+  notify();
+  return id;
+};
+
+const updateCustomer = (id: string, partial: Partial<Customer>) => {
+  if (!guardEdit('customers')) return;
+  globalState.customers = globalState.customers.map((c) =>
+    c.id === id ? { ...c, ...partial, updatedAt: new Date().toISOString() } : c
+  );
+  const updated = globalState.customers.find((c) => c.id === id);
+  if (updated) mutateDB('customer', 'upsert', id, updated);
+  notify();
+};
+
+const deleteCustomer = (id: string) => {
+  if (!guardEdit('customers')) return;
+  globalState.customers = globalState.customers.filter((c) => c.id !== id);
+  mutateDB('customer', 'delete', id);
+  notify();
+};
+
 const addFinanceCategory = (name: string, type: FinanceTransactionType): string => {
+  if (!guardEdit('finance')) return '';
   const id = generateId();
   const newCat: FinanceCategoryItem = { id, name, type, isSystem: false };
   globalState.financeCategories = [...globalState.financeCategories, newCat];
@@ -1032,6 +1208,7 @@ const addFinanceCategory = (name: string, type: FinanceTransactionType): string 
 };
 
 const updateFinanceCategory = (id: string, name: string) => {
+  if (!guardEdit('finance')) return;
   globalState.financeCategories = globalState.financeCategories.map((c) =>
     c.id === id ? { ...c, name } : c
   );
@@ -1041,6 +1218,7 @@ const updateFinanceCategory = (id: string, name: string) => {
 };
 
 const deleteFinanceCategory = (id: string) => {
+  if (!guardEdit('finance')) return;
   globalState.financeCategories = globalState.financeCategories.filter((c) => c.id !== id);
   mutateDB('category', 'delete', id);
   notify();
@@ -1192,5 +1370,11 @@ export function useAppStore(): AppState {
     addFinanceCategory,
     updateFinanceCategory,
     deleteFinanceCategory,
+
+    customers: globalState.customers,
+    remoteEdits: globalState.remoteEdits,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
   };
 }
