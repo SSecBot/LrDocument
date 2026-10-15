@@ -60,6 +60,9 @@ detect_pm2_name() {
 PM2_NAME="${PM2_NAME:-$(detect_pm2_name)}"
 PM2_NAME="${PM2_NAME:-lrdocument}"
 BRANCH="${BRANCH:-master}"
+# PORT given on the command line wins; otherwise the running PM2 process keeps its own port (step 6).
+PORT_FROM_ENV="${PORT_FROM_ENV:-${PORT:+1}}"
+PORT_FROM_ENV="${PORT_FROM_ENV:-0}"
 PORT="${PORT:-3000}"
 DATA_DIR="${DATA_DIR:-/var/lib/lrdocument}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -201,7 +204,7 @@ if [ -d .git ]; then
   # Bu betik güncellendiyse yeni sürümüyle baştan çalıştır (yeni adımlar da uygulansın).
   if [ -z "${LR_UPDATE_REEXEC:-}" ] && ! git diff --quiet "$OLD_HEAD" HEAD -- scripts/update.sh; then
     warn "Güncelleme betiği değişti; yeni sürümüyle yeniden başlatılıyor."
-    export LR_UPDATE_REEXEC=1 APP_DIR PM2_NAME BRANCH PORT DATA_DIR
+    export LR_UPDATE_REEXEC=1 APP_DIR PM2_NAME BRANCH PORT PORT_FROM_ENV DATA_DIR
     trap - ERR
     exec bash "$APP_DIR/scripts/update.sh"
   fi
@@ -237,6 +240,9 @@ pm2_args() {
     });' "$PM2_NAME"
 }
 if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  # Keep the port the process already uses (nginx points at it); PORT only applies when it is unknown.
+  CURRENT_PORT="$(pm2_args | sed -n 's/.*-p \([0-9][0-9]*\).*/\1/p')"
+  if [ -n "$CURRENT_PORT" ] && [ "$PORT_FROM_ENV" != 1 ]; then PORT="$CURRENT_PORT"; fi
   if pm2_args | grep -q -- "-H $BIND_HOST"; then
     pm2 restart "$PM2_NAME" --update-env
   else
