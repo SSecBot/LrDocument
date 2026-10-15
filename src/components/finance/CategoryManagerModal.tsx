@@ -91,7 +91,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             onClick={() => setActiveTab('gider')}
             className={`py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'gider'
-                ? 'bg-[#28181a] border border-rose-800/80 text-rose-300'
+                ? 'bg-rose-950/60 border border-rose-800/80 text-rose-300'
                 : 'text-subtle hover:text-white'
             }`}
           >

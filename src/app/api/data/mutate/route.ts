@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { BadRequestError, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
-import { isSafeMediaUrl } from '@/lib/safeUrl';
+import { encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
 
 type Row = Record<string, unknown>;
 
@@ -52,6 +52,10 @@ function tags(v: unknown): string {
   const list = Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string').slice(0, 50) : [];
   return JSON.stringify(list.map((t) => t.slice(0, 64)));
 }
+function rate(v: unknown, max: number): number | null {
+  const n = optFloat(v);
+  return n === null ? null : Math.min(max, Math.max(0, n));
+}
 function ref(v: unknown): string | null {
   return typeof v === 'string' && v !== '' && v.length <= MAX_ID ? v : null;
 }
@@ -69,6 +73,8 @@ type Delegate = {
 
 interface EntityDef {
   delegate: () => Delegate;
+  /** Model name for at-rest encryption of its text fields. */
+  model: EncryptedModel;
   fields: (d: Row) => Row;
   /** Extra fields only set on creation. */
   createOnly?: (d: Row) => Row;
@@ -79,10 +85,12 @@ interface EntityDef {
 const ENTITIES: Record<string, EntityDef> = {
   note: {
     delegate: () => prisma.note as unknown as Delegate,
+    model: 'note',
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       content: text(d.content, MAX_TEXT),
-      folder: text(d.folder, MAX_ID, 'genel') || 'genel',
+      // '' = not in any folder (new accounts have no folders, only the Favoriler view).
+      folder: text(d.folder, MAX_ID),
       tags: tags(d.tags),
       isFavorite: Boolean(d.isFavorite),
       isPinned: Boolean(d.isPinned),
@@ -91,6 +99,7 @@ const ENTITIES: Record<string, EntityDef> = {
 
   task: {
     delegate: () => prisma.task as unknown as Delegate,
+    model: 'task',
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       description: optText(d.description, MAX_SHORT),
@@ -103,6 +112,7 @@ const ENTITIES: Record<string, EntityDef> = {
   },
   kanban: {
     delegate: () => prisma.kanbanCard as unknown as Delegate,
+    model: 'kanbanCard',
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       description: optText(d.description, MAX_SHORT),
@@ -116,6 +126,7 @@ const ENTITIES: Record<string, EntityDef> = {
   },
   event: {
     delegate: () => prisma.calendarEvent as unknown as Delegate,
+    model: 'calendarEvent',
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       description: optText(d.description, MAX_SHORT),
@@ -130,27 +141,9 @@ const ENTITIES: Record<string, EntityDef> = {
       checklist: jsonArray(d.checklist, MAX_SHORT * 4),
     }),
   },
-  media: {
-    delegate: () => prisma.mediaItem as unknown as Delegate,
-    fields: (d) => {
-      const url = text(d.url, 2_000_000).trim();
-      if (!isSafeMediaUrl(url)) {
-        throw new BadRequestError('Geçersiz medya bağlantısı. Yalnızca http(s) veya görsel verisi kabul edilir.');
-      }
-      const thumbnailUrl = optText(d.thumbnailUrl, 2048);
-      return {
-        title: text(d.title, MAX_TITLE),
-        description: optText(d.description, MAX_SHORT),
-        type: oneOf(d.type, ['image', 'sketch', 'video_link', 'diagram'] as const, 'image'),
-        url,
-        thumbnailUrl: thumbnailUrl && isSafeMediaUrl(thumbnailUrl) ? thumbnailUrl : null,
-        linkedNoteId: ref(d.linkedNoteId),
-        tags: tags(d.tags),
-      };
-    },
-  },
   finance: {
     delegate: () => prisma.financeTransaction as unknown as Delegate,
+    model: 'financeTransaction',
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       amount: float(d.amount, 0),
@@ -171,11 +164,16 @@ const ENTITIES: Record<string, EntityDef> = {
       isConfirmed: Boolean(d.isConfirmed),
       dueDate: optText(d.dueDate, 40),
       priority: oneOf(d.priority, PRIORITIES, 'orta'),
+      // Kredi / borç: interest and minimum payment are monthly percentages.
+      isDebt: d.type === 'gider' && Boolean(d.isDebt),
+      monthlyInterestRate: d.type === 'gider' && d.isDebt ? rate(d.monthlyInterestRate, 50) : null,
+      minPaymentRate: d.type === 'gider' && d.isDebt ? rate(d.minPaymentRate, 100) : null,
     }),
   },
   folder: {
     namespaced: true,
     delegate: () => prisma.folder as unknown as Delegate,
+    model: 'folder',
     fields: (d) => ({
       name: text(d.name, 128),
       description: optText(d.description, MAX_SHORT),
@@ -186,6 +184,7 @@ const ENTITIES: Record<string, EntityDef> = {
   category: {
     namespaced: true,
     delegate: () => prisma.financeCategory as unknown as Delegate,
+    model: 'financeCategory',
     fields: (d) => ({
       name: text(d.name, 128),
       type: oneOf(d.type, ['gelir', 'gider'] as const, 'gelir'),
@@ -232,14 +231,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
     }
 
-    const fields = def.fields(data);
-    const item = await delegate.upsert({
+    const fields = encryptRow(def.model, userId, def.fields(data));
+    await delegate.upsert({
       where: { id: dbId },
       update: fields,
       create: { id: dbId, userId, ...fields, ...(def.createOnly?.(data) ?? {}) },
     });
 
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({ success: true });
   } catch (error) {
     return handleRouteError(error, 'Data mutate error', 'Veri kaydedilirken hata oluştu.');
   }

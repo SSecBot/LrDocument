@@ -8,6 +8,7 @@ import { newId } from '@/lib/academic/grading';
 import { parseAcademicCalendar, type ParsedCalendarTerm } from '@/lib/academic/calendarParser';
 import { readCalendarRows, type OcrProgress, type PdfJsRenderLike } from '@/lib/academic/calendarOcr';
 import { loadPdfJs } from '@/lib/academic/pdfjsLoader';
+import { describePdfError } from '@/lib/academic/pdfErrors';
 import { fold } from '@/lib/academic/scheduleParser';
 import { formatTurkishDate } from '@/lib/utils';
 import { btnGhost, btnPrimary, btnSecondary } from './ui';
@@ -82,7 +83,7 @@ export function CalendarImportModal({ isOpen, onClose, data, update }: Props) {
       setTargets(Object.fromEntries(parsed.map((t) => [t.key, defaultTarget(t, data.terms)])));
     } catch (err) {
       console.error(err);
-      setError('PDF okunamadı. Dosya bozuk ya da şifreli olabilir.');
+      setError(describePdfError(err));
     } finally {
       setBusy(null);
       if (fileRef.current) fileRef.current.value = '';

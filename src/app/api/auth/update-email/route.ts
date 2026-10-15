@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, requireAuth, setSessionCookie, signSessionToken } from '@/lib/auth';
+import { comparePassword, requireAuth, setSessionCookie, signSessionToken, sessionMaxAgeSeconds } from '@/lib/auth';
 import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 import { z } from 'zod';
 
@@ -63,6 +63,7 @@ export async function POST(req: Request) {
       data: { email: newEmail },
     });
 
+    const maxAge = await sessionMaxAgeSeconds();
     const token = await signSessionToken({
       userId: updatedUser.id,
       email: updatedUser.email,
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       status: 'APPROVED',
       subscriptionPlan: (updatedUser.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
       sv: updatedUser.sessionVersion,
-    });
+    }, maxAge);
 
     const response = NextResponse.json({
       success: true,
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
         subscriptionPlan: updatedUser.subscriptionPlan,
       },
     });
-    setSessionCookie(response, token);
+    setSessionCookie(response, token, maxAge);
     return response;
   } catch (error) {
     return handleRouteError(error, 'Update email error', 'E-posta güncellenirken sunucu hatası oluştu.');

@@ -16,7 +16,8 @@
 #   1. Veritabanının zaman damgalı yedeğini alır
 #   2. Veritabanı proje klasörünün içindeyse (prisma/dev.db) onu kalıcı bir klasöre taşır,
 #      böylece git güncellemeleri verinin üzerine asla yazamaz
-#   3. .env içindeki JWT_SECRET zayıf/eksikse güçlü bir anahtar üretir
+#   3. .env içindeki JWT_SECRET zayıf/eksikse güçlü bir anahtar üretir; veri şifreleme anahtarı
+#      (DATA_ENCRYPTION_KEY) yoksa bir kez üretir ve $DATA_DIR/keys altına yedekler
 #   4. Kodu günceller (git varsa), bağımlılıkları kurar, şemayı uygular, derler
 #   5. PM2 sürecini yeniden başlatır ve sağlık kontrolü yapar
 # =============================================================================
@@ -141,6 +142,37 @@ if [ "$WEAK" = 1 ]; then
 else
   echo "JWT_SECRET uygun."
 fi
+
+# Kullanıcı verileri bu anahtarla şifrelenir. ASLA yeniden üretilmez: kaybolursa veriler okunamaz.
+DEK="$(grep -E '^DATA_ENCRYPTION_KEY=' .env | head -1 | cut -d= -f2- | tr -d '"'"'" || true)"
+mkdir -p "$DATA_DIR/keys"
+chmod 700 "$DATA_DIR/keys"
+APP_KEY_FILE="$(dirname "$DB_PATH")/data-encryption.key"
+if [ -z "$DEK" ]; then
+  if [ -s "$APP_KEY_FILE" ]; then
+    # Uygulama anahtarı kendisi üretmiş (DATA_ENCRYPTION_KEY yokken); onu .env'e taşı.
+    DEK="$(cat "$APP_KEY_FILE")"
+    echo "Veri şifreleme anahtarı $APP_KEY_FILE dosyasından alındı."
+  elif [ -s "$DATA_DIR/keys/data-encryption-key" ]; then
+    DEK="$(cat "$DATA_DIR/keys/data-encryption-key")"
+    warn "DATA_ENCRYPTION_KEY .env'de yoktu; yedekten geri yüklendi."
+  else
+    DEK="$(openssl rand -base64 48 | tr -d '\n')"
+    warn "Veri şifreleme anahtarı üretildi. Mevcut veriler ilk girişte otomatik şifrelenecek."
+  fi
+  printf '\nDATA_ENCRYPTION_KEY="%s"\n' "$DEK" >> .env
+elif [ "${#DEK}" -lt 32 ]; then
+  fail "DATA_ENCRYPTION_KEY 32 karakterden kısa. Mevcut verileri bozmamak için otomatik değiştirilmiyor; .env'i kontrol edin."
+else
+  echo "DATA_ENCRYPTION_KEY mevcut."
+fi
+# Anahtarın sunucuda ikinci bir kopyası (veritabanı yedekleriyle birlikte saklayın).
+if [ ! -s "$DATA_DIR/keys/data-encryption-key" ]; then
+  printf '%s' "$DEK" > "$DATA_DIR/keys/data-encryption-key"
+elif [ "$(cat "$DATA_DIR/keys/data-encryption-key")" != "$DEK" ]; then
+  warn "DATA_ENCRYPTION_KEY, $DATA_DIR/keys/data-encryption-key yedeğinden farklı! Hangisinin doğru olduğunu kontrol edin."
+fi
+chmod 600 "$DATA_DIR/keys/data-encryption-key"
 chmod 600 .env
 
 # ---------------------------------------------------------------------------
@@ -158,12 +190,20 @@ if [ -d .git ]; then
       git checkout -- "$f"
     fi
   done
+  OLD_HEAD="$(git rev-parse HEAD)"
   git fetch origin "$BRANCH"
   if ! git merge --ff-only "origin/$BRANCH"; then
     git status --short
     fail "Sunucuda kaydedilmemiş kod değişiklikleri var (yukarıda listelendi). 'git diff' ile inceleyip 'git checkout -- <dosya>' ile geri alabilirsiniz."
   fi
   git log -1 --pretty='Sürüm: %h %s'
+  # Bu betik güncellendiyse yeni sürümüyle baştan çalıştır (yeni adımlar da uygulansın).
+  if [ -z "${LR_UPDATE_REEXEC:-}" ] && ! git diff --quiet "$OLD_HEAD" HEAD -- scripts/update.sh; then
+    warn "Güncelleme betiği değişti; yeni sürümüyle yeniden başlatılıyor."
+    export LR_UPDATE_REEXEC=1 APP_DIR PM2_NAME BRANCH PORT DATA_DIR
+    trap - ERR
+    exec bash "$APP_DIR/scripts/update.sh"
+  fi
 else
   warn "Git deposu yok; yeni dosyaların bu klasöre zaten yüklendiği varsayılıyor."
 fi

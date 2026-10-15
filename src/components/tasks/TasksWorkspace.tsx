@@ -13,14 +13,14 @@ import {
 import { toLocalDateString } from '@/lib/utils';
 
 export const TasksWorkspace: React.FC = () => {
-  const { tasks, addTask } = useAppStore();
+  const { tasks, addTask, systemSettings } = useAppStore();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'today' | 'high' | 'pending' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Quick add form state
   const [quickTitle, setQuickTitle] = useState('');
-  const [quickPriority, setQuickPriority] = useState<TaskPriority>('orta');
+  const [quickPriority, setQuickPriority] = useState<TaskPriority>(systemSettings.tasks.defaultPriority);
   const [quickDueDate, setQuickDueDate] = useState('');
 
   const completedCount = tasks.filter(t => t.completed).length;
@@ -69,13 +69,8 @@ export const TasksWorkspace: React.FC = () => {
         {/* Top Header & Stats */}
         <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
           <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
-              <CheckSquare className="w-5 sm:w-6 h-5 sm:h-6 text-emerald-400" />
-              Görevler & Yapılacaklar
-            </h2>
-            <p className="text-xs text-subtle mt-1">
-              Matematik araştırmaları, video çekim adımları ve içerik planlama görevleriniz.
-            </p>
+            <h2 className="text-sm font-semibold text-fg">Görevler</h2>
+            <p className="text-xs text-muted mt-0.5">Son tarihi geçen görevlerin önceliği kendiliğinden yükselir.</p>
           </div>
 
           {/* Progress Card */}
@@ -114,9 +109,9 @@ export const TasksWorkspace: React.FC = () => {
             onChange={(e) => setQuickPriority(e.target.value as TaskPriority)}
             className="min-h-[40px] bg-surface-2 text-xs text-body border border-line-strong rounded-lg px-2.5 py-2 focus:outline-none focus:border-brand"
           >
-            <option value="yuksek">🔴 Yüksek</option>
-            <option value="orta">🟡 Orta</option>
-            <option value="dusuk">🔵 Düşük</option>
+            <option value="yuksek">Yüksek</option>
+            <option value="orta">Orta</option>
+            <option value="dusuk">Düşük</option>
           </select>
 
           {/* Due Date */}

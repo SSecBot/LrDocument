@@ -45,14 +45,14 @@ export function renderNoteHtml(content: string): string {
   // 1. Fenced code blocks: ```lang ... ```
   text = text.replace(/```[a-zA-Z0-9_-]*\n([\s\S]*?)```/g, (_, code: string) =>
     block(
-      `<pre class="bg-surface p-4 rounded-lg border border-line text-emerald-300 text-sm overflow-x-auto my-3 font-mono"><code>${escapeHtml(code)}</code></pre>`
+      `<pre class="bg-surface p-4 rounded-lg border border-line text-body text-sm overflow-x-auto my-3 font-mono"><code>${escapeHtml(code)}</code></pre>`
     )
   );
 
   // 2. Inline code: `code`
   text = text.replace(/`([^`\n]+)`/g, (_, code: string) =>
     inline(
-      `<code class="bg-surface-2 px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono border border-line-strong break-words">${escapeHtml(code)}</code>`
+      `<code class="bg-surface-2 px-1.5 py-0.5 rounded text-body text-xs font-mono border border-line-strong break-words">${escapeHtml(code)}</code>`
     )
   );
 
@@ -79,41 +79,77 @@ export function renderNoteHtml(content: string): string {
   // 5. Everything left is plain user text — escape it before applying Markdown.
   text = escapeHtml(text);
 
-  text = text.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-white mt-5 mb-2">$1</h3>');
-  text = text.replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-white mt-6 mb-3 border-b border-line pb-1.5">$1</h2>');
-  text = text.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-3 mb-4 text-fg">$1</h1>');
+  text = text.replace(/^#{4,6} (.*$)/gim, '<h4 class="text-base font-semibold text-fg mt-4 mb-1.5">$1</h4>');
+  text = text.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-fg mt-5 mb-2">$1</h3>');
+  text = text.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-fg mt-6 mb-3 border-b border-line pb-1.5">$1</h2>');
+  text = text.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-semibold mt-3 mb-4 text-fg">$1</h1>');
   text = text.replace(
     /^&gt; (.*$)/gim,
-    '<blockquote class="border-l-4 border-brand bg-surface-2/50 pl-4 py-2 my-3 rounded-r-lg text-emerald-100 text-sm">$1</blockquote>'
+    '<blockquote class="border-l-2 border-line-strong pl-4 py-1 my-3 text-subtle text-sm">$1</blockquote>'
   );
-  text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-fg">$1</strong>');
   text = text.replace(/\*(.+?)\*/g, '<em class="italic text-body">$1</em>');
-  text = text.replace(/^\s*-\s+(.*$)/gim, '<li class="ml-5 list-disc text-body my-1">$1</li>');
+  // Links: only http(s) targets (the text is already HTML-escaped, so no quotes can break out).
+  text = text.replace(
+    /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer nofollow" class="text-brand-light underline underline-offset-2">$1</a>'
+  );
+  text = text.replace(/^\s*[-*]\s+(.*$)/gim, '<li data-list="ul" class="ml-5 list-disc text-body my-1">$1</li>');
+  text = text.replace(/^\s*\d+[.)]\s+(.*$)/gim, '<li data-list="ol" class="ml-5 list-decimal text-body my-1">$1</li>');
   text = text.replace(/^---$/gim, '<hr class="border-t border-line my-6" />');
 
-  // 6. Paragraphs and list grouping
+  // 6. Paragraphs, list grouping and pipe tables
   const lines = text.split('\n');
   const out: string[] = [];
-  let inList = false;
+  let list: 'ul' | 'ol' | null = null;
+  const closeList = () => {
+    if (list) out.push(`</${list}>`);
+    list = null;
+  };
+  const cells = (row: string) =>
+    row
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split(/(?<!\\)\|/)
+      .map((c) => c.trim().replace(/\\\|/g, '|'));
 
-  for (const line of lines) {
-    if (line.startsWith('<li')) {
-      if (!inList) {
-        out.push('<ul class="my-2 space-y-1">');
-        inList = true;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const kind = line.startsWith('<li data-list="ol"') ? 'ol' : line.startsWith('<li data-list="ul"') ? 'ul' : null;
+    if (kind) {
+      if (list !== kind) {
+        closeList();
+        out.push(kind === 'ol' ? '<ol class="my-2 space-y-1">' : '<ul class="my-2 space-y-1">');
+        list = kind;
       }
       out.push(line);
       continue;
     }
-    if (inList) {
-      out.push('</ul>');
-      inList = false;
+    closeList();
+
+    // | a | b |  followed by  | --- | --- |
+    if (line.trim().startsWith('|') && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(lines[i + 1] ?? '')) {
+      const head = cells(line);
+      const body: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim().startsWith('|')) body.push(cells(lines[i++]));
+      i--;
+      out.push(
+        '<div class="overflow-x-auto my-3"><table class="w-full text-sm border-collapse">' +
+          `<thead><tr>${head.map((c) => `<th class="border border-line px-3 py-1.5 text-left font-medium text-fg bg-surface-2">${c}</th>`).join('')}</tr></thead>` +
+          `<tbody>${body
+            .map((r) => `<tr>${head.map((_, j) => `<td class="border border-line px-3 py-1.5 text-body">${r[j] ?? ''}</td>`).join('')}</tr>`)
+            .join('')}</tbody></table></div>`
+      );
+      continue;
     }
+
     const isBlock =
-      /^<(h1|h2|h3|blockquote|hr)/.test(line) || /^\u0001\d+\u0001$/.test(line.trim()) || line.trim() === '';
+      /^<(h1|h2|h3|h4|blockquote|hr)/.test(line) || /^\u0001\d+\u0001$/.test(line.trim()) || line.trim() === '';
     out.push(isBlock ? line : `<p class="text-body my-2 leading-relaxed break-words">${line}</p>`);
   }
-  if (inList) out.push('</ul>');
+  closeList();
 
   // 7. Restore rendered fragments.
   return out

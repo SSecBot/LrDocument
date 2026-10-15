@@ -148,7 +148,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         <div className="flex-1 overflow-y-auto divide-y divide-line">
           {filteredNotifications.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted space-y-2">
-              <CheckCircle2 className="w-8 h-8 mx-auto text-[#333]" />
+              <CheckCircle2 className="w-8 h-8 mx-auto text-muted" />
               <p className="text-white font-medium">Harika! Bekleyen acil bildiriminiz yok.</p>
               <p className="text-[11px]">Tüm görevler, takvim etkinlikleri ve finans ödemeleri güncel.</p>
             </div>
@@ -199,11 +199,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-line">
                     <span className="text-[10px] font-mono text-muted">
                       {notif.priority === 'yuksek' ? (
-                        <span className="text-rose-400 font-bold">🔴 Yüksek Öncelik</span>
+                        <span className="text-rose-400 font-bold">Yüksek Öncelik</span>
                       ) : notif.priority === 'orta' ? (
-                        <span className="text-amber-400 font-bold">🟡 Orta Öncelik</span>
+                        <span className="text-amber-400 font-bold">Orta Öncelik</span>
                       ) : (
-                        <span className="text-emerald-400 font-bold">🟢 Düşük Öncelik</span>
+                        <span className="text-emerald-400 font-bold">Düşük Öncelik</span>
                       )}
                     </span>
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signSessionToken, ensureDefaultAdmin, setSessionCookie } from '@/lib/auth';
+import { comparePassword, ensureDefaultAdmin } from '@/lib/auth';
+import { activateAccount, rememberedAccounts } from '@/lib/accountSession';
+import { withAccount } from '@/lib/accounts';
 import { getClientIp, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 
 const INVALID_CREDENTIALS = 'Geçersiz e-posta veya şifre girdiniz.';
@@ -53,15 +55,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = await signSessionToken({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role === 'ADMIN' ? 'ADMIN' : 'USER',
-      status: 'APPROVED',
-      sv: user.sessionVersion,
-    });
-
     const response = NextResponse.json({
       success: true,
       user: {
@@ -72,7 +65,9 @@ export async function POST(req: NextRequest) {
         status: user.status,
       },
     });
-    setSessionCookie(response, token);
+    // Signing in keeps the other accounts remembered on this browser (Hesap ekle).
+    const { list } = await rememberedAccounts();
+    await activateAccount(response, user, withAccount(list, { userId: user.id, sv: user.sessionVersion }));
     return response;
   } catch (error) {
     return handleRouteError(error, 'Login error', 'Giriş yapılırken bir sunucu hatası oluştu.');

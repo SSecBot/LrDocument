@@ -6,6 +6,8 @@
 
 import type { Worker as TesseractWorker } from 'tesseract.js';
 import { groupLines, type PdfTextItem } from './scheduleParser';
+import { OcrError } from './pdfErrors';
+import { pdfDocumentOptions } from './pdfjsLoader';
 
 export const MAX_CALENDAR_PAGES = 10;
 
@@ -28,7 +30,7 @@ interface RenderablePage {
   cleanup(): void;
 }
 export interface PdfJsRenderLike {
-  getDocument(src: { data: Uint8Array; isEvalSupported?: boolean }): {
+  getDocument(src: { data: Uint8Array } & Record<string, unknown>): {
     promise: Promise<{ numPages: number; getPage(n: number): Promise<RenderablePage> }>;
     /** Since pdf.js 6 the loading task, not the document, releases the worker-side resources. */
     destroy(): Promise<void>;
@@ -53,22 +55,29 @@ async function createOcrWorker(onProgress: (p: number) => void): Promise<Tessera
   return worker;
 }
 
-/** One string per table row, in reading order. */
+/**
+ * One string per text line, in reading order (an empty string separates pages).
+ * Also used by the note importer, which allows more pages.
+ */
 export async function readCalendarRows(
   pdfjs: PdfJsRenderLike,
   data: Uint8Array,
-  onProgress: (p: OcrProgress) => void
-): Promise<{ rows: string[]; usedOcr: boolean }> {
-  const task = pdfjs.getDocument({ data, isEvalSupported: false });
+  onProgress: (p: OcrProgress) => void,
+  maxPages = MAX_CALENDAR_PAGES
+): Promise<{ rows: string[]; usedOcr: boolean; pages: number }> {
+  const task = pdfjs.getDocument({ data, ...pdfDocumentOptions() });
   const doc = await task.promise.catch(async (err) => {
     await task.destroy();
     throw err;
   });
   const rows: string[] = [];
   let worker: TesseractWorker | null = null;
-  const pages = Math.min(doc.numPages, MAX_CALENDAR_PAGES);
+  const pages = Math.min(doc.numPages, maxPages);
+  // The OCR worker is created once; its progress callback reads the page being recognised now.
+  let currentPage = 1;
   try {
     for (let n = 1; n <= pages; n++) {
+      currentPage = n;
       const page = await doc.getPage(n);
       onProgress({ page: n, pages, stage: 'metin', progress: 0 });
       const viewport = page.getViewport({ scale: 1 });
@@ -85,7 +94,11 @@ export async function readCalendarRows(
         // No text layer (scanned or image-based PDF): OCR the rendered page.
         if (!worker) {
           onProgress({ page: n, pages, stage: 'hazirlik', progress: 0 });
-          worker = await createOcrWorker((p) => onProgress({ page: n, pages, stage: 'ocr', progress: p }));
+          try {
+            worker = await createOcrWorker((p) => onProgress({ page: currentPage, pages, stage: 'ocr', progress: p }));
+          } catch (err) {
+            throw new OcrError('OCR başlatılamadı', err);
+          }
         }
         const scaled = page.getViewport({ scale: 2 });
         const canvas = document.createElement('canvas');
@@ -97,17 +110,20 @@ export async function readCalendarRows(
         // 'print' renders without requestAnimationFrame, so it also finishes in a background tab.
         await page.render({ canvasContext: ctx, viewport: scaled, canvas, intent: 'print' }).promise;
         onProgress({ page: n, pages, stage: 'ocr', progress: 0 });
-        const { data: result } = await worker.recognize(canvas, {}, { blocks: true, text: false });
+        const { data: result } = await worker.recognize(canvas, {}, { blocks: true, text: false }).catch((err: unknown) => {
+          throw new OcrError('OCR çalıştırılamadı', err);
+        });
         for (const block of result.blocks ?? []) {
           for (const para of block.paragraphs) for (const line of para.lines) if (line.text.trim()) rows.push(line.text.trim());
         }
         canvas.width = canvas.height = 0;
       }
       page.cleanup();
+      rows.push('');
     }
   } finally {
     await worker?.terminate();
     await task.destroy();
   }
-  return { rows, usedOcr: worker !== null };
+  return { rows, usedOcr: worker !== null, pages: doc.numPages };
 }

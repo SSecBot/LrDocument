@@ -7,7 +7,6 @@ import {
   FileText,
   CheckSquare,
   Calendar,
-  Image as ImageIcon,
   Wallet,
   Kanban,
   Plus,
@@ -21,9 +20,9 @@ export const CommandPalette: React.FC = () => {
     notes,
     tasks,
     kanbanCards,
-    mediaItems,
     transactions,
     setActiveTab,
+    setPreference,
     setActiveNoteId,
     addNote,
   } = useAppStore();
@@ -57,10 +56,6 @@ export const CommandPalette: React.FC = () => {
     !q || k.title.toLowerCase().includes(q) || k.tags.some(t => t.toLowerCase().includes(q))
   ).slice(0, 3);
 
-  const matchingMedia = mediaItems.filter(m =>
-    !q || m.title.toLowerCase().includes(q) || m.tags.some(t => t.toLowerCase().includes(q))
-  ).slice(0, 3);
-
   const matchingTransactions = transactions.filter(t =>
     !q || t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
   ).slice(0, 3);
@@ -72,16 +67,13 @@ export const CommandPalette: React.FC = () => {
   };
 
   const handleSelectKanban = () => {
-    setActiveTab('kanban');
-    setIsCommandPaletteOpen(false);
-  };
-
-  const handleSelectMedia = () => {
-    setActiveTab('media');
+    setPreference('tasksView', 'pano');
+    setActiveTab('tasks');
     setIsCommandPaletteOpen(false);
   };
 
   const handleSelectTasks = () => {
+    setPreference('tasksView', 'liste');
     setActiveTab('tasks');
     setIsCommandPaletteOpen(false);
   };
@@ -221,30 +213,6 @@ export const CommandPalette: React.FC = () => {
                     </div>
                     <span className={`text-[11px] font-mono font-bold ${t.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {t.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(t.amount)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Media Items */}
-          {matchingMedia.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Medya & Çizimler</span>
-              <div className="space-y-1 pt-1">
-                {matchingMedia.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={handleSelectMedia}
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <ImageIcon className="w-4 h-4 text-purple-400 shrink-0" />
-                      <span className="truncate">{m.title}</span>
-                    </div>
-                    <span className="text-[10px] text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded">
-                      {m.type}
                     </span>
                   </button>
                 ))}

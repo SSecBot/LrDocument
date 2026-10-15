@@ -29,7 +29,7 @@ export function SigmaLogo({
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={`${currentSize.icon} text-emerald-400 fill-current drop-shadow-[0_0_8px_rgba(52,211,153,0.3)] transition-all`}
+      className={`${currentSize.icon} text-white fill-current`}
     >
       <path
         d="M19 5H6.5L13 12L6.5 19H19V21H4.5V19.5L11.5 12L4.5 4.5V3H19V5Z"
@@ -47,9 +47,9 @@ export function SigmaLogo({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center bg-brand-soft border border-brand-hover/60 text-emerald-300 ${
+      className={`relative inline-flex items-center justify-center bg-brand text-white ${
         currentSize.container
-      } ${animateGlow ? 'ring-2 ring-emerald-500/30 ring-offset-2 ring-offset-[#0d0e12]' : ''} ${className}`}
+      } ${animateGlow ? 'ring-1 ring-brand-line' : ''} ${className}`}
     >
       {sigmaSvg}
     </div>

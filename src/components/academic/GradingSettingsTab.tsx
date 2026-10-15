@@ -3,7 +3,8 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicData, GradingSystem, LetterGrade } from '@/lib/academic/types';
-import { GENERAL_GRADING, KTU_GRADING, newId } from '@/lib/academic/grading';
+import { gradingForUniversity, KTU_GRADING, newId } from '@/lib/academic/grading';
+import { useAppStore } from '@/store/useAppStore';
 import { Card, CardHeader, btnGhost, btnSecondary, inputCls, labelCls } from './ui';
 
 interface Props {
@@ -16,16 +17,19 @@ type LetterRule = 'pass' | 'conditional' | 'fail';
 
 export function GradingSettingsTab({ data, update, university }: Props) {
   const g = data.grading;
+  const { systemSettings } = useAppStore();
 
   const setGrading = (patch: Partial<GradingSystem>) =>
     update((d) => ({ ...d, grading: { ...d.grading, ...patch, preset: patch.preset ?? 'ozel' } }));
 
   const applyPreset = (preset: 'ktu' | 'genel') => {
     if (!confirm('Not sistemi seçilen ön ayarla değiştirilecek. Devam edilsin mi?')) return;
-    const base = preset === 'ktu' ? KTU_GRADING : GENERAL_GRADING;
     update((d) => ({
       ...d,
-      grading: { ...structuredClone(base), universityName: preset === 'ktu' ? base.universityName : university || d.grading.universityName },
+      grading: gradingForUniversity(
+        preset === 'ktu' ? KTU_GRADING.universityName : university || d.grading.universityName || ' ',
+        systemSettings.academic
+      ),
     }));
   };
 

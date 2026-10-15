@@ -1,23 +1,25 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { useSearchParams } from 'next/navigation';
 import { CLASS_YEARS, isAcademicEmail } from '@/lib/studentProfile';
-import { planLabel } from '@/lib/pricing';
+import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, planLabel, seatPrice, type AccountType } from '@/lib/pricing';
 import Link from 'next/link';
+import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import {
   User,
   Mail,
   Lock,
   ArrowRight,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   GraduationCap,
+  Building2,
 } from 'lucide-react';
 
 const fieldCls =
-  'w-full bg-app border border-line rounded-lg px-3.5 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors';
+  'w-full bg-app border border-line rounded-lg px-3.5 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors';
 
 export default function RegisterPage() {
   return (
@@ -29,6 +31,16 @@ export default function RegisterPage() {
 
 function RegisterForm() {
   const searchParams = useSearchParams();
+  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch('/api/settings', { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.settings && setSettings(resolveSystemSettings(d.settings)))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+  const minPassword = settings.security.passwordMinLength;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,13 +48,19 @@ function RegisterForm() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<'Aylık' | 'Tek Seferlik'>(() =>
     searchParams.get('plan') === 'omur' ? 'Tek Seferlik' : 'Aylık'
   );
-  // ?ogrenci=1 preselects the student account type (linked from the pricing section).
-  const [isStudent, setIsStudent] = useState(() => searchParams.get('ogrenci') === '1');
+  // ?ogrenci=1 / ?tur=kurumsal preselect the account type (linked from the pricing section).
+  const [accountType, setAccountType] = useState<AccountType>(() =>
+    searchParams.get('ogrenci') === '1' ? 'STUDENT' : searchParams.get('tur') === 'kurumsal' ? 'CORPORATE' : 'STANDARD'
+  );
+  const isStudent = accountType === 'STUDENT';
+  const isCorporate = accountType === 'CORPORATE';
+  const [organization, setOrganization] = useState('');
+  const [seatsInput, setSeatsInput] = useState(() => searchParams.get('kisi') ?? '5');
+  const seats = clampSeats(seatsInput, settings.pricing);
   const [university, setUniversity] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   const [department, setDepartment] = useState('');
   const [classYear, setClassYear] = useState(1);
-  const accountType = isStudent ? 'STUDENT' : 'STANDARD';
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -56,8 +74,13 @@ function RegisterForm() {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage('Şifreniz en az 8 karakter olmalıdır.');
+    if (password.length < minPassword) {
+      setErrorMessage(`Şifreniz en az ${minPassword} karakter olmalıdır.`);
+      return;
+    }
+
+    if (isCorporate && organization.trim().length < 2) {
+      setErrorMessage('Lütfen kurum adını giriniz.');
       return;
     }
 
@@ -85,6 +108,7 @@ function RegisterForm() {
           subscriptionPlan,
           accountType,
           ...(isStudent ? { student: { university, studentEmail, department, classYear } } : {}),
+          ...(isCorporate ? { organization: organization.trim(), seats } : {}),
         }),
       });
 
@@ -111,14 +135,12 @@ function RegisterForm() {
       <div className="w-full max-w-md z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-emerald-600 text-white mb-4 border border-emerald-400/30">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center justify-center gap-2">
-            LrDocument <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">Kayıt</span>
+          <SigmaLogo size="lg" className="mb-4" />
+          <h1 className="text-2xl font-semibold text-fg tracking-tight">
+            LrDocument
           </h1>
           <p className="text-sm text-neutral-400 mt-1">
-            Matematik & İçerik Üretim Alanı
+            Kayıt talebi oluşturun
           </p>
         </div>
 
@@ -165,29 +187,69 @@ function RegisterForm() {
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
                     Hesap Tipi
                   </label>
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-app rounded-lg border border-line">
-                    <button
-                      type="button"
-                      onClick={() => setIsStudent(false)}
-                      className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${!isStudent ? 'bg-surface-3 text-white' : 'text-neutral-400 hover:text-white'}`}
-                    >
-                      Standart
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsStudent(true)}
-                      className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1.5 ${isStudent ? 'bg-surface-3 text-white' : 'text-neutral-400 hover:text-white'}`}
-                    >
-                      <GraduationCap className="w-4 h-4" />
-                      Üniversite öğrencisi
-                    </button>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-app rounded-lg border border-line" role="group" aria-label="Hesap tipi">
+                    {ACCOUNT_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        aria-pressed={accountType === t}
+                        onClick={() => setAccountType(t)}
+                        className={`py-2 px-2 rounded-md text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1.5 ${
+                          accountType === t ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg'
+                        }`}
+                      >
+                        {t === 'STUDENT' && <GraduationCap className="w-4 h-4" />}
+                        {t === 'CORPORATE' && <Building2 className="w-4 h-4" />}
+                        {ACCOUNT_TYPE_LABEL[t]}
+                      </button>
+                    ))}
                   </div>
                   {isStudent && (
-                    <p className="mt-2 text-[11px] text-emerald-300/90">
-                      Öğrencilere tüm paketler yarı fiyatına. Ders takibi, devamsızlık ve not ortalaması hesaplama araçları dahildir.
+                    <p className="mt-2 text-[11px] text-subtle">
+                      Öğrencilere tüm paketlerde %{settings.pricing.studentDiscountPercent} indirim. Ders takibi, devamsızlık ve not ortalaması hesaplama araçları dahildir.
+                    </p>
+                  )}
+                  {isCorporate && (
+                    <p className="mt-2 text-[11px] text-subtle">
+                      Kurumsal fiyat kişi başı normal fiyatın %{settings.pricing.corporatePercent}’i üzerinden, kişi sayısına göre hesaplanır.
                     </p>
                   )}
                 </div>
+
+                {isCorporate && (
+                  <div className="space-y-3 p-3 rounded-lg border border-line bg-app/50">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-subtle mb-1.5">Kurum adı</label>
+                      <input className={fieldCls} required minLength={2} maxLength={120} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Ör. Örnek Eğitim A.Ş." autoComplete="organization" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-subtle mb-1.5">
+                        Kişi sayısı ({settings.pricing.corporateMinSeats}–{settings.pricing.corporateMaxSeats})
+                      </label>
+                      <input
+                        className={fieldCls}
+                        type="number"
+                        inputMode="numeric"
+                        min={settings.pricing.corporateMinSeats}
+                        max={settings.pricing.corporateMaxSeats}
+                        required
+                        value={seatsInput}
+                        onChange={(e) => setSeatsInput(e.target.value)}
+                        onBlur={() => setSeatsInput(String(seats))}
+                      />
+                    </div>
+                    <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-xs">
+                      <dt className="text-muted">Aylık</dt>
+                      <dd className="text-body tabular-nums text-right">
+                        {seats} × {formatTL(seatPrice('Aylık', 'CORPORATE', settings.pricing))} = {formatTL(seats * seatPrice('Aylık', 'CORPORATE', settings.pricing))} / ay
+                      </dd>
+                      <dt className="text-muted">Ömür boyu</dt>
+                      <dd className="text-body tabular-nums text-right">
+                        {seats} × {formatTL(seatPrice('Tek Seferlik', 'CORPORATE', settings.pricing))} = {formatTL(seats * seatPrice('Tek Seferlik', 'CORPORATE', settings.pricing))}
+                      </dd>
+                    </dl>
+                  </div>
+                )}
 
                 {isStudent && (
                   <div className="space-y-3 p-3 rounded-lg border border-line bg-app/50">
@@ -232,17 +294,17 @@ function RegisterForm() {
                           : 'text-neutral-400 hover:text-white'
                         }`}
                     >
-                      {planLabel('Aylık', accountType)}
+                      {planLabel('Aylık', accountType, settings.pricing, seats)}
                     </button>
                     <button
                       type="button"
                       onClick={() => setSubscriptionPlan('Tek Seferlik')}
                       className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${subscriptionPlan === 'Tek Seferlik'
-                          ? 'bg-emerald-600 text-white border border-emerald-500/40'
+                          ? 'bg-surface-4 text-fg border border-line-strong'
                           : 'text-neutral-400 hover:text-white'
                         }`}
                     >
-                      {planLabel('Tek Seferlik', accountType)}
+                      {planLabel('Tek Seferlik', accountType, settings.pricing, seats)}
                     </button>
                   </div>
                 </div>
@@ -259,7 +321,7 @@ function RegisterForm() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Örn: Ali Yılmaz"
-                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                     />
                   </div>
                 </div>
@@ -277,14 +339,14 @@ function RegisterForm() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="ornek@alanadi.com"
-                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Şifre (En az 8 karakter)
+                    Şifre (En az {minPassword} karakter)
                   </label>
                   <div className="relative">
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -295,7 +357,7 @@ function RegisterForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                     />
                   </div>
                 </div>
@@ -313,7 +375,7 @@ function RegisterForm() {
                       value={passwordConfirm}
                       onChange={(e) => setPasswordConfirm(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                     />
                   </div>
                 </div>
@@ -321,7 +383,7 @@ function RegisterForm() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-2 bg-brand hover:bg-brand-hover text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -344,7 +406,7 @@ function RegisterForm() {
               Zaten bir hesabınız var mı?{' '}
               <Link
                 href="/login"
-                className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                className="text-brand-light hover:text-fg font-medium transition-colors"
               >
                 Giriş Yap
               </Link>

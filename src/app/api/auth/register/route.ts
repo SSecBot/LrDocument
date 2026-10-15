@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, ensureDefaultAdmin, validatePassword } from '@/lib/auth';
+import { hashPassword, ensureDefaultAdmin, validateNewPassword } from '@/lib/auth';
 import { seedDefaultUserData } from '@/lib/userSeed';
 import { studentProfileSchema } from '@/lib/studentProfile';
+import { encryptRow } from '@/lib/dataCrypto';
+import { normalizeAccountType } from '@/lib/pricing';
+import { getSystemSettings } from '@/lib/systemSettingsServer';
 import {
   getClientIp,
   handleRouteError,
@@ -37,13 +40,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Lütfen geçerli bir e-posta adresi giriniz.' }, { status: 400 });
     }
 
-    const passwordError = validatePassword(body.password);
+    const passwordError = await validateNewPassword(body.password);
     if (passwordError) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
-    // Optional university-student registration (half price, unlocks the course tracker).
-    const isStudent = body.accountType === 'STUDENT';
+    // Bireysel, Kurumsal (priced per seat) or university student (discount + course tracker).
+    const accountType = normalizeAccountType(body.accountType);
+    const isStudent = accountType === 'STUDENT';
+    let corporate: { organization: string; seats: number } | null = null;
+    if (accountType === 'CORPORATE') {
+      const { pricing } = await getSystemSettings();
+      const organization = typeof body.organization === 'string' ? body.organization.trim().replace(/\s+/g, ' ') : '';
+      const seats = Number(body.seats);
+      if (organization.length < 2 || organization.length > 120) {
+        return NextResponse.json({ error: 'Kurum adı 2 ile 120 karakter arasında olmalıdır.' }, { status: 400 });
+      }
+      if (!Number.isInteger(seats) || seats < pricing.corporateMinSeats || seats > pricing.corporateMaxSeats) {
+        return NextResponse.json(
+          { error: `Kişi sayısı ${pricing.corporateMinSeats} ile ${pricing.corporateMaxSeats} arasında olmalıdır.` },
+          { status: 400 }
+        );
+      }
+      corporate = { organization, seats };
+    }
     let studentProfile: ReturnType<typeof studentProfileSchema.parse> | null = null;
     if (isStudent) {
       const parsed = studentProfileSchema.safeParse(body.student ?? {});
@@ -83,12 +103,14 @@ export async function POST(req: NextRequest) {
           subscriptionType: subType,
           subscriptionPlan: planValue,
           paymentStatus: 'PENDING',
-          accountType: isStudent ? 'STUDENT' : 'STANDARD',
+          accountType,
+          organization: corporate?.organization ?? null,
+          seats: corporate?.seats ?? null,
         },
       });
       await seedDefaultUserData(tx, user.id);
       if (studentProfile) {
-        await tx.studentProfile.create({ data: { userId: user.id, ...studentProfile } });
+        await tx.studentProfile.create({ data: { userId: user.id, ...encryptRow('studentProfile', user.id, studentProfile) } });
       }
       return user;
     }).catch((err: unknown) => {

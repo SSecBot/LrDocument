@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { NoteEditor } from './NoteEditor';
 import { FolderItem } from '@/types';
@@ -19,7 +19,13 @@ import {
   FolderPlus,
   Edit2,
   Trash2,
+  Upload,
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
+import { importNoteFile, ImportError, NOTE_IMPORT_ACCEPT } from '@/lib/noteImport';
+import { describePdfError } from '@/lib/academic/pdfErrors';
 import { formatTurkishDate } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 
@@ -35,7 +41,45 @@ export const NotesWorkspace: React.FC = () => {
     addFolder,
     updateFolder,
     deleteFolder,
+    preferences,
+    setPreference,
+    addToast,
   } = useAppStore();
+  const collapsed = preferences.notesPanelCollapsed;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<string | null>(null);
+
+  const handleImport = async (files: FileList | null) => {
+    if (!files?.length) return;
+    let lastId: string | null = null;
+    for (const file of Array.from(files).slice(0, 10)) {
+      setImporting(`${file.name} okunuyor…`);
+      try {
+        const result = await importNoteFile(file, (p) =>
+          setImporting(p.stage === 'ocr' ? `${file.name}: sayfa ${p.page}/${p.pages} metin tanıma %${Math.round(p.progress * 100)}` : `${file.name}: sayfa ${p.page || 1}/${p.pages || '…'}`)
+        );
+        lastId = addNote({ title: result.title, content: result.content });
+        addToast({
+          type: result.notes.length ? 'warning' : 'success',
+          title: 'Not içe aktarıldı',
+          message: [`“${result.title}”`, ...result.notes].join(' — '),
+        });
+      } catch (err) {
+        console.error(err);
+        addToast({
+          type: 'error',
+          title: `${file.name} aktarılamadı`,
+          message: err instanceof ImportError ? err.message : describePdfError(err),
+        });
+      }
+    }
+    setImporting(null);
+    if (fileRef.current) fileRef.current.value = '';
+    if (lastId) {
+      setActiveNoteId(lastId);
+      setMobileView('editor');
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -118,12 +162,13 @@ export const NotesWorkspace: React.FC = () => {
   };
 
   const getFolderIcon = (iconName?: string) => {
+    const cls = 'w-3.5 h-3.5 text-muted';
     switch (iconName) {
-      case 'Sigma': return <Sigma className="w-4 h-4 text-emerald-400" />;
-      case 'BookOpen': return <BookOpen className="w-4 h-4 text-sky-400" />;
-      case 'Binary': return <Binary className="w-4 h-4 text-amber-400" />;
-      case 'Archive': return <Archive className="w-4 h-4 text-zinc-400" />;
-      default: return <Folder className="w-4 h-4 text-emerald-400" />;
+      case 'Sigma': return <Sigma className={cls} />;
+      case 'BookOpen': return <BookOpen className={cls} />;
+      case 'Binary': return <Binary className={cls} />;
+      case 'Archive': return <Archive className={cls} />;
+      default: return <Folder className={cls} />;
     }
   };
 
@@ -140,27 +185,86 @@ export const NotesWorkspace: React.FC = () => {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-app">
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        accept={NOTE_IMPORT_ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => handleImport(e.target.files)}
+      />
+
+      {/* Collapsed rail (desktop) */}
+      {collapsed && (
+        <div className="hidden md:flex w-11 shrink-0 flex-col items-center gap-1 py-2 border-r border-line bg-surface">
+          <button
+            onClick={() => setPreference('notesPanelCollapsed', false)}
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
+            title="Not listesini göster"
+            aria-label="Not listesini göster"
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleNewNoteMobile}
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
+            title="Yeni not"
+            aria-label="Yeni not"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={!!importing}
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
+            title="Dosyadan içe aktar"
+            aria-label="Dosyadan içe aktar"
+          >
+            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
       {/* Secondary Left Column: Notes List & Folders */}
       <div
         className={`${
           mobileView === 'list' ? 'flex w-full' : 'hidden'
-        } md:flex md:w-80 border-r border-line bg-surface flex-col h-full shrink-0`}
+        } ${collapsed ? 'md:hidden' : 'md:flex'} md:w-80 border-r border-line bg-surface flex-col h-full shrink-0`}
       >
         {/* Header & Search */}
         <div className="p-3.5 sm:p-4 border-b border-line space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              Not Defteri
-            </h2>
-            <button
-              onClick={handleNewNoteMobile}
-              className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Yeni Not</span>
-            </button>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-fg tracking-tight">Notlar</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={!!importing}
+                className="min-h-[36px] flex items-center gap-1.5 px-2.5 text-xs text-body hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-md transition-colors disabled:opacity-60"
+                title="PDF, Word (.docx) veya Markdown dosyasından not oluştur"
+              >
+                {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>İçe aktar</span>
+              </button>
+              <button
+                onClick={handleNewNoteMobile}
+                className="min-h-[36px] flex items-center gap-1.5 px-2.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-medium rounded-md transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Yeni</span>
+              </button>
+              <button
+                onClick={() => setPreference('notesPanelCollapsed', true)}
+                className="hidden md:flex w-9 h-9 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
+                title="Not listesini gizle"
+                aria-label="Not listesini gizle"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+          {importing && <p className="text-[11px] text-subtle truncate" aria-live="polite">{importing}</p>}
 
           {/* Search bar */}
           <div className="relative">
@@ -292,7 +396,7 @@ export const NotesWorkspace: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
           {sortedNotes.length === 0 ? (
             <div className="p-5 text-center text-muted text-xs space-y-2">
-              <FileText className="w-8 h-8 text-[#333] mx-auto mb-1" />
+              <FileText className="w-8 h-8 text-muted mx-auto mb-1" />
               <p className="text-white font-medium">Henüz kayıtlı bir not bulunmuyor.</p>
               <p className="text-[11px] text-subtle">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>
             </div>

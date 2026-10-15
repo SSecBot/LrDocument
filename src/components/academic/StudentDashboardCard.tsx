@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, GraduationCap } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { addDays, DAYS, dayPlan, formatDayPlanEmpty, nextClassDay, TOMORROW_FROM_HOUR, upcomingExams } from '@/lib/academic/grading';
+import { addDays, DAYS, dayPlan, formatDayPlanEmpty, nextClassDay, upcomingExams } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
 import { useAcademicData } from './useAcademicData';
 import { ExamRow } from './ExamsTab';
@@ -13,7 +13,7 @@ import { useNow } from './useNow';
 
 /** Course schedule + exam countdown shown on the main dashboard for student accounts. */
 export function StudentDashboardCard() {
-  const { setActiveTab } = useAppStore();
+  const { setActiveTab, systemSettings } = useAppStore();
   const { data } = useAcademicData();
   const now = useNow();
   // null = automatic: today until 17:00, tomorrow afterwards.
@@ -41,7 +41,7 @@ export function StudentDashboardCard() {
   }
 
   const term = data.terms.find((t) => t.id === termId);
-  const shown = view ?? (now.getHours() >= TOMORROW_FROM_HOUR ? 'tomorrow' : 'today');
+  const shown = view ?? (now.getHours() >= systemSettings.academic.tomorrowFromHour ? 'tomorrow' : 'today');
   const tomorrow = shown === 'tomorrow';
   const todayIso = toLocalDateString(now);
   const plan = dayPlan(courses, term, tomorrow ? addDays(todayIso, 1) : todayIso);

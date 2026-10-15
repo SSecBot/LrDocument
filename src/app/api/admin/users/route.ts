@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { LIVE_WINDOW_MS, requireAdmin } from '@/lib/auth';
 import { handleRouteError } from '@/lib/apiUtils';
 
 export async function GET() {
@@ -18,6 +18,9 @@ export async function GET() {
         subscriptionType: true,
         paymentStatus: true,
         accountType: true,
+        organization: true,
+        seats: true,
+        lastSeenAt: true,
         studentProfile: {
           select: { university: true, studentEmail: true, department: true, classYear: true, studentNo: true },
         },
@@ -44,6 +47,10 @@ export async function GET() {
     const approvedCount = users.filter((u) => u.status === 'APPROVED').length;
     const rejectedCount = users.filter((u) => u.status === 'REJECTED').length;
 
+    // Signed-in users seen within the last two minutes (the app pings once a minute).
+    const liveSince = Date.now() - LIVE_WINDOW_MS;
+    const liveUsers = users.filter((u) => u.status === 'APPROVED' && u.lastSeenAt && u.lastSeenAt.getTime() >= liveSince).length;
+
     const [totalNotes, totalTasks] = await Promise.all([
       prisma.note.count(),
       prisma.task.count(),
@@ -58,6 +65,7 @@ export async function GET() {
         rejectedCount,
         totalNotes,
         totalTasks,
+        liveUsers,
       },
       users,
     });

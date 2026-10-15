@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import type { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { getJwtSecretKey, COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from './jwtSecret';
+import { getSystemSettings } from './systemSettingsServer';
 
 export interface UserJWTPayload {
   userId: string;
@@ -14,10 +15,16 @@ export interface UserJWTPayload {
   subscriptionPlan?: 'Aylık' | 'Tek Seferlik';
   subscriptionType?: 'AYLIK' | 'TEK_SEFERLIK';
   paymentStatus?: 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
-  accountType?: 'STANDARD' | 'STUDENT';
+  accountType?: 'STANDARD' | 'STUDENT' | 'CORPORATE';
+  organization?: string | null;
+  seats?: number | null;
   /** Session version; bumping it in the DB invalidates every token issued before. */
   sv?: number;
 }
+
+const PRESENCE_WRITE_MS = 60_000;
+/** A user counts as "live" when seen within this window (the client pings every minute). */
+export const LIVE_WINDOW_MS = 2 * 60_000;
 
 export class AuthError extends Error {
   constructor(public readonly status: 401 | 403, message: string) {
@@ -30,14 +37,26 @@ export const PASSWORD_MIN_LENGTH = 8;
 // bcrypt only considers the first 72 bytes; reject longer input instead of silently truncating.
 export const PASSWORD_MAX_LENGTH = 72;
 
-export function validatePassword(password: unknown): string | null {
-  if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
-    return `Şifre en az ${PASSWORD_MIN_LENGTH} karakter olmalıdır.`;
+export function validatePassword(password: unknown, minLength = PASSWORD_MIN_LENGTH): string | null {
+  if (typeof password !== 'string' || password.length < minLength) {
+    return `Şifre en az ${minLength} karakter olmalıdır.`;
   }
   if (new TextEncoder().encode(password).length > PASSWORD_MAX_LENGTH) {
     return `Şifre en fazla ${PASSWORD_MAX_LENGTH} bayt uzunluğunda olabilir.`;
   }
   return null;
+}
+
+/** Password rule for new / changed passwords, using the admin-set minimum length. */
+export async function validateNewPassword(password: unknown): Promise<string | null> {
+  const { security } = await getSystemSettings();
+  return validatePassword(password, Math.max(PASSWORD_MIN_LENGTH, security.passwordMinLength));
+}
+
+/** Session lifetime in seconds (Yönetici Paneli › Varsayılanlar › Güvenlik). */
+export async function sessionMaxAgeSeconds(): Promise<number> {
+  const { security } = await getSystemSettings();
+  return Math.round(security.sessionDays * 24 * 60 * 60) || SESSION_MAX_AGE_SECONDS;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -62,11 +81,16 @@ export async function comparePassword(password: unknown, hash: string | null | u
   }
 }
 
-export async function signSessionToken(payload: UserJWTPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+/**
+ * The session cookie carries no personal data: only the opaque user id, the role/status the proxy
+ * needs for its optimistic redirect, and the session version. Name, e-mail and plan are always
+ * read from the database (see getCurrentSession).
+ */
+export async function signSessionToken(payload: UserJWTPayload, maxAgeSeconds = SESSION_MAX_AGE_SECONDS): Promise<string> {
+  return new SignJWT({ userId: payload.userId, role: payload.role, status: payload.status, sv: payload.sv ?? 0 })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
+    .setExpirationTime(`${maxAgeSeconds}s`)
     .sign(getJwtSecretKey());
 }
 
@@ -80,7 +104,7 @@ export async function verifySessionToken(token: string): Promise<UserJWTPayload 
   }
 }
 
-export function setSessionCookie(response: NextResponse, token: string) {
+export function setSessionCookie(response: NextResponse, token: string, maxAgeSeconds = SESSION_MAX_AGE_SECONDS) {
   response.cookies.set({
     name: COOKIE_NAME,
     value: token,
@@ -88,7 +112,7 @@ export function setSessionCookie(response: NextResponse, token: string) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS,
+    maxAge: maxAgeSeconds,
   });
 }
 
@@ -171,11 +195,19 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
         paymentStatus: true,
         sessionVersion: true,
         accountType: true,
+        organization: true,
+        seats: true,
+        lastSeenAt: true,
       },
     });
 
     if (!user || user.status !== 'APPROVED') return null;
     if ((payload.sv ?? 0) !== user.sessionVersion) return null;
+
+    // Presence for the admin's live-user count; written at most once a minute per user.
+    if (!user.lastSeenAt || Date.now() - user.lastSeenAt.getTime() > PRESENCE_WRITE_MS) {
+      prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
+    }
 
     return {
       userId: user.id,
@@ -186,7 +218,9 @@ export async function getCurrentSession(): Promise<UserJWTPayload | null> {
       subscriptionPlan: (user.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
       subscriptionType: (user.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
       paymentStatus: (user.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
-      accountType: user.accountType === 'STUDENT' ? 'STUDENT' : 'STANDARD',
+      accountType: user.accountType === 'STUDENT' || user.accountType === 'CORPORATE' ? user.accountType : 'STANDARD',
+      organization: user.organization,
+      seats: user.seats,
       sv: user.sessionVersion,
     };
   } catch {

@@ -4,6 +4,8 @@ import { requireStudentAccess } from '@/lib/auth';
 import { handleRouteError } from '@/lib/apiUtils';
 import { academicDataSchema } from '@/lib/academic/schema';
 import { createDefaultData } from '@/lib/academic/grading';
+import { decryptText } from '@/lib/dataCrypto';
+import { getSystemSettings } from '@/lib/systemSettingsServer';
 
 export async function GET() {
   try {
@@ -13,7 +15,7 @@ export async function GET() {
     let data = null;
     if (profile) {
       try {
-        const parsed = academicDataSchema.safeParse(JSON.parse(profile.data));
+        const parsed = academicDataSchema.safeParse(JSON.parse(decryptText(session.userId, profile.data) || '{}'));
         if (parsed.success) data = parsed.data;
       } catch {
         data = null;
@@ -29,10 +31,10 @@ export async function GET() {
               studentEmail: profile.studentEmail,
               department: profile.department,
               classYear: profile.classYear,
-              studentNo: profile.studentNo,
+              studentNo: profile.studentNo ? decryptText(session.userId, profile.studentNo) : null,
             }
           : null,
-        data: data ?? createDefaultData(profile?.university ?? ''),
+        data: data ?? createDefaultData(profile?.university ?? '', (await getSystemSettings()).academic),
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );

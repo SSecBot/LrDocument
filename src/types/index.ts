@@ -118,6 +118,12 @@ export interface FinanceTransaction {
   isConfirmed?: boolean; // Gelir Geldi (Onayla) / Gider Ödendi (Onayla)
   dueDate?: string;
   priority?: TaskPriority; // 'yuksek' | 'orta' | 'dusuk'
+  /** Kredi / borç: `amount` is the outstanding balance and `date` the next payment date. */
+  isDebt?: boolean;
+  /** Monthly interest, percent. */
+  monthlyInterestRate?: number | null;
+  /** Minimum payment as a percentage of the balance. */
+  minPaymentRate?: number | null;
   createdAt: string;
 }
 
@@ -160,7 +166,7 @@ export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
 export type SubscriptionType = 'AYLIK' | 'TEK_SEFERLIK';
-export type AccountType = 'STANDARD' | 'STUDENT';
+export type AccountType = 'STANDARD' | 'STUDENT' | 'CORPORATE';
 export type PaymentStatus = 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
 
 export interface UserProfile {
@@ -173,6 +179,8 @@ export interface UserProfile {
   subscriptionType?: SubscriptionType;
   paymentStatus?: PaymentStatus;
   accountType?: AccountType;
+  organization?: string | null;
+  seats?: number | null;
 }
 
 export interface AdminUserItem {
@@ -185,6 +193,9 @@ export interface AdminUserItem {
   subscriptionType?: SubscriptionType;
   paymentStatus?: PaymentStatus;
   accountType?: AccountType;
+  organization?: string | null;
+  seats?: number | null;
+  lastSeenAt?: string | null;
   studentProfile?: {
     university: string;
     studentEmail: string;
@@ -211,14 +222,14 @@ export interface AdminMetrics {
   rejectedCount: number;
   totalNotes: number;
   totalTasks: number;
+  /** Users active within the last two minutes. */
+  liveUsers: number;
 }
 
 export type ActiveTab =
   | 'dashboard'
   | 'notes'
-  | 'media'
   | 'tasks'
-  | 'kanban'
   | 'calendar'
   | 'finance'
   | 'academic'

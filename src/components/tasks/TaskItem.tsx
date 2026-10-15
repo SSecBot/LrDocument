@@ -127,7 +127,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
           task.completed
             ? 'bg-surface/70 border-line opacity-75'
             : overdue
-            ? 'bg-[#221316]/70 border-rose-900/60 hover:border-rose-700/80'
+            ? 'bg-rose-950/50/70 border-rose-900/60 hover:border-rose-700/80'
             : 'bg-surface hover:bg-surface-2 border-line hover:border-line-strong'
         }`}
       >
@@ -166,9 +166,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
                     className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
                   >
-                    <option value="yuksek">🔴 Yüksek Öncelik</option>
-                    <option value="orta">🟡 Orta Öncelik</option>
-                    <option value="dusuk">🟢 Düşük Öncelik</option>
+                    <option value="yuksek">Yüksek Öncelik</option>
+                    <option value="orta">Orta Öncelik</option>
+                    <option value="dusuk">Düşük Öncelik</option>
                   </select>
                 </div>
 
@@ -217,7 +217,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                   task.completed
                     ? 'bg-brand border-emerald-500 text-white'
                     : overdue
-                    ? 'bg-[#281619] border-rose-700/60 hover:border-rose-500 text-transparent'
+                    ? 'bg-rose-950/60 border-rose-700/60 hover:border-rose-500 text-transparent'
                     : 'bg-surface-2 border-line-strong hover:border-brand text-transparent'
                 }`}
               >

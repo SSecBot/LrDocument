@@ -28,7 +28,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function AcademicWorkspace() {
-  const { setActiveTab } = useAppStore();
+  const { openSettings } = useAppStore();
   const { data, profile, loadError, saveState, saveError, update, retrySave } = useAcademicData();
   const [tab, setTab] = useState<Tab>('ozet');
   const [modal, setModal] = useState<{ open: boolean; course: Course | null }>({ open: false, course: null });
@@ -83,7 +83,7 @@ export function AcademicWorkspace() {
                 {profile && profile.university ? (
                   <>
                     {profile.university} • {profile.department} • {classYearLabel(profile.classYear)}{' '}
-                    <button className="text-subtle hover:text-fg underline-offset-2 hover:underline" onClick={() => setActiveTab('settings')}>
+                    <button className="text-subtle hover:text-fg underline-offset-2 hover:underline" onClick={() => openSettings('ogrenci')}>
                       düzenle
                     </button>
                   </>
@@ -112,8 +112,7 @@ export function AcademicWorkspace() {
             <button
               className={btnSecondary}
               onClick={() => {
-                setActiveTab('settings');
-                setTimeout(() => document.getElementById('ders-takibi-ayarlari')?.scrollIntoView({ behavior: 'smooth' }), 150);
+                openSettings('ders');
               }}
               title="Not sistemi, devam şartları ve dönemler"
               aria-label="Ders takibi ayarları"

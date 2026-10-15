@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal';
 import type { Assessment, AssessmentType, Course, CourseSession, GradingSystem } from '@/lib/academic/types';
 import { ASSESSMENT_LABEL, DAYS, computeCourseGrade, defaultAssessments, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
 import { btnGhost, btnPrimary, btnSecondary, COURSE_COLORS, inputCls, labelCls } from './ui';
+import { useAppStore } from '@/store/useAppStore';
 
 interface Props {
   isOpen: boolean;
@@ -27,14 +28,19 @@ const sameCourse = (a: Pick<Course, 'code' | 'name'>, b: Pick<Course, 'code' | '
   return a.name.trim().toLocaleLowerCase('tr-TR') === b.name.trim().toLocaleLowerCase('tr-TR') && !!a.name.trim();
 };
 
-export function emptyCourse(termId: string, grading: GradingSystem, colorIndex: number): Course {
+export function emptyCourse(
+  termId: string,
+  grading: GradingSystem,
+  colorIndex: number,
+  defaults: { credit: number; ects: number } = { credit: 3, ects: 5 }
+): Course {
   return {
     id: newId(),
     termId,
     code: '',
     name: '',
-    credit: 3,
-    ects: 5,
+    credit: defaults.credit,
+    ects: defaults.ects,
     instructor: '',
     color: COURSE_COLORS[colorIndex % COURSE_COLORS.length],
     theoryHours: 0,
@@ -48,7 +54,9 @@ export function emptyCourse(termId: string, grading: GradingSystem, colorIndex: 
 }
 
 export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, onDelete, colorIndex = 0, otherCourses = [] }: Props) {
-  const [draft, setDraft] = useState<Course>(() => course ?? emptyCourse(termId, grading, colorIndex));
+  const { systemSettings } = useAppStore();
+  const courseDefaults = { credit: systemSettings.academic.defaultCredit, ects: systemSettings.academic.defaultEcts };
+  const [draft, setDraft] = useState<Course>(() => course ?? emptyCourse(termId, grading, colorIndex, courseDefaults));
   const [autoHours, setAutoHours] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retakeOn, setRetakeOn] = useState(!!course?.retake);
@@ -58,7 +66,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
   const [prevKey, setPrevKey] = useState(resetKey);
   if (resetKey !== prevKey) {
     setPrevKey(resetKey);
-    setDraft(course ? structuredClone(course) : emptyCourse(termId, grading, colorIndex));
+    setDraft(course ? structuredClone(course) : emptyCourse(termId, grading, colorIndex, courseDefaults));
     setAutoHours(!course || (course.theoryHours === 0 && course.practiceHours === 0) || matchesSessions(course));
     setRetakeOn(!!course?.retake);
     setError(null);

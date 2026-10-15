@@ -45,7 +45,7 @@ export default function PendingPage() {
             <button
               onClick={handleRecheck}
               disabled={isLoadingAuth}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isLoadingAuth ? 'animate-spin' : ''}`} />
               <span>Onay Durumunu Tekrar Kontrol Et</span>

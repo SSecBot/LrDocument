@@ -16,7 +16,6 @@ import {
   sessionHours,
   summarizeAll,
   summarizeTerm,
-  TOMORROW_FROM_HOUR,
   upcomingExams,
 } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
@@ -24,6 +23,7 @@ import { Card, CardHeader, EmptyState, Stat, btnGhost, btnSecondary } from './ui
 import { ExamRow } from './ExamsTab';
 import { WeekGrid } from './ScheduleTab';
 import { useNow } from './useNow';
+import { useAppStore } from '@/store/useAppStore';
 
 interface Props {
   data: AcademicData;
@@ -40,12 +40,13 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   const termSummary = summarizeTerm(data, term);
   const all = summarizeAll(data);
   const now = useNow();
+  const { systemSettings } = useAppStore();
   const today = toLocalDateString(now);
   const basisLabel = data.grading.gpaBasis === 'ects' ? 'AKTS' : 'kredi';
 
   // From 17:00 the card looks ahead to tomorrow; the user can still switch back to mark absences.
   const [dayPick, setDayPick] = useState<'today' | 'tomorrow' | null>(null);
-  const showTomorrow = (dayPick ?? (now.getHours() >= TOMORROW_FROM_HOUR ? 'tomorrow' : 'today')) === 'tomorrow';
+  const showTomorrow = (dayPick ?? (now.getHours() >= systemSettings.academic.tomorrowFromHour ? 'tomorrow' : 'today')) === 'tomorrow';
   const plan = dayPlan(courses, term, showTomorrow ? addDays(today, 1) : today);
   const empty = formatDayPlanEmpty(plan, showTomorrow, term);
 

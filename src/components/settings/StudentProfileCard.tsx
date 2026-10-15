@@ -131,7 +131,7 @@ export function StudentProfileCard({ isAdmin = false }: { isAdmin?: boolean }) {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors disabled:opacity-50 inline-flex items-center gap-2 min-h-[44px]"
+              className="px-5 py-3 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs transition-colors disabled:opacity-50 inline-flex items-center gap-2 min-h-[44px]"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Kaydediliyor…' : 'Öğrenci bilgilerini kaydet'}

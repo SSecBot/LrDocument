@@ -1,32 +1,40 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { CalendarEvent, CalendarEventType, Platform, FinanceTransaction } from '@/types';
+import { CalendarEvent, FinanceTransaction } from '@/types';
 import { EventModal } from './EventModal';
 import { ExportSyncModal } from './ExportSyncModal';
 import { TransactionModal } from '@/components/finance/TransactionModal';
 import { parseICS } from '@/lib/icsParser';
 import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
   Download,
   Upload,
-  Grid,
   CalendarDays,
   Clock,
   Check,
   FileText,
   CheckSquare,
   X,
-  ScrollText,
   Wallet,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
 import { isTransactionActiveOnDate } from '@/lib/recurringFinance';
 
+const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+/** Months shown before / after the anchor month in the timeline. */
+const MONTHS_BEFORE = 2;
+const MONTHS_AFTER = 9;
+
+const iso = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+/** Calendar: one continuous, scrollable timeline of months plus a day-detail panel. */
 export const CalendarWorkspace: React.FC = () => {
   const {
     events,
@@ -40,862 +48,494 @@ export const CalendarWorkspace: React.FC = () => {
     addToast,
     setActiveTab,
     setActiveNoteId,
+    preferences,
+    setPreference,
+    systemSettings,
   } = useAppStore();
 
-  const now = new Date();
-  const [currentDate, setCurrentDate] = useState<Date>(new Date(now.getFullYear(), now.getMonth(), 1));
-  const [selectedDayDate, setSelectedDayDate] = useState<string>(toLocalDateString(now));
-  const [viewMode, setViewMode] = useState<'month' | 'scroll' | 'week' | 'list'>('month');
-  // Type/platform filters (no filter UI yet, so they stay at 'all').
-  const selectedEventType = 'all' as CalendarEventType | 'all';
-  const selectedPlatform = 'all' as Platform | 'all';
-  // Side panel is docked on large screens; on phones/tablets it opens as an overlay only when a day is tapped.
-  const [isDayPanelOpen, setIsDayPanelOpen] = useState(
-    () => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches
-  );
-
-  // Drag and Drop state
+  const today = toLocalDateString();
+  const [anchor, setAnchor] = useState(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+  const [selectedDay, setSelectedDay] = useState<string>(today);
+  // Desktop: docked panel the user can collapse (saved per user). Phones: overlay opened by tapping a day.
+  const panelCollapsed = preferences.calendarPanelCollapsed;
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
-  // Modals state
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [selectedDateForNewEvent, setSelectedDateForNewEvent] = useState<string>('');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportTargetEvent, setExportTargetEvent] = useState<CalendarEvent | undefined>(undefined);
-
-  // Finance modal state
   const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null);
 
-  // File upload input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const monthRefs = useRef(new Map<string, HTMLElement>());
+  const [scrollTarget, setScrollTarget] = useState<string | null>(() => `${anchor.year}-${anchor.month}`);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const firstScroll = useRef(true);
+  // Bring the requested month into view after it rendered (on open, "Bugün", or after an import).
+  // The first jump is instant so the calendar opens on the current month.
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const el = monthRefs.current.get(scrollTarget);
+    const box = scrollRef.current;
+    if (!el || !box) return;
+    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8;
+    box.scrollTo({ top, behavior: firstScroll.current ? 'auto' : 'smooth' });
+    firstScroll.current = false;
+  }, [scrollTarget, anchor]);
 
-  const monthNames = [
-    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-  ];
-
-  const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    setSelectedDayDate(toLocalDateString(today));
-  };
-
-  // Filtered Events
-  const filteredEvents = events.filter((ev) => {
-    if (selectedEventType === 'finans') return false;
-    if (selectedEventType !== 'all' && (ev.eventType || 'yayin') !== selectedEventType) return false;
-    if (selectedPlatform !== 'all' && ev.platform && ev.platform !== selectedPlatform) return false;
-    return true;
+  const months = Array.from({ length: MONTHS_BEFORE + MONTHS_AFTER + 1 }, (_, i) => {
+    const d = new Date(anchor.year, anchor.month - MONTHS_BEFORE + i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    return { year, month, firstDay: (d.getDay() + 6) % 7, totalDays: new Date(year, month + 1, 0).getDate() };
   });
 
-  // Filtered Finance Transactions
-  const filteredTransactions = transactions.filter(() => {
-    if (selectedEventType !== 'all' && selectedEventType !== 'finans') return false;
-    return true;
-  });
-
-  const getEventsForDate = (dateStr: string) => {
-    return filteredEvents.filter(e => e.date === dateStr);
+  const shiftMonths = (delta: number) => {
+    const d = new Date(anchor.year, anchor.month + delta, 1);
+    setAnchor({ year: d.getFullYear(), month: d.getMonth() });
+    setScrollTarget(`${d.getFullYear()}-${d.getMonth()}`);
   };
 
-  const getTransactionsForDate = (dateStr: string) => {
-    return filteredTransactions.filter(t => isTransactionActiveOnDate(t, dateStr));
+  const goToDate = (date: string) => {
+    const [y, m] = date.split('-').map(Number);
+    setAnchor({ year: y, month: m - 1 });
+    setScrollTarget(`${y}-${m - 1}`);
+    setSelectedDay(date);
   };
 
-  const getTasksForDate = (dateStr: string) => {
-    return tasks.filter(t => t.dueDate === dateStr);
+  const eventsOn = (date: string) => events.filter((e) => e.date === date);
+  const tasksOn = (date: string) => tasks.filter((t) => t.dueDate === date);
+  const transactionsOn = (date: string) => transactions.filter((t) => isTransactionActiveOnDate(t, date));
+  const notesOn = (date: string) => notes.filter((n) => n.updatedAt.startsWith(date) || n.createdAt.startsWith(date));
+
+  const selectDay = (date: string) => {
+    setSelectedDay(date);
+    setMobilePanelOpen(true);
+    if (panelCollapsed) setPreference('calendarPanelCollapsed', false);
   };
 
-  const getNotesForDate = (dateStr: string) => {
-    return notes.filter(n => n.updatedAt.startsWith(dateStr) || n.createdAt.startsWith(dateStr));
-  };
-
-  const handleCellClick = (dateStr: string) => {
-    setSelectedDayDate(dateStr);
-    setIsDayPanelOpen(true);
-  };
-
-  const handleQuickAddEventOnSelectedDay = () => {
-    setSelectedDateForNewEvent(selectedDayDate);
+  const openNewEvent = () => {
     setEditingEvent(null);
     setIsEventModalOpen(true);
   };
 
-  const handleEventClick = (ev: CalendarEvent, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const openEvent = (ev: CalendarEvent, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditingEvent(ev);
-    setSelectedDayDate(ev.date);
+    setSelectedDay(ev.date);
     setIsEventModalOpen(true);
   };
 
-
-  const handleOpenExport = (ev?: CalendarEvent) => {
-    setExportTargetEvent(ev);
-    setIsExportModalOpen(true);
-  };
-
-  // ICS File Upload Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const parsed = parseICS(text);
+    if (file.size > 5 * 1024 * 1024) {
+      addToast({ type: 'error', title: 'Dosya çok büyük', message: '.ics dosyası en fazla 5 MB olabilir.' });
+      return;
+    }
+    file
+      .text()
+      .then((text) => {
+        const parsed = parseICS(text).slice(0, 2000);
         if (parsed.length === 0) {
-          addToast({
-            type: 'warning',
-            title: 'Etkinlik Bulunamadı',
-            message: 'Yüklenen .ics dosyasında geçerli VEVENT kaydı bulunamadı.',
-          });
+          addToast({ type: 'warning', title: 'Etkinlik bulunamadı', message: 'Dosyada geçerli bir takvim etkinliği yok.' });
           return;
         }
-
-        let addedCount = 0;
-        for (const item of parsed) {
-          addEvent(item);
-          addedCount++;
-        }
-
-        addToast({
-          type: 'success',
-          title: 'Takvim İçe Aktarıldı',
-          message: `${addedCount} adet takvim etkinliği başarıyla takviminize eklendi.`,
-        });
-
-        if (parsed[0]?.date) {
-          const firstDate = new Date(parsed[0].date);
-          setCurrentDate(new Date(firstDate.getFullYear(), firstDate.getMonth(), 1));
-          setSelectedDayDate(parsed[0].date);
-        }
-      } catch {
-        addToast({
-          type: 'error',
-          title: 'İçe Aktarma Hatası',
-          message: 'Dosya okunurken bir hata oluştu. Lütfen geçerli bir .ics dosyası seçin.',
-        });
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+        parsed.forEach((item) => addEvent(item));
+        addToast({ type: 'success', title: 'Takvim içe aktarıldı', message: `${parsed.length} etkinlik eklendi.` });
+        if (parsed[0]?.date) goToDate(parsed[0].date);
+      })
+      .catch(() => addToast({ type: 'error', title: 'İçe aktarılamadı', message: 'Geçerli bir .ics dosyası seçin.' }));
   };
 
-  // Drag and Drop handlers
-  const handleDragStart = (e: React.DragEvent, evId: string) => {
-    e.dataTransfer.setData('text/plain', evId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, dateStr: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverDate !== dateStr) {
-      setDragOverDate(dateStr);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent, dateStr: string) => {
-    e.preventDefault();
-    if (dragOverDate === dateStr) {
-      setDragOverDate(null);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetDateStr: string) => {
+  const handleDrop = (e: React.DragEvent, date: string) => {
     e.preventDefault();
     setDragOverDate(null);
-    const eventId = e.dataTransfer.getData('text/plain');
-    if (eventId) {
-      rescheduleEvent(eventId, targetDateStr);
-      setSelectedDayDate(targetDateStr);
+    const id = e.dataTransfer.getData('text/plain');
+    if (id) {
+      rescheduleEvent(id, date);
+      setSelectedDay(date);
     }
   };
 
   const isEventOverdue = (ev: CalendarEvent): boolean => {
-    const nowTime = new Date().setHours(0, 0, 0, 0);
-    const isPast = new Date(ev.date).getTime() < nowTime;
-    if (!isPast) return false;
-
+    if (ev.date >= today) return false;
     if (ev.linkedTaskId) {
-      const linkedTask = tasks.find(t => t.id === ev.linkedTaskId);
-      if (linkedTask) return !linkedTask.completed;
+      const linked = tasks.find((t) => t.id === ev.linkedTaskId);
+      if (linked) return !linked.completed;
     }
-    return ev.status !== 'yayinlandi';
+    return ev.status !== 'yayinlandi' && ev.status !== 'iptal';
   };
 
-  const getEventBadgeStyle = (ev: CalendarEvent) => {
-    const isOverdue = isEventOverdue(ev);
-    if (isOverdue) {
-      return 'border-2 border-rose-500 bg-rose-950/85 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.6)] ring-1 ring-rose-400 font-bold';
-    }
-
-    const type = ev.eventType || 'yayin';
-    if (type === 'gorev') {
-      return 'bg-amber-950/80 border-amber-700/70 text-amber-200';
-    }
-    if (type === 'ozel_gun') {
-      return 'bg-emerald-950/80 border-emerald-700/70 text-emerald-200';
-    }
-    if (ev.platform === 'YouTube') return 'bg-red-950/80 border-red-700/70 text-red-200';
-    if (ev.platform === 'TikTok') return 'bg-cyan-950/80 border-cyan-700/70 text-cyan-200';
-    if (ev.platform === 'Instagram') return 'bg-pink-950/80 border-pink-700/70 text-pink-200';
-    return 'bg-blue-950/80 border-blue-700/70 text-blue-200';
+  const eventTone = (ev: CalendarEvent) => {
+    if (isEventOverdue(ev)) return 'border-rose-500/60 bg-rose-500/10 text-rose-200';
+    if (ev.eventType === 'gorev') return 'border-amber-500/40 bg-amber-500/10 text-amber-100';
+    if (ev.eventType === 'ozel_gun') return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100';
+    return 'border-line-strong bg-surface-3 text-body';
   };
 
-  // Multi-month continuous scroll generator (6 months around current)
-  const getMonthsForContinuousScroll = () => {
-    const baseYear = currentDate.getFullYear();
-    const baseMonth = currentDate.getMonth();
+  const dayEvents = eventsOn(selectedDay);
+  const dayTasks = tasksOn(selectedDay);
+  const dayTransactions = transactionsOn(selectedDay);
+  const dayNotes = notesOn(selectedDay);
 
-    const months = [];
-    for (let offset = -2; offset <= 4; offset++) {
-      const d = new Date(baseYear, baseMonth + offset, 1);
-      const mYear = d.getFullYear();
-      const mMonth = d.getMonth();
-      const firstDay = (new Date(mYear, mMonth, 1).getDay() + 6) % 7;
-      const totalDays = new Date(mYear, mMonth + 1, 0).getDate();
+  const panel = (
+    <>
+      <div className="p-4 border-b border-line space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] text-muted">{selectedDay === today ? 'Bugün' : 'Seçili gün'}</p>
+            <h3 className="text-base font-semibold text-fg tracking-tight">{formatTurkishDate(selectedDay)}</h3>
+          </div>
+          <button
+            onClick={() => setMobilePanelOpen(false)}
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
+            aria-label="Gün panelini kapat"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setPreference('calendarPanelCollapsed', true)}
+            className="hidden lg:flex w-8 h-8 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
+            aria-label="Gün panelini gizle"
+            title="Gün panelini gizle"
+          >
+            <PanelRightClose className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openNewEvent}
+            className="flex-1 h-9 px-3 bg-brand hover:bg-brand-hover text-white text-xs font-medium rounded-md flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Etkinlik
+          </button>
+          <button
+            onClick={() => {
+              addTask({ title: 'Yeni görev', dueDate: selectedDay, completed: false, priority: systemSettings.tasks.defaultPriority });
+              addToast({ type: 'success', title: 'Görev eklendi', message: `${formatTurkishDate(selectedDay)} tarihine görev eklendi.` });
+            }}
+            className="h-9 px-3 bg-surface-2 hover:bg-surface-3 text-body hover:text-fg border border-line-strong text-xs font-medium rounded-md flex items-center gap-1.5"
+          >
+            <CheckSquare className="w-3.5 h-3.5" /> Görev
+          </button>
+        </div>
+      </div>
 
-      months.push({
-        year: mYear,
-        month: mMonth,
-        monthName: monthNames[mMonth],
-        firstDay,
-        totalDays,
-      });
-    }
-    return months;
-  };
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <PanelSection icon={CalendarDays} title="Etkinlikler" count={dayEvents.length} empty="Bu güne planlanmış etkinlik yok.">
+          {dayEvents.map((ev) => (
+            <button
+              key={ev.id}
+              onClick={() => openEvent(ev)}
+              className="w-full text-left p-3 rounded-md bg-surface-2 hover:bg-surface-3 border border-line space-y-1"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs font-medium text-fg">{ev.title}</span>
+                {isEventOverdue(ev) && <span className="text-[10px] text-rose-300 shrink-0">Gecikti</span>}
+              </div>
+              <span className="flex items-center gap-1.5 text-[11px] text-muted">
+                <Clock className="w-3 h-3" /> {ev.time || '—'} · {ev.durationMinutes || systemSettings.calendar.defaultEventDurationMinutes} dk
+              </span>
+              {ev.description && <p className="text-[11px] text-subtle line-clamp-2">{ev.description}</p>}
+            </button>
+          ))}
+        </PanelSection>
 
-  // Selected Day Items
-  const selectedDayEvents = getEventsForDate(selectedDayDate);
-  const selectedDayTasks = getTasksForDate(selectedDayDate);
-  const selectedDayTransactions = getTransactionsForDate(selectedDayDate);
-  const selectedDayNotes = getNotesForDate(selectedDayDate);
+        <PanelSection icon={CheckSquare} title="Görevler" count={dayTasks.length} empty="Bu gün için görev yok.">
+          {dayTasks.map((t) => (
+            <div key={t.id} className="p-2.5 rounded-md bg-surface-2 border border-line flex items-center gap-2">
+              <button
+                onClick={() => toggleTask(t.id)}
+                className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                  t.completed ? 'bg-brand border-brand text-white' : 'border-line-strong'
+                }`}
+                aria-label={t.completed ? 'Tamamlanmadı olarak işaretle' : 'Tamamlandı olarak işaretle'}
+              >
+                {t.completed && <Check className="w-3 h-3" />}
+              </button>
+              <span className={`text-xs truncate ${t.completed ? 'line-through text-muted' : 'text-fg'}`}>{t.title}</span>
+            </div>
+          ))}
+        </PanelSection>
 
-  const isToday = selectedDayDate === toLocalDateString();
+        <PanelSection icon={Wallet} title="Finans" count={dayTransactions.length} empty="Bu tarihte finans kaydı yok.">
+          {dayTransactions.map((tr) => (
+            <button
+              key={tr.id}
+              onClick={() => {
+                setEditingTransaction(tr);
+                setIsFinanceModalOpen(true);
+              }}
+              className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line flex items-center justify-between gap-2"
+            >
+              <span className="min-w-0">
+                <span className="text-xs text-fg block truncate">{tr.title}</span>
+                <span className="text-[10px] text-muted">{tr.isDebt ? 'Kredi / borç' : tr.category}</span>
+              </span>
+              <span className={`text-xs font-medium tabular-nums ${tr.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {tr.type === 'gelir' ? '+' : '−'}
+                {formatCurrencyTRY(tr.amount)}
+              </span>
+            </button>
+          ))}
+        </PanelSection>
+
+        {dayNotes.length > 0 && (
+          <PanelSection icon={FileText} title="Notlar" count={dayNotes.length} empty="">
+            {dayNotes.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => {
+                  setActiveNoteId(n.id);
+                  setActiveTab('notes');
+                }}
+                className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs text-fg truncate"
+              >
+                {n.title || 'Başlıksız not'}
+              </button>
+            ))}
+          </PanelSection>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div className="flex-1 flex h-full bg-app overflow-hidden select-none">
-      {/* Hidden File Input for .ICS Upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept=".ics,text/calendar"
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".ics,text/calendar" className="sr-only" tabIndex={-1} aria-hidden="true" />
 
-      {/* Main Calendar View Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-line">
-        {/* Top Header & Navigation Bar */}
-        <div className="px-4 sm:px-6 py-3.5 bg-surface border-b border-line flex items-center justify-between gap-3 flex-wrap shrink-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-brand border border-brand-hover flex items-center justify-center shrink-0">
-                <CalendarIcon className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                  Takvim
-                </h2>
-                <p className="text-[10px] text-muted hidden sm:block">
-                  Akıcı zaman çizelgesi & .ICS desteği
-                </p>
-              </div>
-            </div>
-
-            {/* Month Navigation */}
-            {viewMode !== 'scroll' ? (
-              <div className="flex items-center gap-1 bg-surface-2 p-1 rounded-lg border border-line-strong">
-                <button
-                  onClick={handlePrevMonth}
-                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-surface-3 active:bg-surface-4 rounded-lg text-subtle hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-                  title="Önceki Ay"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="font-bold text-xs sm:text-sm text-white px-2 sm:px-3 min-w-[110px] sm:min-w-[130px] text-center">
-                  {monthNames[month]} {year}
-                </span>
-                <button
-                  onClick={handleNextMonth}
-                  className="min-h-[38px] min-w-[38px] p-2 hover:bg-surface-3 active:bg-surface-4 rounded-lg text-subtle hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-                  title="Sonraki Ay"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="px-3 py-1.5 bg-surface-2 border border-brand/60 rounded-lg text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <ScrollText className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Akıcı Zaman Çizelgesi Modu</span>
-              </div>
-            )}
-
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* Toolbar */}
+        <div className="px-4 sm:px-6 py-3 bg-surface border-b border-line flex items-center justify-between gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={handleToday}
-              className="min-h-[38px] px-3 py-1 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 text-body hover:text-white border border-line-strong text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              onClick={() => shiftMonths(-1)}
+              className="w-9 h-9 rounded-md flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2"
+              aria-label="Bir ay geri"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-semibold text-fg min-w-[120px] text-center">
+              {MONTH_NAMES[anchor.month]} {anchor.year}
+            </span>
+            <button
+              onClick={() => shiftMonths(1)}
+              className="w-9 h-9 rounded-md flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2"
+              aria-label="Bir ay ileri"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => goToDate(today)}
+              className="h-9 px-3 ml-1 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
             >
               Bugün
             </button>
           </div>
 
-          {/* Right Toolbar: Views, Import, Export, Add */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* View switcher */}
-            <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
-              <button
-                onClick={() => setViewMode('month')}
-                className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'month' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
-                }`}
-                title="Klasik Ay Görünümü"
-              >
-                <Grid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Ay</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('scroll')}
-                className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'scroll' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
-                }`}
-                title="Akıcı Zaman Çizelgesi Görünümü"
-              >
-                <ScrollText className="w-3.5 h-3.5 text-emerald-300" />
-                <span className="hidden sm:inline">Zaman Çizelgesi</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('week')}
-                className={`min-h-[36px] px-2.5 sm:px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
-                  viewMode === 'week' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
-                }`}
-                title="Hafta Görünümü"
-              >
-                <CalendarDays className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Hafta</span>
-              </button>
-            </div>
-
-            {/* .ICS File Import Button */}
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-              title=".ICS Takvim Dosyası Yükle ve İçe Aktar"
+              className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
+              title=".ics takvim dosyasını içe aktar"
             >
-              <Upload className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">.ICS Yükle</span>
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">İçe aktar</span>
             </button>
-
-            {/* Export modal trigger */}
             <button
-              onClick={() => handleOpenExport()}
-              className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-              title="Dışa Aktar / Senkronize Et"
+              onClick={() => setIsExportModalOpen(true)}
+              className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
+              title="Dışa aktar / eşitle"
             >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">Dışa Aktar</span>
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Dışa aktar</span>
             </button>
-
-            {/* Quick Add Event */}
             <button
-              onClick={handleQuickAddEventOnSelectedDay}
-              className="min-h-[44px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-bold rounded-lg transition-all cursor-pointer"
+              onClick={openNewEvent}
+              className="h-9 px-3.5 flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-medium rounded-md"
             >
               <Plus className="w-4 h-4" />
-              <span>Etkinlik Ekle</span>
+              <span>Etkinlik</span>
             </button>
+            {panelCollapsed && (
+              <button
+                onClick={() => setPreference('calendarPanelCollapsed', false)}
+                className="hidden lg:flex w-9 h-9 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
+                aria-label="Gün panelini göster"
+                title="Gün panelini göster"
+              >
+                <PanelRightOpen className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* View Mode 1: Classic Month Grid */}
-        {viewMode === 'month' && (
-          <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4">
-            {/* Days of week header */}
-            <div className="grid grid-cols-7 gap-1.5 mb-1.5 text-center shrink-0">
-              {dayNames.map((d, i) => (
-                <div key={d} className={`text-xs font-bold py-1.5 ${i >= 5 ? 'text-emerald-400' : 'text-[#9ca3af]'}`}>
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Month Day Cells */}
-            <div className="flex-1 grid grid-cols-7 gap-1.5 sm:gap-2 auto-rows-fr overflow-y-auto">
-              {/* Previous Month Padding */}
-              {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => {
-                const prevDays = new Date(year, month, 0).getDate();
-                const dayNum = prevDays - ((new Date(year, month, 1).getDay() + 6) % 7) + i + 1;
-                return (
-                  <div key={`prev-${i}`} className="bg-surface/40 border border-line rounded-lg sm:rounded-lg p-1.5 sm:p-2 opacity-35">
-                    <span className="text-[11px] text-muted font-mono">{dayNum}</span>
-                  </div>
-                );
-              })}
-
-              {/* Current Month Days */}
-              {Array.from({ length: new Date(year, month + 1, 0).getDate() }).map((_, i) => {
-                const dayNum = i + 1;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                const dayEvents = getEventsForDate(dateStr);
-                const dayTasks = getTasksForDate(dateStr);
-                const dayTrans = getTransactionsForDate(dateStr);
-                const isSelected = selectedDayDate === dateStr;
-                const isCurrentToday = dateStr === toLocalDateString();
-                const isDragOver = dragOverDate === dateStr;
-
-                return (
-                  <div
-                    key={dateStr}
-                    onClick={() => handleCellClick(dateStr)}
-                    onDragOver={(e) => handleDragOver(e, dateStr)}
-                    onDragLeave={(e) => handleDragLeave(e, dateStr)}
-                    onDrop={(e) => handleDrop(e, dateStr)}
-                    className={`rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 flex flex-col justify-between transition-all cursor-pointer min-h-[85px] sm:min-h-[100px] border ${
-                      isSelected
-                        ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
-                        : isDragOver
-                        ? 'bg-brand-soft border-emerald-400 ring-2 ring-emerald-400/60'
-                        : 'bg-surface hover:bg-surface-2 border-line hover:border-line-strong'
-                    }`}
-                  >
-                    {/* Date Header Number & Indicator count */}
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-mono font-bold w-6 h-6 rounded-full flex items-center justify-center ${
-                          isCurrentToday
-                            ? 'bg-emerald-500 text-black font-bold'
-                            : isSelected
-                            ? 'bg-emerald-800 text-white'
-                            : 'text-body'
-                        }`}
-                      >
-                        {dayNum}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        {dayTasks.length > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={`${dayTasks.length} Görev`} />
-                        )}
-                        {dayTrans.length > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title={`${dayTrans.length} Finans İşlemi`} />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Events list preview */}
-                    <div className="space-y-1 my-1 flex-1 overflow-hidden">
-                      {dayEvents.slice(0, 2).map((ev) => (
-                        <div
-                          key={ev.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, ev.id)}
-                          onClick={(e) => handleEventClick(ev, e)}
-                          className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border flex items-center gap-1 ${getEventBadgeStyle(ev)}`}
-                          title={`${ev.time || '10:00'} - ${ev.title}`}
-                        >
-                          <span className="truncate">{ev.title}</span>
-                        </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <span className="text-[9px] text-emerald-400 font-mono block pl-1">
-                          +{dayEvents.length - 2} daha
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* View Mode 2: Continuous Smooth Scroll Timeline View */}
-        {viewMode === 'scroll' && (
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth">
-            {getMonthsForContinuousScroll().map((m) => (
-              <div key={`${m.year}-${m.month}`} className="space-y-3 bg-app p-4 sm:p-5 rounded-lg border border-line">
-                {/* Sticky Month Header */}
-                <div className="sticky top-0 z-10 bg-app/95 backdrop-blur-md py-2 border-b border-line flex items-center justify-between">
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                    <CalendarDays className="w-5 h-5 text-emerald-400" />
-                    <span>{m.monthName} {m.year}</span>
+        {/* Timeline */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-6 pb-6">
+          {months.map((m) => {
+            const key = `${m.year}-${m.month}`;
+            return (
+              <section
+                key={key}
+                ref={(el) => {
+                  if (el) monthRefs.current.set(key, el);
+                  else monthRefs.current.delete(key);
+                }}
+                className="pt-5"
+                aria-label={`${MONTH_NAMES[m.month]} ${m.year}`}
+              >
+                <div className="sticky top-0 z-10 bg-app py-2 flex items-baseline justify-between border-b border-line mb-2">
+                  <h3 className="text-sm font-semibold text-fg">
+                    {MONTH_NAMES[m.month]} <span className="text-muted font-normal">{m.year}</span>
                   </h3>
-                  <span className="text-xs text-muted font-mono">{m.totalDays} Gün</span>
                 </div>
-
-                {/* Day Grid Header */}
-                <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-muted">
-                  {dayNames.map((d, i) => (
-                    <span key={d} className={i >= 5 ? 'text-emerald-400' : ''}>{d}</span>
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted mb-1">
+                  {DAY_NAMES.map((d) => (
+                    <span key={d}>{d}</span>
                   ))}
                 </div>
-
-                {/* Continuous Month Grid */}
-                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                  {/* Padding */}
-                  {Array.from({ length: m.firstDay }).map((_, pi) => (
-                    <div key={`p-${pi}`} className="h-16 rounded-lg bg-transparent" />
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: m.firstDay }).map((_, i) => (
+                    <div key={`pad-${i}`} />
                   ))}
-
-                  {/* Days */}
-                  {Array.from({ length: m.totalDays }).map((_, di) => {
-                    const dayNum = di + 1;
-                    const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                    const dayEvents = getEventsForDate(dateStr);
-                    const dayTasks = getTasksForDate(dateStr);
-                    const dayTrans = getTransactionsForDate(dateStr);
-                    const isSelected = selectedDayDate === dateStr;
-                    const isCurrentToday = dateStr === toLocalDateString();
-
+                  {Array.from({ length: m.totalDays }).map((_, i) => {
+                    const date = iso(m.year, m.month, i + 1);
+                    const evs = eventsOn(date);
+                    const hasTasks = tasksOn(date).length > 0;
+                    const hasMoney = transactionsOn(date).length > 0;
+                    const selected = selectedDay === date;
+                    const isToday = date === today;
                     return (
                       <div
-                        key={dateStr}
-                        onClick={() => handleCellClick(dateStr)}
-                        className={`min-h-[58px] sm:min-h-[70px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
-                            : 'bg-surface hover:bg-surface-2 border-line'
+                        key={date}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectDay(date)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selectDay(date);
+                          }
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (dragOverDate !== date) setDragOverDate(date);
+                        }}
+                        onDragLeave={() => dragOverDate === date && setDragOverDate(null)}
+                        onDrop={(e) => handleDrop(e, date)}
+                        aria-label={formatTurkishDate(date)}
+                        aria-pressed={selected}
+                        className={`min-h-[64px] sm:min-h-[84px] p-1.5 rounded-md border flex flex-col gap-1 cursor-pointer transition-colors ${
+                          selected
+                            ? 'border-brand bg-surface-2'
+                            : dragOverDate === date
+                              ? 'border-line-strong bg-surface-3'
+                              : 'border-line bg-surface hover:bg-surface-2'
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-xs font-mono font-bold w-5 h-5 rounded-full flex items-center justify-center ${
-                              isCurrentToday ? 'bg-emerald-500 text-black font-bold' : 'text-white'
+                            className={`text-[11px] tabular-nums w-5 h-5 rounded-full flex items-center justify-center ${
+                              isToday ? 'bg-brand text-white font-semibold' : 'text-body'
                             }`}
                           >
-                            {dayNum}
+                            {i + 1}
                           </span>
-
-                          <div className="flex items-center gap-1">
-                            {dayEvents.length > 0 && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
-                            {dayTasks.length > 0 && <span className="w-2 h-2 rounded-full bg-amber-400" />}
-                            {dayTrans.length > 0 && <span className="w-2 h-2 rounded-full bg-sky-400" />}
-                          </div>
+                          <span className="flex gap-0.5">
+                            {hasTasks && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Görev var" />}
+                            {hasMoney && <span className="w-1.5 h-1.5 rounded-full bg-subtle" title="Finans kaydı var" />}
+                          </span>
                         </div>
-
-                        {dayEvents.length > 0 && (
-                          <div className="text-[10px] text-emerald-300 truncate font-medium">
-                            {dayEvents[0].title}
-                          </div>
-                        )}
+                        <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
+                          {evs.slice(0, 2).map((ev) => (
+                            <span
+                              key={ev.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', ev.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onClick={(e) => openEvent(ev, e)}
+                              title={`${ev.time ?? ''} ${ev.title}`.trim()}
+                              className={`text-[10px] px-1 py-px rounded border truncate ${eventTone(ev)}`}
+                            >
+                              {ev.title}
+                            </span>
+                          ))}
+                          {evs.length > 2 && <span className="text-[9px] text-muted pl-1">+{evs.length - 2}</span>}
+                        </div>
+                        {evs.length > 0 && <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-brand self-center" />}
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            ))}
+              </section>
+            );
+          })}
+          <div className="pt-4 text-center">
+            <button
+              onClick={() => shiftMonths(6)}
+              className="h-9 px-4 text-xs text-subtle hover:text-fg bg-surface hover:bg-surface-2 border border-line rounded-md"
+            >
+              Sonraki aylar
+            </button>
           </div>
-        )}
-
-        {/* View Mode 3: Week View */}
-        {viewMode === 'week' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const base = new Date(currentDate);
-                const dayOfWeek = (base.getDay() + 6) % 7;
-                const monday = new Date(base);
-                monday.setDate(base.getDate() - dayOfWeek + i);
-                const dateStr = toLocalDateString(monday);
-
-                const dayEvents = getEventsForDate(dateStr);
-                const dayTasks = getTasksForDate(dateStr);
-                const isSelected = selectedDayDate === dateStr;
-
-                return (
-                  <div
-                    key={dateStr}
-                    onClick={() => handleCellClick(dateStr)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-3 ${
-                      isSelected
-                        ? 'bg-brand-soft border-emerald-500 ring-2 ring-emerald-500/40'
-                        : 'bg-surface hover:bg-surface-2 border-line'
-                    }`}
-                  >
-                    <div className="border-b border-line pb-2">
-                      <span className="text-xs font-bold text-subtle block">{dayNames[i]}</span>
-                      <span className="text-sm font-bold text-white font-mono">{formatTurkishDate(dateStr)}</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {dayEvents.map(ev => (
-                        <div
-                          key={ev.id}
-                          onClick={(e) => handleEventClick(ev, e)}
-                          className={`p-2 rounded-lg text-xs border truncate ${getEventBadgeStyle(ev)}`}
-                        >
-                          <p className="font-bold truncate">{ev.title}</p>
-                          <span className="text-[10px] opacity-80">{ev.time || '10:00'}</span>
-                        </div>
-                      ))}
-                      {dayTasks.map(t => (
-                        <div key={t.id} className="p-2 rounded-lg text-xs bg-amber-950/40 border border-amber-800/40 text-amber-300">
-                          <p className="font-bold truncate">Görev: {t.title}</p>
-                        </div>
-                      ))}
-                      {dayEvents.length === 0 && dayTasks.length === 0 && (
-                        <p className="text-[11px] text-muted italic">Kayıt yok</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Interactive Right-Side Day Details Panel */}
-      {isDayPanelOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsDayPanelOpen(false)}
-          aria-hidden="true"
-        />
+      {/* Day panel: docked on large screens (collapsible), overlay on phones */}
+      {!panelCollapsed && (
+        <aside className="hidden lg:flex w-80 xl:w-96 shrink-0 border-l border-line bg-surface flex-col h-full">{panel}</aside>
       )}
-      {isDayPanelOpen && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md lg:static lg:z-20 lg:max-w-none lg:w-96 bg-surface border-l border-line flex flex-col h-full shrink-0 shadow-xl animate-fade-in safe-bottom">
-          {/* Day Panel Header */}
-          <div className="p-4 sm:p-5 border-b border-line bg-surface space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-brand/30 px-2 py-0.5 rounded-full border border-brand/50">
-                {isToday ? '🌟 Bugün' : 'Seçili Gün'}
-              </span>
-              <button
-                onClick={() => setIsDayPanelOpen(false)}
-                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-muted hover:text-white hover:bg-surface-2 transition-colors lg:hidden"
-                aria-label="Gün panelini kapat"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                {formatTurkishDate(selectedDayDate)}
-              </h3>
-              <p className="text-xs text-muted font-mono">{selectedDayDate}</p>
-            </div>
-
-            {/* Quick Action Button for this day */}
-            <div className="pt-2 flex items-center gap-2">
-              <button
-                onClick={handleQuickAddEventOnSelectedDay}
-                className="flex-1 min-h-[38px] px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Etkinlik Ekle</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  addTask({
-                    title: 'Yeni Günlük Görev',
-                    dueDate: selectedDayDate,
-                    completed: false,
-                    priority: 'orta',
-                  });
-                  addToast({ type: 'success', title: 'Görev Eklendi', message: `${selectedDayDate} tarihine görev kaydedildi.` });
-                }}
-                className="min-h-[38px] px-3 py-1.5 bg-surface-2 hover:bg-surface-3 text-body hover:text-white border border-line-strong text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                title="Güne Görev Ekle"
-              >
-                <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>+ Görev</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Day Activities List Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 divide-y divide-line">
-            {/* Scheduled Calendar Events */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <CalendarDays className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Yayınlar & Etkinlikler</span>
-                </span>
-                <span className="text-[10px] text-muted font-mono">({selectedDayEvents.length})</span>
-              </h4>
-
-              {selectedDayEvents.length === 0 ? (
-                <p className="text-xs text-muted italic py-1">Bu güne planlanmış etkinlik yok.</p>
-              ) : (
-                selectedDayEvents.map(ev => (
-                  <div
-                    key={ev.id}
-                    onClick={() => {
-                      setEditingEvent(ev);
-                      setIsEventModalOpen(true);
-                    }}
-                    className="p-3 rounded-lg bg-surface-2 hover:bg-surface-2 border border-line transition-all cursor-pointer space-y-1.5 group"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
-                        {ev.title}
-                      </h5>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getEventBadgeStyle(ev)}`}>
-                        {ev.platform || 'Yayın'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11px] text-muted">
-                      <Clock className="w-3 h-3 text-emerald-400" />
-                      <span>{ev.time || '10:00'} ({ev.durationMinutes || 45} dk)</span>
-                    </div>
-
-                    {ev.description && (
-                      <p className="text-[11px] text-subtle line-clamp-2">{ev.description}</p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Due Tasks for this day */}
-            <div className="pt-3 space-y-2">
-              <h4 className="text-xs font-bold text-white flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Teslim Edilecek Görevler</span>
-                </span>
-                <span className="text-[10px] text-muted font-mono">({selectedDayTasks.length})</span>
-              </h4>
-
-              {selectedDayTasks.length === 0 ? (
-                <p className="text-xs text-muted italic py-1">Bu gün için bekleyen görev yok.</p>
-              ) : (
-                selectedDayTasks.map(t => (
-                  <div
-                    key={t.id}
-                    className="p-2.5 rounded-lg bg-surface border border-line flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <button
-                        onClick={() => toggleTask(t.id)}
-                        className={`w-4 h-4 rounded flex items-center justify-center border ${
-                          t.completed ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-line-strong'
-                        }`}
-                      >
-                        {t.completed && <Check className="w-3 h-3" />}
-                      </button>
-                      <span className={`text-xs truncate ${t.completed ? 'line-through text-[#666]' : 'text-white'}`}>
-                        {t.title}
-                      </span>
-                    </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-amber-300 font-bold shrink-0">
-                      {t.priority}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Financial transactions on this day */}
-            <div className="pt-3 space-y-2">
-              <h4 className="text-xs font-bold text-white flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Finansal İşlemler</span>
-                </span>
-                <span className="text-[10px] text-muted font-mono">({selectedDayTransactions.length})</span>
-              </h4>
-
-              {selectedDayTransactions.length === 0 ? (
-                <p className="text-xs text-muted italic py-1">Bu tarihte finans kaydı yok.</p>
-              ) : (
-                selectedDayTransactions.map(tr => (
-                  <div
-                    key={tr.id}
-                    onClick={() => {
-                      setEditingTransaction(tr);
-                      setIsFinanceModalOpen(true);
-                    }}
-                    className="p-2.5 rounded-lg bg-surface hover:bg-surface-2 border border-line cursor-pointer flex items-center justify-between gap-2"
-                  >
-                    <div className="truncate">
-                      <span className="text-xs font-bold text-white block truncate">{tr.title}</span>
-                      <span className="text-[10px] text-muted">{tr.category}</span>
-                    </div>
-                    <span className={`text-xs font-bold font-mono ${tr.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {tr.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(tr.amount)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Notes linked or updated on this day */}
-            {selectedDayNotes.length > 0 && (
-              <div className="pt-3 space-y-2">
-                <h4 className="text-xs font-bold text-white flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Günün Notları</span>
-                  </span>
-                  <span className="text-[10px] text-muted font-mono">({selectedDayNotes.length})</span>
-                </h4>
-
-                {selectedDayNotes.map(n => (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      setActiveNoteId(n.id);
-                      setActiveTab('notes');
-                    }}
-                    className="p-2.5 rounded-lg bg-surface hover:bg-surface-2 border border-line cursor-pointer flex items-center justify-between"
-                  >
-                    <span className="text-xs text-white truncate">{n.title}</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">Aç →</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      {mobilePanelOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobilePanelOpen(false)} aria-hidden="true" />
+          <aside className="relative w-full max-w-md h-full bg-surface border-l border-line flex flex-col safe-bottom animate-fade-in">{panel}</aside>
         </div>
       )}
 
-      {/* Event Add/Edit Modal */}
       <EventModal
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
         editEvent={editingEvent}
-        initialDate={selectedDateForNewEvent || selectedDayDate}
+        initialDate={selectedDay}
       />
-
-      {/* Export & Sync Modal */}
-      <ExportSyncModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        selectedEvent={exportTargetEvent}
-      />
-
-      {/* Finance Transaction Modal */}
-      <TransactionModal
-        isOpen={isFinanceModalOpen}
-        onClose={() => setIsFinanceModalOpen(false)}
-        editTransaction={editingTransaction}
-      />
+      <ExportSyncModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
+      <TransactionModal isOpen={isFinanceModalOpen} onClose={() => setIsFinanceModalOpen(false)} editTransaction={editingTransaction} />
     </div>
   );
 };
+
+function PanelSection({
+  icon: Icon,
+  title,
+  count,
+  empty,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  count: number;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <h4 className="text-[11px] font-medium text-subtle flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <Icon className="w-3.5 h-3.5 text-muted" />
+          {title}
+        </span>
+        <span className="tabular-nums text-muted">{count}</span>
+      </h4>
+      {count === 0 ? <p className="text-xs text-muted">{empty}</p> : <div className="space-y-1.5">{children}</div>}
+    </section>
+  );
+}

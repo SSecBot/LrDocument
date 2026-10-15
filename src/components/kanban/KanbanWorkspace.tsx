@@ -6,7 +6,6 @@ import { KanbanCard, KanbanColumnId, KanbanProjectType } from '@/types';
 import { KanbanCardModal } from './KanbanCardModal';
 import { PriorityBadge } from '@/components/ui/Badge';
 import {
-  Kanban,
   Plus,
   Search,
   ArrowLeft,
@@ -82,11 +81,11 @@ const COLUMNS: ColumnDef[] = [
 ];
 
 const PROJECT_TYPE_INFO: Record<string, { label: string; icon: string; style: string }> = {
-  genel: { label: 'Genel', icon: '📋', style: 'bg-surface-3 text-body border-line-strong' },
-  icerik: { label: 'İçerik', icon: '✨', style: 'bg-cyan-950/50 text-cyan-300 border-cyan-800/50' },
-  matematik: { label: 'Matematik', icon: '📐', style: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50' },
-  finans: { label: 'Finans', icon: '💰', style: 'bg-amber-950/50 text-amber-300 border-amber-800/50' },
-  senaryo: { label: 'Senaryo', icon: '🎬', style: 'bg-rose-950/50 text-rose-300 border-rose-800/50' },
+  genel: { label: 'Genel', icon: '', style: 'bg-surface-3 text-body border-line-strong' },
+  icerik: { label: 'İçerik', icon: '', style: 'bg-cyan-950/50 text-cyan-300 border-cyan-800/50' },
+  matematik: { label: 'Matematik', icon: '', style: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50' },
+  finans: { label: 'Finans', icon: '', style: 'bg-amber-950/50 text-amber-300 border-amber-800/50' },
+  senaryo: { label: 'Senaryo', icon: '', style: 'bg-rose-950/50 text-rose-300 border-rose-800/50' },
 };
 
 export const KanbanWorkspace: React.FC = () => {
@@ -191,18 +190,9 @@ export const KanbanWorkspace: React.FC = () => {
     <div className="flex-1 flex flex-col h-full bg-app overflow-hidden select-none">
       {/* Top Header & Actions */}
       <div className="px-4 sm:px-6 py-3.5 bg-surface border-b border-line flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand border border-brand-hover flex items-center justify-center shrink-0">
-            <Kanban className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              Evrensel Kanban Panosu
-            </h1>
-            <p className="text-[11px] sm:text-xs text-muted hidden sm:block">
-              Tüm araştırma, video, finans ve genel projelerinizi aşamalarla yönetin.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-sm font-semibold text-fg">Pano</h1>
+          <p className="text-[11px] text-muted hidden sm:block">Kartları aşamalar arasında sürükleyerek ilerletin.</p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -235,11 +225,11 @@ export const KanbanWorkspace: React.FC = () => {
           Proje:
         </span>
         {[
-          { id: 'all', label: 'Tüm Projeler', icon: '🌐' },
-          { id: 'matematik', label: 'Matematik', icon: '📐' },
-          { id: 'icerik', label: 'İçerik', icon: '✨' },
-          { id: 'finans', label: 'Finans', icon: '💰' },
-          { id: 'genel', label: 'Genel', icon: '📋' },
+          { id: 'all', label: 'Tüm Projeler', icon: '' },
+          { id: 'matematik', label: 'Matematik', icon: '' },
+          { id: 'icerik', label: 'İçerik', icon: '' },
+          { id: 'finans', label: 'Finans', icon: '' },
+          { id: 'genel', label: 'Genel', icon: '' },
         ].map((pt) => {
           const isSelected = selectedProjectType === pt.id;
           return (

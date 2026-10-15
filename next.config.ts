@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      // Pages are never stored by the browser or proxies; only hashed build assets
+      // (/_next/static) and the public OCR engine files are cacheable.
+      {
+        source: "/((?!_next/static|_next/image|ocr/).*)",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
     ];
   },
 };

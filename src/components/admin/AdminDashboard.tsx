@@ -19,17 +19,20 @@ import {
   Lock,
   Mail,
   User,
-  Layers,
   Database,
   UploadCloud,
   Archive,
+  SlidersHorizontal,
+  LayoutTemplate,
 } from 'lucide-react';
 import { AdminUserItem, AdminMetrics, SubscriptionPlan, UserRole, UserStatus } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { exportUsersToExcel, exportUsersToCSV } from '@/lib/exportExcel';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import { toLocalDateString } from '@/lib/utils';
-import { planLabel } from '@/lib/pricing';
+import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, planLabel, type AccountType } from '@/lib/pricing';
+import { SystemDefaultsPanel } from './SystemDefaultsPanel';
+import { LandingEditorPanel } from './LandingEditorPanel';
 import { classYearLabel } from '@/lib/studentProfile';
 
 async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
@@ -39,17 +42,22 @@ async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: Adm
   return data;
 }
 
+/** Seen within the last two minutes (same window as the live-user count). */
+function isLive(user: AdminUserItem): boolean {
+  return !!user.lastSeenAt && Date.now() - new Date(user.lastSeenAt).getTime() < 2 * 60_000;
+}
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Beklenmeyen bir hata oluştu.';
 }
 
 export function AdminDashboard() {
-  const { addToast, currentUser } = useAppStore();
+  const { addToast, currentUser, systemSettings } = useAppStore();
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'defaults' | 'landing'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [isExporting, setIsExporting] = useState(false);
@@ -106,6 +114,20 @@ export function AdminDashboard() {
       cancelled = true;
     };
   }, [addToast]);
+
+  // Keep the live-user count (and the list) fresh while the panel is open and visible.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      loadAdminData()
+        .then((data) => {
+          setMetrics(data.metrics || null);
+          setUsers(data.users || []);
+        })
+        .catch(() => {});
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleExportFullBackup = async () => {
     try {
@@ -301,14 +323,13 @@ export function AdminDashboard() {
     }
   };
 
-  const handleToggleAccountType = async (user: AdminUserItem) => {
-    const accountType = user.accountType === 'STUDENT' ? 'STANDARD' : 'STUDENT';
+  const handleSetAccountType = async (user: AdminUserItem, accountType: AccountType, seats?: number) => {
     try {
       setActionLoadingId(user.id);
       const res = await fetch(`/api/admin/users/${user.id}/account-type`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountType }),
+        body: JSON.stringify({ accountType, ...(seats !== undefined ? { seats } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Hesap tipi güncellenemedi.');
@@ -401,11 +422,11 @@ export function AdminDashboard() {
       return;
     }
 
-    if (newUserPassword.length < 8) {
+    if (newUserPassword.length < systemSettings.security.passwordMinLength) {
       addToast({
         type: 'warning',
         title: 'Geçersiz Şifre',
-        message: 'Şifre en az 8 karakter olmalıdır.',
+        message: `Şifre en az ${systemSettings.security.passwordMinLength} karakter olmalıdır.`,
       });
       return;
     }
@@ -483,7 +504,7 @@ export function AdminDashboard() {
           {/* New User Modal Trigger */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-2.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Yeni Kullanıcı Ekle</span>
@@ -503,7 +524,7 @@ export function AdminDashboard() {
           {/* Full Database JSON Backup Import */}
           <label
             title="Daha önce alınmış JSON yedeğini sisteme güvenli şekilde geri yükleyin / aktarın"
-            className={`px-3.5 py-2.5 rounded-lg bg-[#1c2230] hover:bg-[#252e42] text-xs font-semibold text-blue-300 border border-blue-800/60 flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-3.5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-blue-300 border border-blue-800/60 flex items-center gap-1.5 transition-colors cursor-pointer ${
               isImporting ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
@@ -522,7 +543,7 @@ export function AdminDashboard() {
             onClick={handleExportExcel}
             disabled={isExporting || users.length === 0}
             title="Kullanıcı Listesini Excel Olarak İndir (.xlsx)"
-            className="px-3.5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
             <span>Excel (.xlsx)</span>
@@ -533,7 +554,7 @@ export function AdminDashboard() {
             onClick={handleExportCSV}
             disabled={isExporting || users.length === 0}
             title="CSV Formatında İndir"
-            className="px-3 py-2.5 rounded-lg bg-surface-2 hover:bg-[#252a3a] text-xs font-semibold text-neutral-300 border border-line-strong flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-3 py-2.5 rounded-lg bg-surface-2 hover:bg-slate-800 text-xs font-semibold text-neutral-300 border border-line-strong flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" />
             <span>.CSV</span>
@@ -553,7 +574,7 @@ export function AdminDashboard() {
       {/* Main Content Area */}
       <div className="flex-1 md:overflow-y-auto p-4 sm:p-5 space-y-5">
         {/* Database Migration & Backup Status Banner */}
-        <div className="bg-[#141a24] border border-blue-900/40 rounded-lg p-4.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-slate-900 border border-blue-900/40 rounded-lg p-4.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
               <Archive className="w-5 h-5" />
@@ -654,21 +675,20 @@ export function AdminDashboard() {
           <div className="p-5 rounded-lg bg-surface border border-line flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Üretim Verileri
+                Canlı Kullanıcı
               </span>
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <Layers className="w-4 h-4" />
-              </div>
+              <span className="relative flex w-2.5 h-2.5" aria-hidden="true">
+                {(metrics?.liveUsers ?? 0) > 0 && <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-60 animate-ping" />}
+                <span className={`relative w-2.5 h-2.5 rounded-full ${(metrics?.liveUsers ?? 0) > 0 ? 'bg-emerald-400' : 'bg-surface-4'}`} />
+              </span>
             </div>
-            <div className="text-3xl font-black text-white">
-              {(metrics?.totalNotes ?? 0) + (metrics?.totalTasks ?? 0)}
-            </div>
-            <p className="text-[11px] text-purple-400/80 mt-1 font-medium">Not ve görev toplamı</p>
+            <div className="text-3xl font-black text-white tabular-nums" aria-live="polite">{metrics?.liveUsers ?? 0}</div>
+            <p className="text-[11px] text-neutral-400 mt-1 font-medium">Son 2 dakikada aktif · 30 sn’de bir yenilenir</p>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex items-center gap-2 border-b border-line pb-2">
+        <div className="flex items-center gap-2 border-b border-line pb-2 overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveTab('pending')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -692,7 +712,34 @@ export function AdminDashboard() {
             <Users className="w-3.5 h-3.5" />
             <span>Tüm Kullanıcılar ({users.length})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('defaults')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'defaults'
+                ? 'bg-surface-3 text-white border border-line-strong'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Varsayılanlar</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('landing')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'landing'
+                ? 'bg-surface-3 text-white border border-line-strong'
+                : 'text-neutral-400 hover:text-white hover:bg-surface-3/50'
+            }`}
+          >
+            <LayoutTemplate className="w-3.5 h-3.5" />
+            <span>Açılış sayfası</span>
+          </button>
         </div>
+
+        {activeTab === 'defaults' && <SystemDefaultsPanel />}
+        {activeTab === 'landing' && <LandingEditorPanel />}
 
         {/* TAB 1: PENDING USERS CARDS */}
         {activeTab === 'pending' && (
@@ -732,9 +779,17 @@ export function AdminDashboard() {
                       <h3 className="text-base font-bold text-white">{user.name}</h3>
                       <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.email}</p>
 
+                      {user.accountType === 'CORPORATE' && (
+                        <div className="mt-3 p-2.5 rounded-lg bg-surface-2 border border-line text-[11px] space-y-0.5">
+                          <p className="font-semibold text-body">Kurumsal kayıt</p>
+                          <p className="text-neutral-300">{user.organization}</p>
+                          <p className="text-neutral-400">{user.seats} kişi · kişi başı %{systemSettings.pricing.corporatePercent}</p>
+                        </div>
+                      )}
+
                       {user.accountType === 'STUDENT' && user.studentProfile && (
                         <div className="mt-3 p-2.5 rounded-lg bg-sky-500/5 border border-sky-500/20 text-[11px] space-y-0.5">
-                          <p className="font-semibold text-sky-300">Öğrenci kaydı (%50 indirim)</p>
+                          <p className="font-semibold text-sky-300">Öğrenci kaydı (%{systemSettings.pricing.studentDiscountPercent} indirim)</p>
                           <p className="text-neutral-300">{user.studentProfile.university}</p>
                           <p className="text-neutral-400">
                             {user.studentProfile.department} • {classYearLabel(user.studentProfile.classYear)}
@@ -754,8 +809,8 @@ export function AdminDashboard() {
                           onChange={(e) => handleUpdatePlan(user, e.target.value as SubscriptionPlan)}
                           className="bg-surface border border-line-strong rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 focus:outline-none"
                         >
-                          <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD')}</option>
-                          <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD')}</option>
+                          <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
+                          <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
                         </select>
                       </div>
                     </div>
@@ -764,7 +819,7 @@ export function AdminDashboard() {
                       <button
                         onClick={() => handleApprove(user)}
                         disabled={actionLoadingId === user.id}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                        className="flex-1 bg-brand hover:bg-brand-hover text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {actionLoadingId === user.id ? (
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -851,8 +906,20 @@ export function AdminDashboard() {
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-semibold text-white">{user.name}</p>
+                                <p className="font-semibold text-white flex items-center gap-1.5">
+                                  {user.name}
+                                  {isLive(user) && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-normal text-emerald-300">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> çevrimiçi
+                                    </span>
+                                  )}
+                                </p>
                                 <p className="text-[11px] text-neutral-500 font-mono">{user.email}</p>
+                                {user.accountType === 'CORPORATE' && (
+                                  <p className="text-[11px] text-subtle mt-0.5">
+                                    {user.organization || 'Kurum adı yok'} · {user.seats ?? '?'} kişi
+                                  </p>
+                                )}
                                 {user.accountType === 'STUDENT' && user.studentProfile && (
                                   <p className="text-[11px] text-sky-300/90 mt-0.5" title={user.studentProfile.studentEmail}>
                                     {user.studentProfile.university} • {user.studentProfile.department} •{' '}
@@ -876,18 +943,37 @@ export function AdminDashboard() {
                             >
                               {user.role}
                             </button>
-                            <button
-                              onClick={() => handleToggleAccountType(user)}
+                            <select
+                              value={user.accountType ?? 'STANDARD'}
                               disabled={actionLoadingId === user.id}
-                              title="Hesap tipini değiştir (öğrenci hesapları Ders Takibi sayfasını görür)"
-                              className={`ml-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
-                                user.accountType === 'STUDENT'
-                                  ? 'bg-sky-500/15 text-sky-300 border-sky-500/40 hover:bg-sky-500/25'
-                                  : 'bg-surface-3 text-neutral-400 border-line-strong hover:bg-neutral-700'
-                              }`}
+                              onChange={(e) => handleSetAccountType(user, e.target.value as AccountType)}
+                              title="Hesap tipi (öğrenci hesapları Ders Takibi'ni görür; kurumsal kişi sayısına göre fiyatlanır)"
+                              aria-label={`${user.name} hesap tipi`}
+                              className="ml-1.5 text-[11px] font-semibold rounded-lg px-2 py-1 border bg-surface-2 text-body border-line-strong focus:outline-none"
                             >
-                              {user.accountType === 'STUDENT' ? 'ÖĞRENCİ' : 'STANDART'}
-                            </button>
+                              {ACCOUNT_TYPES.map((t) => (
+                                <option key={t} value={t}>
+                                  {ACCOUNT_TYPE_LABEL[t]}
+                                </option>
+                              ))}
+                            </select>
+                            {user.accountType === 'CORPORATE' && (
+                              <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
+                                Kişi
+                                <input
+                                  type="number"
+                                  min={systemSettings.pricing.corporateMinSeats}
+                                  max={systemSettings.pricing.corporateMaxSeats}
+                                  defaultValue={user.seats ?? systemSettings.pricing.corporateMinSeats}
+                                  disabled={actionLoadingId === user.id}
+                                  onBlur={(e) => {
+                                    const n = Number(e.target.value);
+                                    if (n !== user.seats) handleSetAccountType(user, 'CORPORATE', n);
+                                  }}
+                                  className="w-16 h-6 rounded border border-line-strong bg-surface-2 px-1.5 text-body tabular-nums focus:outline-none"
+                                />
+                              </label>
+                            )}
                           </td>
 
                           {/* Subscription Plan Column */}
@@ -902,8 +988,8 @@ export function AdminDashboard() {
                                   : 'bg-surface-2 text-neutral-300 border-line-strong'
                               }`}
                             >
-                              <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD')}</option>
-                              <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD')}</option>
+                              <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
+                              <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
                             </select>
                           </td>
 
@@ -1040,7 +1126,7 @@ export function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Şifre (En az 8 karakter)</label>
+                <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Şifre (en az {systemSettings.security.passwordMinLength} karakter)</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                   <input
@@ -1096,7 +1182,7 @@ export function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={isCreatingUser}
-                  className="w-full py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isCreatingUser ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -13,7 +13,10 @@ import {
   RefreshCw,
   Coins,
   Calendar,
+  Landmark,
 } from 'lucide-react';
+import { minimumPayment, monthlyInterest, payoffPlan } from '@/lib/debt';
+import { formatCurrencyTRY } from '@/lib/utils';
 import { convertCurrencyToTRY } from '@/lib/exchangeRates';
 import { transactionFormSchema } from '@/lib/validations/finance';
 import { toLocalDateString } from '@/lib/utils';
@@ -35,7 +38,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     financeCategories,
     exchangeRates,
     fetchExchangeRates,
+    systemSettings,
   } = useAppStore();
+  const DEBT_CATEGORY = 'Kredi / Borç';
 
   const [type, setType] = useState<FinanceTransactionType>('gelir');
   const [title, setTitle] = useState('');
@@ -52,6 +57,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isConfirmed, setIsConfirmed] = useState(true);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isDebt, setIsDebt] = useState(false);
+  const [interestRate, setInterestRate] = useState<number | ''>(systemSettings.finance.loanMonthlyInterestRate);
+  const [minRate, setMinRate] = useState<number | ''>(systemSettings.finance.loanMinPaymentRate);
 
   const availableCategories = financeCategories.filter(c => c.type === type);
 
@@ -76,12 +84,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setIsRecurring(editTransaction.isRecurring || false);
       setRecurringFrequency(editTransaction.recurringFrequency || 'aylik');
       setIsConfirmed(editTransaction.isConfirmed !== undefined ? editTransaction.isConfirmed : true);
+      setIsDebt(!!editTransaction.isDebt);
+      setInterestRate(editTransaction.monthlyInterestRate ?? systemSettings.finance.loanMonthlyInterestRate);
+      setMinRate(editTransaction.minPaymentRate ?? systemSettings.finance.loanMinPaymentRate);
     } else {
       setType('gelir');
       setTitle('');
       setAmount('');
-      setCurrency('TRY');
+      setCurrency(systemSettings.finance.defaultCurrency);
       setMarkupTRY(exchangeRates.markupTRY || 2.50);
+      setIsDebt(false);
+      setInterestRate(systemSettings.finance.loanMonthlyInterestRate);
+      setMinRate(systemSettings.finance.loanMinPaymentRate);
       const defaultCat = financeCategories.find(c => c.type === 'gelir')?.name || 'YouTube Geliri';
       setCategory(defaultCat);
       setDate(toLocalDateString());
@@ -96,6 +110,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleTypeChange = (newType: FinanceTransactionType) => {
     setType(newType);
+    if (newType === 'gelir') setIsDebt(false);
     const defaultCat = financeCategories.find(c => c.type === newType)?.name || '';
     setCategory(defaultCat);
     setFormErrors((prev) => {
@@ -109,6 +124,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Real-time conversion preview calculation
   const numericAmount = amount === '' ? 0 : Number(amount);
   const conversion = convertCurrencyToTRY(numericAmount, currency, exchangeRates, markupTRY);
+  const debtMode = type === 'gider' && isDebt;
+  const rateNum = interestRate === '' ? 0 : Number(interestRate);
+  const minRateNum = minRate === '' ? 0 : Number(minRate);
+  const debtBalance = conversion.baseAmountTRY;
+  const debtInterest = monthlyInterest(debtBalance, rateNum);
+  const debtMinimum = minimumPayment(debtBalance, rateNum, minRateNum);
+  const debtPlan = payoffPlan(debtBalance, rateNum, debtMinimum);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,15 +140,24 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       amount: numericAmount,
       currency,
       type,
-      category: category || (type === 'gelir' ? 'YouTube Geliri' : 'Ekipman & Stüdyo'),
+      category: debtMode ? DEBT_CATEGORY : category || (type === 'gelir' ? 'Genel gelir' : 'Genel gider'),
       date,
-      endDate: isRecurring ? (endDate.trim() || undefined) : undefined,
-      isRecurring,
-      recurringFrequency: isRecurring ? recurringFrequency : undefined,
+      endDate: !debtMode && isRecurring ? (endDate.trim() || undefined) : undefined,
+      isRecurring: !debtMode && isRecurring,
+      recurringFrequency: !debtMode && isRecurring ? recurringFrequency : undefined,
       priority,
       description: description.trim() || undefined,
-      isConfirmed,
+      // An open debt is "not yet paid off".
+      isConfirmed: debtMode ? false : isConfirmed,
     });
+
+    if (debtMode && (rateNum < 0 || rateNum > 50 || minRateNum < 0 || minRateNum > 100)) {
+      setFormErrors({ rates: 'Aylık faiz %0–50, asgari ödeme %0–100 arasında olmalıdır.' });
+      return;
+    }
+    const debtFields = debtMode
+      ? { isDebt: true, monthlyInterestRate: rateNum, minPaymentRate: minRateNum }
+      : { isDebt: false, monthlyInterestRate: null, minPaymentRate: null };
 
     if (!validationResult.success) {
       const errors: Record<string, string> = {};
@@ -162,6 +193,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         isRecurring: validatedData.isRecurring,
         recurringFrequency: validatedData.isRecurring ? validatedData.recurringFrequency : undefined,
         isConfirmed: validatedData.isConfirmed,
+        ...debtFields,
       });
     } else {
       addTransaction({
@@ -181,6 +213,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         isRecurring: validatedData.isRecurring,
         recurringFrequency: validatedData.isRecurring ? validatedData.recurringFrequency : undefined,
         isConfirmed: validatedData.isConfirmed,
+        ...debtFields,
       });
     }
 
@@ -232,7 +265,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={() => handleTypeChange('gider')}
               className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                 type === 'gider'
-                  ? 'bg-[#28181a] border-rose-800/80 text-rose-300'
+                  ? 'bg-rose-950/60 border-rose-800/80 text-rose-300'
                   : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
@@ -240,6 +273,30 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <span>- Gider Kaydı</span>
             </button>
           </div>
+
+          {type === 'gider' && (
+            <div className="flex rounded-md border border-line bg-surface-2 p-0.5" role="group" aria-label="Gider türü">
+              {(
+                [
+                  [false, 'Normal gider'],
+                  [true, 'Kredi / borç'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={isDebt === value}
+                  onClick={() => setIsDebt(value)}
+                  className={`flex-1 h-8 rounded text-xs transition-colors inline-flex items-center justify-center gap-1.5 ${
+                    isDebt === value ? 'bg-surface-4 text-fg' : 'text-subtle hover:text-fg'
+                  }`}
+                >
+                  {value && <Landmark className="w-3.5 h-3.5" />}
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -267,7 +324,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <Coins className="w-3.5 h-3.5 text-amber-400" />
-                <span>Para Birimi & Tutar *</span>
+                <span>{debtMode ? 'Kalan borç *' : 'Para Birimi & Tutar *'}</span>
               </label>
 
               {/* Currency Selector Tabs */}
@@ -316,6 +373,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 )}
               </div>
 
+              {debtMode ? (
+                <div>
+                  <label className="block text-xs font-semibold text-white mb-1">Kategori</label>
+                  <div className="h-[34px] px-3 flex items-center rounded-lg bg-surface-2 border border-line text-xs text-subtle">{DEBT_CATEGORY}</div>
+                </div>
+              ) : (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-white">Kategori *</label>
@@ -340,8 +403,54 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   ))}
                 </select>
               </div>
+              )}
             </div>
           </div>
+
+          {debtMode && (
+            <div className="p-3 rounded-lg bg-surface border border-line space-y-3">
+              <div className="grid grid-cols-2 gap-2.5">
+                <label className="block">
+                  <span className="block text-xs font-semibold text-white mb-1">Aylık faiz (%)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.01"
+                    value={interestRate}
+                    onChange={(e) => setInterestRate(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-semibold text-white mb-1">Asgari ödeme (%)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={minRate}
+                    onChange={(e) => setMinRate(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none"
+                  />
+                </label>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <dt className="text-muted">Bu ayın faizi</dt>
+                <dd className="text-right font-mono text-body">{formatCurrencyTRY(debtInterest)}</dd>
+                <dt className="text-muted">Asgari ödeme</dt>
+                <dd className="text-right font-mono text-fg">{formatCurrencyTRY(debtMinimum)}</dd>
+              </dl>
+              <p className="text-[11px] text-subtle">
+                {debtBalance <= 0
+                  ? 'Kalan borcu girin.'
+                  : debtPlan
+                    ? `Her ay ${formatCurrencyTRY(debtMinimum)} ödenirse borç yaklaşık ${debtPlan.months} ayda kapanır; toplam faiz ${formatCurrencyTRY(debtPlan.totalInterest)}.`
+                    : 'Asgari ödeme faizi karşılamıyor; bu tutarla borç kapanmaz.'}{' '}
+                Varsayılan oranları yönetici belirler; bu borç için değiştirebilirsiniz.
+              </p>
+            </div>
+          )}
 
           {/* Live Exchange Rate Banner (USD & EUR) */}
           {currency !== 'TRY' && (
@@ -410,7 +519,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label className="block text-xs font-semibold text-white mb-1">
-                {isRecurring ? 'Başlangıç Tarihi *' : 'İşlem / Vade Tarihi *'}
+                {debtMode ? 'Sonraki ödeme tarihi *' : isRecurring ? 'Başlangıç Tarihi *' : 'İşlem / Vade Tarihi *'}
               </label>
               <input
                 type="date"
@@ -439,14 +548,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                 className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
               >
-                <option value="yuksek">🔴 Yüksek (Kira, Fatura, Büyük Ödemeler)</option>
-                <option value="orta">🟡 Orta (Operasyonel Masraflar, Düzenli Gelir)</option>
-                <option value="dusuk">🟢 Düşük (İsteğe Bağlı & Küçük Masraflar)</option>
+                <option value="yuksek">Yüksek (Kira, Fatura, Büyük Ödemeler)</option>
+                <option value="orta">Orta (Operasyonel Masraflar, Düzenli Gelir)</option>
+                <option value="dusuk">Düşük (İsteğe Bağlı & Küçük Masraflar)</option>
               </select>
             </div>
           </div>
 
           {/* Recurring Transaction Support & Mandatory End Date */}
+          {!debtMode && (
           <div className="p-3 sm:p-3.5 rounded-lg bg-surface border border-line space-y-3">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -541,13 +651,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
             )}
           </div>
-
+          )}
 
           {/* Confirmation Toggle */}
+          {!debtMode && (
           <div className="p-3 rounded-lg bg-surface border border-line flex items-center justify-between">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <CheckCircle2 className={`w-4 h-4 ${isConfirmed ? 'text-emerald-400' : 'text-[#71717a]'}`} />
+                <CheckCircle2 className={`w-4 h-4 ${isConfirmed ? 'text-emerald-400' : 'text-muted'}`} />
                 {type === 'gelir' ? 'Gelir Geldi (Onayla)' : 'Gider Ödendi (Onayla)'}
               </span>
               <p className="text-[11px] text-muted">
@@ -565,6 +676,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <div className="w-11 h-6 bg-surface-4 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
             </label>
           </div>
+          )}
 
           {/* Description */}
           <div>

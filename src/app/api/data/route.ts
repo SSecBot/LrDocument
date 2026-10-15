@@ -2,112 +2,111 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { handleRouteError } from '@/lib/apiUtils';
-import { INITIAL_FOLDERS, INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
+import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
+import { decryptRow, decryptText, encryptRow } from '@/lib/dataCrypto';
+import { encryptLegacyRows } from '@/lib/encryptLegacy';
+import { parsePreferences } from '@/lib/preferences';
 
 export async function GET() {
   try {
     const session = await requireAuth();
     const userId = session.userId;
 
-    let [folders, categories] = await Promise.all([
-      prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-      prisma.financeCategory.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-    ]);
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true, dataEncryptedAt: true } });
+    // Accounts created before at-rest encryption: encrypt their existing rows once.
+    if (user && !user.dataEncryptedAt) await encryptLegacyRows(userId);
 
-    // Lazily seed defaults for accounts created before seeding existed. Concurrent first loads
-    // may race on the same ids, so a unique-constraint failure here is harmless.
-    if (folders.length === 0) {
-      await prisma.folder
-        .createMany({
-          data: INITIAL_FOLDERS.map((folder) => ({
-            id: `${userId}_${folder.id}`,
-            userId,
-            name: folder.name,
-            description: folder.description,
-            iconName: folder.iconName,
-            isSystem: folder.isSystem || false,
-          })),
-        })
-        .catch(() => undefined);
-      folders = await prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
-    }
-
+    let categories = await prisma.financeCategory.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+    // Lazily seed finance categories for accounts created before seeding existed. Concurrent first
+    // loads may race on the same ids, so a unique-constraint failure here is harmless.
+    // (Note folders are not seeded: new accounts start with only the built-in “Favoriler” view.)
     if (categories.length === 0) {
       await prisma.financeCategory
         .createMany({
-          data: INITIAL_FINANCE_CATEGORIES.map((cat) => ({
-            id: `${userId}_${cat.id}`,
-            userId,
-            name: cat.name,
-            type: cat.type,
-            isSystem: cat.isSystem || false,
-          })),
+          data: INITIAL_FINANCE_CATEGORIES.map((cat) =>
+            encryptRow('financeCategory', userId, {
+              id: `${userId}_${cat.id}`,
+              userId,
+              name: cat.name,
+              type: cat.type,
+              isSystem: cat.isSystem || false,
+            })
+          ),
         })
         .catch(() => undefined);
       categories = await prisma.financeCategory.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
     }
 
-    const [dbNotes, dbTasks, dbKanban, dbEvents, dbMedia, dbTransactions] = await Promise.all([
+    const [folders, dbNotes, dbTasks, dbKanban, dbEvents, dbTransactions] = await Promise.all([
+      prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
       prisma.note.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
       prisma.task.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.kanbanCard.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }),
       prisma.calendarEvent.findMany({ where: { userId }, orderBy: { date: 'asc' } }),
-      prisma.mediaItem.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.financeTransaction.findMany({ where: { userId }, orderBy: { date: 'desc' } }),
     ]);
 
-    const notes = dbNotes.map((n) => ({
-      ...n,
-      tags: safeJsonParse<string[]>(n.tags, []),
-      createdAt: n.createdAt.toISOString(),
-      updatedAt: n.updatedAt.toISOString(),
-    }));
+    const notes = dbNotes.map((raw) => {
+      const n = decryptRow('note', userId, raw);
+      return {
+        ...n,
+        tags: safeJsonParse<string[]>(n.tags, []),
+        createdAt: n.createdAt.toISOString(),
+        updatedAt: n.updatedAt.toISOString(),
+      };
+    });
 
-    const tasks = dbTasks.map((t) => ({
-      ...t,
-      createdAt: t.createdAt.toISOString(),
-      completedAt: t.completedAt ? t.completedAt.toISOString() : undefined,
-    }));
+    const tasks = dbTasks.map((raw) => {
+      const t = decryptRow('task', userId, raw);
+      return {
+        ...t,
+        createdAt: t.createdAt.toISOString(),
+        completedAt: t.completedAt ? t.completedAt.toISOString() : undefined,
+      };
+    });
 
-    const kanbanCards = dbKanban.map((k) => ({
-      ...k,
-      tags: safeJsonParse<string[]>(k.tags, []),
-      createdAt: k.createdAt.toISOString(),
-      updatedAt: k.updatedAt.toISOString(),
-    }));
+    const kanbanCards = dbKanban.map((raw) => {
+      const k = decryptRow('kanbanCard', userId, raw);
+      return {
+        ...k,
+        tags: safeJsonParse<string[]>(k.tags, []),
+        createdAt: k.createdAt.toISOString(),
+        updatedAt: k.updatedAt.toISOString(),
+      };
+    });
 
-    const events = dbEvents.map((e) => ({
-      ...e,
-      checklist: safeJsonParse(e.checklist, []),
-      createdAt: e.createdAt.toISOString(),
-    }));
+    const events = dbEvents.map((raw) => {
+      const e = decryptRow('calendarEvent', userId, raw);
+      return { ...e, checklist: safeJsonParse(e.checklist, []), createdAt: e.createdAt.toISOString() };
+    });
 
-    const mediaItems = dbMedia.map((m) => ({
-      ...m,
-      tags: safeJsonParse<string[]>(m.tags, []),
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const transactions = dbTransactions.map((raw) => {
+      const tx = decryptRow('financeTransaction', userId, raw);
+      return { ...tx, currency: tx.currency || 'TRY', createdAt: tx.createdAt.toISOString() };
+    });
 
-    const transactions = dbTransactions.map((tx) => ({
-      ...tx,
-      currency: tx.currency || 'TRY',
-      createdAt: tx.createdAt.toISOString(),
-    }));
+    const formattedFolders = folders.map((raw) => {
+      const f = decryptRow('folder', userId, raw);
+      return {
+        id: stripUserPrefix(f.id, userId),
+        name: f.name,
+        description: f.description || undefined,
+        iconName: f.iconName || undefined,
+        isSystem: f.isSystem,
+      };
+    });
 
-    const formattedFolders = folders.map((f) => ({
-      id: stripUserPrefix(f.id, userId),
-      name: f.name,
-      description: f.description || undefined,
-      iconName: f.iconName || undefined,
-      isSystem: f.isSystem,
-    }));
+    const formattedCategories = categories.map((raw) => {
+      const c = decryptRow('financeCategory', userId, raw);
+      return { id: stripUserPrefix(c.id, userId), name: c.name, type: c.type, isSystem: c.isSystem };
+    });
 
-    const formattedCategories = categories.map((c) => ({
-      id: stripUserPrefix(c.id, userId),
-      name: c.name,
-      type: c.type,
-      isSystem: c.isSystem,
-    }));
+    let preferences: unknown = {};
+    try {
+      preferences = user?.preferences ? JSON.parse(decryptText(userId, user.preferences) || '{}') : {};
+    } catch {
+      preferences = {};
+    }
 
     return NextResponse.json(
       {
@@ -117,13 +116,13 @@ export async function GET() {
           tasks,
           kanbanCards,
           events,
-          mediaItems,
           transactions,
           financeCategories: formattedCategories,
           folders: formattedFolders,
+          preferences: parsePreferences(preferences),
         },
       },
-      { headers: { 'Cache-Control': 'no-store' } },
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
     return handleRouteError(error, 'Data fetch error', 'Veriler yüklenirken hata oluştu.');

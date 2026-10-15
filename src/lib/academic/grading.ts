@@ -90,9 +90,17 @@ export function isKtu(university: string): boolean {
   return u.includes('karadeniz teknik') || /\bktü\b|\bktu\b/.test(u);
 }
 
-export function gradingForUniversity(university: string): GradingSystem {
-  if (isKtu(university)) return structuredClone(KTU_GRADING);
-  return { ...structuredClone(GENERAL_GRADING), universityName: university };
+type PresetNumbers = Pick<GradingSystem, 'finalWeight' | 'minFinal' | 'failBelowAverage' | 'attendanceTheory' | 'attendancePractice' | 'weeksPerTerm'>;
+
+/** Admin-set numbers (Yönetici Paneli › Varsayılanlar) layered over the built-in presets. */
+export interface AcademicDefaults {
+  ktu: PresetNumbers;
+  genel: PresetNumbers;
+}
+
+export function gradingForUniversity(university: string, defaults?: AcademicDefaults): GradingSystem {
+  if (isKtu(university)) return { ...structuredClone(KTU_GRADING), ...(defaults?.ktu ?? {}) };
+  return { ...structuredClone(GENERAL_GRADING), ...(defaults?.genel ?? {}), universityName: university };
 }
 
 export function currentTermName(date = new Date()): string {
@@ -107,11 +115,11 @@ export function newId(): string {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 }
 
-export function createDefaultData(university: string): AcademicData {
+export function createDefaultData(university: string, defaults?: AcademicDefaults): AcademicData {
   const term: Term = { id: newId(), name: currentTermName() };
   return {
     version: 1,
-    grading: gradingForUniversity(university),
+    grading: gradingForUniversity(university, defaults),
     terms: [term],
     activeTermId: term.id,
     courses: [],

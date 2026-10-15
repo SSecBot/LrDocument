@@ -52,7 +52,7 @@ export const AlertBanner: React.FC = () => {
   if (isDismissed || totalAlertCount === 0) return null;
 
   return (
-    <div className="bg-[#2a171a] border border-rose-500/40 rounded-xl sm:rounded-xl p-4 sm:p-5 space-y-3.5 animate-fade-in relative overflow-hidden">
+    <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl sm:rounded-xl p-4 sm:p-5 space-y-3.5 animate-fade-in relative overflow-hidden">
       {/* Top Banner Bar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -74,7 +74,7 @@ export const AlertBanner: React.FC = () => {
 
         <button
           onClick={() => setIsDismissed(true)}
-          className="min-h-[38px] min-w-[38px] p-2 rounded-lg bg-surface-2 hover:bg-[#342426] text-subtle hover:text-white transition-colors flex items-center justify-center shrink-0"
+          className="min-h-[38px] min-w-[38px] p-2 rounded-lg bg-surface-2 hover:bg-rose-900/60 text-subtle hover:text-white transition-colors flex items-center justify-center shrink-0"
           title="Bildirimi Gizle"
           aria-label="Gizle"
         >
@@ -88,7 +88,7 @@ export const AlertBanner: React.FC = () => {
         {overdueTransactions.map((tr) => (
           <div
             key={tr.id}
-            className="p-3 bg-[#241216]/95 border border-rose-600/70 rounded-xl flex items-start justify-between gap-2.5"
+            className="p-3 bg-rose-950/50/95 border border-rose-600/70 rounded-xl flex items-start justify-between gap-2.5"
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-300 uppercase tracking-wider mb-1">

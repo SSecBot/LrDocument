@@ -16,10 +16,10 @@ interface KanbanCardModalProps {
 }
 
 const PROJECT_TYPES: { id: KanbanProjectType; label: string; icon: string }[] = [
-  { id: 'genel', label: 'Genel Yapılacaklar', icon: '📋' },
-  { id: 'icerik', label: 'İçerik Üretimi', icon: '✨' },
-  { id: 'matematik', label: 'Matematik Araştırması', icon: '📐' },
-  { id: 'finans', label: 'Finans Planı', icon: '💰' },
+  { id: 'genel', label: 'Genel Yapılacaklar', icon: '' },
+  { id: 'icerik', label: 'İçerik Üretimi', icon: '' },
+  { id: 'matematik', label: 'Matematik Araştırması', icon: '' },
+  { id: 'finans', label: 'Finans Planı', icon: '' },
 ];
 
 const COLUMNS: { id: KanbanColumnId; label: string }[] = [
@@ -36,7 +36,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
   editCard,
   defaultColumnId = 'fikir',
 }) => {
-  const { addKanbanCard, updateKanbanCard, notes } = useAppStore();
+  const { addKanbanCard, updateKanbanCard, notes, systemSettings } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -67,7 +67,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
       setDescription('');
       setProjectType('genel');
       setColumnId(defaultColumnId);
-      setPriority('orta');
+      setPriority(systemSettings.tasks.defaultPriority);
       setDueDate('');
       setTagsInput('');
       setLinkedNoteId('');
@@ -174,9 +174,9 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
-              <option value="yuksek">🔴 Yüksek Öncelik</option>
-              <option value="orta">🟡 Orta Öncelik</option>
-              <option value="dusuk">🟢 Düşük Öncelik</option>
+              <option value="yuksek">Yüksek Öncelik</option>
+              <option value="orta">Orta Öncelik</option>
+              <option value="dusuk">Düşük Öncelik</option>
             </select>
           </div>
 

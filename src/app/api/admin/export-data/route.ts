@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { handleRouteError } from '@/lib/apiUtils';
+import { decryptRow, type EncryptedModel } from '@/lib/dataCrypto';
+
+/** Backups hold plain values so they can be restored on a server with a different key. */
+const plain = <T extends { userId: string }>(model: EncryptedModel, rows: T[]) => rows.map((r) => decryptRow(model, r.userId, r));
 
 export async function GET() {
   try {
@@ -22,6 +26,8 @@ export async function GET() {
     ] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: 'asc' },
+        // UI preferences are device-independent conveniences, not part of the backup.
+        omit: { preferences: true },
       }),
       prisma.folder.findMany({
         orderBy: { createdAt: 'asc' },
@@ -74,16 +80,16 @@ export async function GET() {
       },
       data: {
         users,
-        folders,
-        notes,
+        folders: plain('folder', folders),
+        notes: plain('note', notes),
         scripts,
-        tasks,
-        events,
+        tasks: plain('task', tasks),
+        events: plain('calendarEvent', events),
         mediaItems,
-        transactions,
-        categories,
-        kanbanCards,
-        studentProfiles,
+        transactions: plain('financeTransaction', transactions),
+        categories: plain('financeCategory', categories),
+        kanbanCards: plain('kanbanCard', kanbanCards),
+        studentProfiles: plain('studentProfile', studentProfiles),
       },
     };
 

@@ -5,6 +5,7 @@ import { useAppStore, isTransactionOverdue, getEffectiveTransactionPriority } fr
 import { FinanceTransaction, FinanceTransactionType, TaskPriority, CurrencyCode } from '@/types';
 import { TransactionModal } from './TransactionModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
+import { DebtsCard } from './DebtsCard';
 import {
   Wallet,
   TrendingUp,
@@ -58,9 +59,11 @@ export const FinanceWorkspace: React.FC = () => {
   const targetMonth = periodFilter === 'last_month' ? lastMonthDate.getMonth() : now.getMonth();
 
   // Get base transactions (projected onto pinned days for target month)
+  // Debt balances are not cash flows; they are listed in "Krediler ve borçlar" instead.
+  const cashTransactions = transactions.filter((t) => !t.isDebt);
   const baseTransactions = periodFilter === 'all'
-    ? transactions
-    : getTransactionsForMonth(transactions, targetYear, targetMonth).projectedTransactions;
+    ? cashTransactions
+    : getTransactionsForMonth(cashTransactions, targetYear, targetMonth).projectedTransactions;
 
   const filteredTransactions = baseTransactions.filter((t) => {
     // Type filter
@@ -119,7 +122,7 @@ export const FinanceWorkspace: React.FC = () => {
   const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
 
   // Calculate MRR with day-of-month pinning & live exchange rate conversions
-  const mrrSummary = calculateMRRSummary(transactions, exchangeRates);
+  const mrrSummary = calculateMRRSummary(cashTransactions, exchangeRates);
   const recurringIncomeMonthly = mrrSummary.monthlyRecurringIncomeTRY;
   const recurringExpenseMonthly = mrrSummary.monthlyRecurringExpenseTRY;
 
@@ -413,6 +416,17 @@ export const FinanceWorkspace: React.FC = () => {
           </div>
         </div>
 
+        <DebtsCard
+          onAdd={() => {
+            setEditingTransaction(null);
+            setIsModalOpen(true);
+          }}
+          onEdit={(d) => {
+            setEditingTransaction(d);
+            setIsModalOpen(true);
+          }}
+        />
+
         {/* Filters Toolbar */}
         <div className="bg-surface border border-line rounded-lg sm:rounded-lg p-3 sm:p-4 space-y-3">
           {/* Top Row Filters */}
@@ -422,8 +436,8 @@ export const FinanceWorkspace: React.FC = () => {
               <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong overflow-x-auto no-scrollbar">
                 {[
                   { id: 'all', label: 'Tümü' },
-                  { id: 'gelir', label: '🟢 Gelir' },
-                  { id: 'gider', label: '🔴 Gider' },
+                  { id: 'gelir', label: 'Gelir' },
+                  { id: 'gider', label: 'Gider' },
                 ].map((t) => (
                   <button
                     key={t.id}
@@ -441,9 +455,9 @@ export const FinanceWorkspace: React.FC = () => {
               <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong overflow-x-auto no-scrollbar">
                 {[
                   { id: 'all', label: 'Tüm Durumlar' },
-                  { id: 'recurring', label: '🔄 Düzenli / Tekrarlayan' },
-                  { id: 'unconfirmed', label: '⏳ Onay Bekleyen' },
-                  { id: 'confirmed', label: '✓ Onaylanan' },
+                  { id: 'recurring', label: 'Düzenli / Tekrarlayan' },
+                  { id: 'unconfirmed', label: 'Onay Bekleyen' },
+                  { id: 'confirmed', label: 'Onaylanan' },
                 ].map((s) => (
                   <button
                     key={s.id}
@@ -483,9 +497,9 @@ export const FinanceWorkspace: React.FC = () => {
               <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong overflow-x-auto no-scrollbar">
                 {[
                   { id: 'all', label: 'Tüm Öncelikler' },
-                  { id: 'yuksek', label: '🔴 Yüksek' },
-                  { id: 'orta', label: '🟡 Orta' },
-                  { id: 'dusuk', label: '🟢 Düşük' },
+                  { id: 'yuksek', label: 'Yüksek' },
+                  { id: 'orta', label: 'Orta' },
+                  { id: 'dusuk', label: 'Düşük' },
                 ].map((p) => (
                   <button
                     key={p.id}
@@ -602,7 +616,7 @@ export const FinanceWorkspace: React.FC = () => {
                       setIsModalOpen(true);
                     }}
                     className={`p-3.5 sm:p-4 hover:bg-surface-2 active:bg-surface-2 cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group ${
-                      isOverdue ? 'bg-[#221316]/40 border-l-4 border-rose-500' : ''
+                      isOverdue ? 'bg-rose-950/50/40 border-l-4 border-rose-500' : ''
                     }`}
                   >
                     {/* Top / Left: Type Icon & Details */}

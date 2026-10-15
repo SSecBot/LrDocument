@@ -3,55 +3,89 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
-import { planPrice, type AccountType } from '@/lib/pricing';
+import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, seatPrice, type AccountType, type PricingSettings } from '@/lib/pricing';
 
-const COMMON = ['Tüm modüller: notlar, görevler, kanban, takvim, medya, finans', 'Telefon, tablet ve bilgisayarda çalışır', 'Verileriniz yalnızca hesabınızda'];
+const COMMON = ['Tüm modüller: notlar, görevler, kanban, takvim, finans', 'Telefon, tablet ve bilgisayarda çalışır', 'Verileriniz şifreli ve yalnızca hesabınızda'];
 
-export function PricingPlans() {
+export function PricingPlans({ pricing }: { pricing: PricingSettings }) {
   const [type, setType] = useState<AccountType>('STANDARD');
+  const [seatsInput, setSeatsInput] = useState('10');
+  const seats = clampSeats(seatsInput, pricing);
   const student = type === 'STUDENT';
-  const query = (plan: string) => `/register?plan=${plan}${student ? '&ogrenci=1' : ''}`;
+  const corporate = type === 'CORPORATE';
+
+  const query = (plan: string) => {
+    const q = new URLSearchParams({ plan });
+    if (student) q.set('ogrenci', '1');
+    if (corporate) {
+      q.set('tur', 'kurumsal');
+      q.set('kisi', String(seats));
+    }
+    return `/register?${q.toString()}`;
+  };
+  const extra = student ? ['Ders takibi: devamsızlık, not, AGNO, sınav takvimi'] : corporate ? [`${seats} kişilik kullanım`] : [];
+  const tabLabel = (t: AccountType) =>
+    t === 'STUDENT' && pricing.studentDiscountPercent > 0
+      ? `${ACCOUNT_TYPE_LABEL[t]} · %${pricing.studentDiscountPercent}`
+      : ACCOUNT_TYPE_LABEL[t];
 
   return (
     <div className="space-y-6">
       <div className="flex justify-center">
         <div className="inline-flex rounded-lg bg-surface border border-line p-1" role="group" aria-label="Hesap türü">
-          {(
-            [
-              ['STANDARD', 'Standart'],
-              ['STUDENT', 'Üniversite öğrencisi · %50'],
-            ] as const
-          ).map(([value, label]) => (
+          {ACCOUNT_TYPES.map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={type === value}
               onClick={() => setType(value)}
-              className={`h-9 px-4 rounded-md text-[13px] transition-colors ${type === value ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg'}`}
+              className={`h-9 px-3 sm:px-4 rounded-md text-[13px] transition-colors ${type === value ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg'}`}
             >
-              {label}
+              {tabLabel(value)}
             </button>
           ))}
         </div>
       </div>
 
+      {corporate && (
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+          <label htmlFor="landing-seats" className="text-subtle">
+            Kişi sayısı
+          </label>
+          <input
+            id="landing-seats"
+            type="number"
+            inputMode="numeric"
+            min={pricing.corporateMinSeats}
+            max={pricing.corporateMaxSeats}
+            value={seatsInput}
+            onChange={(e) => setSeatsInput(e.target.value)}
+            onBlur={() => setSeatsInput(String(seats))}
+            className="w-24 h-9 rounded-md bg-surface border border-line-strong px-3 text-fg tabular-nums focus:outline-none focus:border-brand"
+          />
+          <span className="text-xs text-muted">Kişi başı normal fiyatın %{pricing.corporatePercent}’i</span>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 max-w-4xl mx-auto">
         <Plan
           name="Aylık"
-          price={planPrice('Aylık', type)}
+          price={seatPrice('Aylık', type, pricing) * (corporate ? seats : 1)}
           unit="/ ay"
+          detail={corporate ? `${seats} × ${formatTL(seatPrice('Aylık', type, pricing))} kişi başı` : undefined}
           note="İstediğiniz zaman bırakabilirsiniz."
-          features={[...COMMON, ...(student ? ['Ders takibi: devamsızlık, not, AGNO, sınav takvimi'] : [])]}
+          features={[...COMMON, ...extra]}
           href={query('aylik')}
           cta="Aylık plan ile başla"
         />
         <Plan
           highlight
           name="Ömür boyu"
-          price={planPrice('Tek Seferlik', type)}
+          price={seatPrice('Tek Seferlik', type, pricing) * (corporate ? seats : 1)}
           unit="tek seferlik"
+          detail={corporate ? `${seats} × ${formatTL(seatPrice('Tek Seferlik', type, pricing))} kişi başı` : undefined}
           note="Bir kez ödeyin; sonraki güncellemeler dahil."
-          features={[...COMMON, ...(student ? ['Ders takibi: devamsızlık, not, AGNO, sınav takvimi'] : []), 'Aylık ödeme yok']}
+          features={[...COMMON, ...extra, 'Aylık ödeme yok']}
           href={query('omur')}
           cta="Ömür boyu erişim al"
         />
@@ -59,13 +93,25 @@ export function PricingPlans() {
       <p className="text-center text-xs text-muted">
         {student
           ? 'Öğrenci indirimi için kayıtta üniversite uzantılı e-posta adresiniz (ör. @ogr.ktu.edu.tr) istenir.'
-          : 'Kayıt talebiniz onaylandığında ödeme ve hesap açılışı için e-posta ile iletişime geçilir.'}
+          : corporate
+            ? `Kurumsal paketler ${pricing.corporateMinSeats}–${pricing.corporateMaxSeats} kişi arasıdır; kayıtta kurum adı istenir.`
+            : 'Kayıt talebiniz onaylandığında ödeme ve hesap açılışı için e-posta ile iletişime geçilir.'}
       </p>
     </div>
   );
 }
 
-function Plan(props: { name: string; price: number; unit: string; note: string; features: string[]; href: string; cta: string; highlight?: boolean }) {
+function Plan(props: {
+  name: string;
+  price: number;
+  unit: string;
+  detail?: string;
+  note: string;
+  features: string[];
+  href: string;
+  cta: string;
+  highlight?: boolean;
+}) {
   return (
     <div
       className={`relative rounded-2xl p-6 flex flex-col gap-5 border ${
@@ -78,9 +124,10 @@ function Plan(props: { name: string; price: number; unit: string; note: string; 
       <div>
         <p className="text-sm font-medium text-body">{props.name}</p>
         <p className="mt-2 flex items-baseline gap-2">
-          <span className="text-4xl font-semibold tracking-tight text-fg tabular-nums">{props.price} TL</span>
+          <span className="text-4xl font-semibold tracking-tight text-fg tabular-nums">{formatTL(props.price)}</span>
           <span className="text-xs text-muted">{props.unit}</span>
         </p>
+        {props.detail && <p className="mt-1 text-xs text-subtle tabular-nums">{props.detail}</p>}
         <p className="mt-1 text-xs text-subtle">{props.note}</p>
       </div>
       <ul className="space-y-2.5 text-[13px] text-body flex-1">

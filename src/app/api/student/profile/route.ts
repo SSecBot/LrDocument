@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireStudentAccess } from '@/lib/auth';
 import { handleRouteError, readJsonObject } from '@/lib/apiUtils';
 import { adminStudentProfileSchema, studentProfileSchema } from '@/lib/studentProfile';
+import { decryptText, encryptRow } from '@/lib/dataCrypto';
 
 export async function PATCH(req: Request) {
   try {
@@ -16,10 +17,11 @@ export async function PATCH(req: Request) {
       );
     }
 
+    const fields = encryptRow('studentProfile', session.userId, parsed.data);
     const profile = await prisma.studentProfile.upsert({
       where: { userId: session.userId },
-      update: parsed.data,
-      create: { userId: session.userId, ...parsed.data },
+      update: fields,
+      create: { userId: session.userId, ...fields },
     });
 
     return NextResponse.json({
@@ -30,7 +32,7 @@ export async function PATCH(req: Request) {
         studentEmail: profile.studentEmail,
         department: profile.department,
         classYear: profile.classYear,
-        studentNo: profile.studentNo,
+        studentNo: profile.studentNo ? decryptText(session.userId, profile.studentNo) : null,
       },
     });
   } catch (error) {

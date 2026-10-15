@@ -18,7 +18,16 @@ model User {
   subscriptionPlan String              @default("Aylık") // "Aylık" | "Tek Seferlik"
   paymentStatus    String              @default("PENDING") // "PENDING" | "MANUAL_APPROVED" | "SUCCESSFUL"
   sessionVersion   Int                 @default(0)
-  accountType      String              @default("STANDARD") // "STANDARD" | "STUDENT"
+  accountType      String              @default("STANDARD") // "STANDARD" (bireysel) | "STUDENT" | "CORPORATE"
+  /// Kurumsal: organisation name and number of seats the subscription is priced for.
+  organization     String?
+  seats            Int?
+  /// Last authenticated request; drives the admin's live-user count.
+  lastSeenAt       DateTime?
+  /// Encrypted JSON of UI preferences (panels, views, read notifications). Nothing is kept in the browser.
+  preferences      String              @default("")
+  /// Set once all of the user's existing rows were encrypted (see src/lib/dataCrypto.ts).
+  dataEncryptedAt  DateTime?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -160,6 +169,10 @@ model FinanceTransaction {
   isConfirmed        Boolean  @default(false)
   dueDate            String?
   priority           String?  @default("orta")
+  /// Kredi / borç: the amount is the outstanding balance.
+  isDebt              Boolean  @default(false)
+  monthlyInterestRate Float?
+  minPaymentRate      Float?
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -212,4 +225,11 @@ model StudentProfile {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Admin-editable system defaults (see src/lib/systemSettings.ts). One row, key "system".
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { AccountSwitcher } from './AccountSwitcher';
 import {
   Menu,
   Search,
@@ -11,14 +12,12 @@ import {
   FileText,
   CheckSquare,
   Calendar,
-  Image as ImageIcon,
   Wallet,
   Kanban,
   ChevronDown,
   Coins,
   RefreshCw,
   Settings,
-  LogOut,
   ShieldAlert,
 } from 'lucide-react';
 
@@ -34,11 +33,12 @@ export const Header: React.FC = () => {
     addTask,
     addKanbanCard,
     setActiveTab,
+    setPreference,
+    systemSettings,
     setActiveNoteId,
     exchangeRates,
     fetchExchangeRates,
     currentUser,
-    logout,
     addToast,
   } = useAppStore();
 
@@ -57,10 +57,6 @@ export const Header: React.FC = () => {
         return { title: 'Genel Bakış' };
       case 'notes':
         return { title: 'Notlar' };
-      case 'kanban':
-        return { title: 'Kanban' };
-      case 'media':
-        return { title: 'Medya Deposu' };
       case 'tasks':
         return { title: 'Görevler' };
       case 'calendar':
@@ -70,7 +66,7 @@ export const Header: React.FC = () => {
       case 'academic':
         return { title: 'Ders Takibi' };
       case 'settings':
-        return { title: 'Hesap & Güvenlik' };
+        return { title: 'Ayarlar' };
       case 'admin':
         return { title: 'Yönetici Paneli' };
       default:
@@ -182,7 +178,7 @@ export const Header: React.FC = () => {
                       setActiveTab('finance');
                       setIsCurrencyMenuOpen(false);
                     }}
-                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold transition-colors"
+                    className="px-2 py-1 bg-brand hover:bg-brand-hover text-white rounded-lg text-[10px] font-bold transition-colors"
                   >
                     Aç →
                   </button>
@@ -281,7 +277,8 @@ export const Header: React.FC = () => {
                       priority: 'orta',
                       tags: ['Yeni'],
                     });
-                    setActiveTab('kanban');
+                    setPreference('tasksView', 'pano');
+                    setActiveTab('tasks');
                     setIsNewMenuOpen(false);
                   }}
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
@@ -292,18 +289,8 @@ export const Header: React.FC = () => {
 
                 <button
                   onClick={() => {
-                    setActiveTab('media');
-                    setIsNewMenuOpen(false);
-                  }}
-                  className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
-                >
-                  <ImageIcon className="w-4 h-4 text-purple-400" />
-                  <span>Yeni Medya / Çizim</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    addTask({ title: 'Yeni Görev', completed: false, priority: 'orta' });
+                    addTask({ title: 'Yeni Görev', completed: false, priority: systemSettings.tasks.defaultPriority });
+                    setPreference('tasksView', 'liste');
                     setActiveTab('tasks');
                     setIsNewMenuOpen(false);
                   }}
@@ -364,58 +351,31 @@ export const Header: React.FC = () => {
             {isProfileMenuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setIsProfileMenuOpen(false)} />
-                <div className="absolute right-0 mt-2 w-60 sm:w-64 bg-surface border border-line rounded-xl shadow-xl p-2 z-40 space-y-1.5 animate-fade-in">
-                  <div className="p-2.5 rounded-lg bg-app border border-line">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-surface-3 text-body flex items-center justify-center font-semibold text-xs shrink-0">
-                        {currentUser.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-white truncate">{currentUser.name}</p>
-                        <p className="text-[10px] text-muted font-mono truncate">{currentUser.email}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-line flex items-center justify-between text-[10px]">
-                      <span className="text-subtle">Abonelik Paketi:</span>
-                      <span className="text-emerald-400 font-bold bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-800/60">
-                        {currentUser.subscriptionPlan || 'Aylık'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('settings');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full min-h-[38px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
-                  >
-                    <Settings className="w-4 h-4 text-emerald-400" />
-                    <span>Hesap & Güvenlik Ayarları</span>
-                  </button>
-
-                  {currentUser.role === 'ADMIN' && (
+                <div className="absolute right-0 mt-2 z-40 animate-fade-in">
+                  <AccountSwitcher onClose={() => setIsProfileMenuOpen(false)}>
                     <button
                       onClick={() => {
-                        setActiveTab('admin');
+                        setActiveTab('settings');
                         setIsProfileMenuOpen(false);
                       }}
-                      className="w-full min-h-[38px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-purple-300 hover:text-white hover:bg-purple-950/40 rounded-lg transition-colors text-left cursor-pointer"
+                      className="w-full min-h-[40px] flex items-center gap-2.5 px-2.5 text-[13px] text-body hover:bg-surface-2 rounded-md text-left"
                     >
-                      <ShieldAlert className="w-4 h-4 text-purple-400" />
-                      <span>Yönetici Kontrol Paneli</span>
+                      <Settings className="w-4 h-4 text-muted" />
+                      Ayarlar
                     </button>
-                  )}
-
-                  <div className="pt-1 border-t border-line">
-                    <button
-                      onClick={() => logout()}
-                      className="w-full min-h-[38px] flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-colors text-left cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4 text-rose-400" />
-                      <span>Güvenli Çıkış Yap</span>
-                    </button>
-                  </div>
+                    {currentUser.role === 'ADMIN' && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('admin');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full min-h-[40px] flex items-center gap-2.5 px-2.5 text-[13px] text-body hover:bg-surface-2 rounded-md text-left"
+                      >
+                        <ShieldAlert className="w-4 h-4 text-muted" />
+                        Yönetici Paneli
+                      </button>
+                    )}
+                  </AccountSwitcher>
                 </div>
               </>
             )}

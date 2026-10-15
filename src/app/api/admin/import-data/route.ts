@@ -7,6 +7,7 @@ import { handleRouteError, normalizeEmail, readJsonObject } from '@/lib/apiUtils
 // Full backups (all users, inline images) are much larger than ordinary requests.
 const MAX_BACKUP_BYTES = 200 * 1024 * 1024;
 import { academicDataSchema } from '@/lib/academic/schema';
+import { decryptText, encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
 
 type Row = Record<string, unknown>;
 
@@ -43,7 +44,8 @@ async function importOwnedRows(
   rows: Row[],
   delegate: Delegate,
   userIdMap: Map<string, string>,
-  mapFields: (r: Row) => Row
+  mapFields: (r: Row) => Row,
+  model?: EncryptedModel
 ): Promise<number> {
   let count = 0;
   for (const r of rows) {
@@ -59,7 +61,8 @@ async function importOwnedRows(
     const existing = await delegate.findUnique({ where: { id }, select: { userId: true } });
     if (existing && existing.userId !== userId) continue;
 
-    const fields = mapFields(r);
+    // Stored encrypted with the (possibly remapped) owner's key.
+    const fields = model ? encryptRow(model, userId, mapFields(r)) : mapFields(r);
     await delegate.upsert({
       where: { id },
       update: fields,
@@ -115,7 +118,9 @@ export async function POST(req: Request) {
         subscriptionType: oneOf(u.subscriptionType, ['AYLIK', 'TEK_SEFERLIK'] as const, 'AYLIK'),
         subscriptionPlan: oneOf(u.subscriptionPlan, ['Aylık', 'Tek Seferlik'] as const, 'Aylık'),
         paymentStatus: oneOf(u.paymentStatus, ['PENDING', 'MANUAL_APPROVED', 'SUCCESSFUL'] as const, 'PENDING'),
-        accountType: oneOf(u.accountType, ['STANDARD', 'STUDENT'] as const, 'STANDARD'),
+        accountType: oneOf(u.accountType, ['STANDARD', 'STUDENT', 'CORPORATE'] as const, 'STANDARD'),
+        organization: optStr(u.organization)?.slice(0, 120) ?? null,
+        seats: optNum(u.seats) === null ? null : Math.max(1, Math.round(optNum(u.seats)!)),
       };
 
       const existing = await prisma.user.findUnique({ where: { email } });
@@ -152,7 +157,7 @@ export async function POST(req: Request) {
       description: optStr(f.description),
       iconName: str(f.iconName, 'Folder'),
       isSystem: Boolean(f.isSystem),
-    }));
+    }), 'folder');
 
     summary.importedNotes = await importOwnedRows(asRows(data.notes), prisma.note as unknown as Delegate, userIdMap, (n) => ({
       title: str(n.title),
@@ -161,7 +166,7 @@ export async function POST(req: Request) {
       tags: jsonStr(n.tags),
       isFavorite: Boolean(n.isFavorite),
       isPinned: Boolean(n.isPinned),
-    }));
+    }), 'note');
 
     summary.importedScripts = await importOwnedRows(asRows(data.scripts), prisma.script as unknown as Delegate, userIdMap, (s) => ({
       title: str(s.title),
@@ -182,7 +187,7 @@ export async function POST(req: Request) {
       linkedNoteId: optStr(t.linkedNoteId),
       linkedScriptId: optStr(t.linkedScriptId),
       completedAt: optDate(t.completedAt),
-    }));
+    }), 'task');
 
     summary.importedEvents = await importOwnedRows(asRows(data.events), prisma.calendarEvent as unknown as Delegate, userIdMap, (e) => ({
       title: str(e.title),
@@ -197,7 +202,7 @@ export async function POST(req: Request) {
       linkedTaskId: optStr(e.linkedTaskId),
       status: str(e.status, 'planlandi'),
       checklist: jsonStr(e.checklist),
-    }));
+    }), 'calendarEvent');
 
     summary.importedMediaItems = await importOwnedRows(asRows(data.mediaItems), prisma.mediaItem as unknown as Delegate, userIdMap, (m) => ({
       title: str(m.title),
@@ -229,13 +234,16 @@ export async function POST(req: Request) {
       isConfirmed: Boolean(t.isConfirmed),
       dueDate: optStr(t.dueDate),
       priority: str(t.priority, 'orta'),
-    }));
+      isDebt: Boolean(t.isDebt),
+      monthlyInterestRate: optNum(t.monthlyInterestRate),
+      minPaymentRate: optNum(t.minPaymentRate),
+    }), 'financeTransaction');
 
     summary.importedCategories = await importOwnedRows(asRows(data.categories), prisma.financeCategory as unknown as Delegate, userIdMap, (c) => ({
       name: str(c.name, 'Kategori'),
       type: str(c.type, 'gelir'),
       isSystem: Boolean(c.isSystem),
-    }));
+    }), 'financeCategory');
 
     summary.importedKanbanCards = await importOwnedRows(asRows(data.kanbanCards), prisma.kanbanCard as unknown as Delegate, userIdMap, (k) => ({
       title: str(k.title),
@@ -247,7 +255,7 @@ export async function POST(req: Request) {
       tags: jsonStr(k.tags),
       linkedScriptId: optStr(k.linkedScriptId),
       linkedNoteId: optStr(k.linkedNoteId),
-    }));
+    }), 'kanbanCard');
 
     // Student profiles are 1:1 with users, keyed by userId.
     for (const sp of asRows(data.studentProfiles)) {
@@ -255,7 +263,9 @@ export async function POST(req: Request) {
       if (!userId) continue;
       let academic = '{}';
       try {
-        const parsed = academicDataSchema.safeParse(JSON.parse(str(sp.data, '{}')));
+        // Older backups may contain values encrypted with this server's key for the original owner.
+        const raw = decryptText(str(sp.userId), str(sp.data, '{}')) || '{}';
+        const parsed = academicDataSchema.safeParse(JSON.parse(raw));
         if (parsed.success) academic = JSON.stringify(parsed.data);
       } catch {
         academic = '{}';
@@ -268,7 +278,8 @@ export async function POST(req: Request) {
         studentNo: optStr(sp.studentNo),
         data: academic,
       };
-      await prisma.studentProfile.upsert({ where: { userId }, update: fields, create: { userId, ...fields } });
+      const stored = encryptRow('studentProfile', userId, fields);
+      await prisma.studentProfile.upsert({ where: { userId }, update: stored, create: { userId, ...stored } });
       summary.importedStudentProfiles++;
     }
 

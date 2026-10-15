@@ -50,3 +50,6 @@ prisma/*.db-journal
 
 # OCR assets copied from node_modules (scripts/copy-ocr-assets.mjs)
 /public/ocr/
+
+# at-rest encryption key created next to the local SQLite DB (never commit)
+prisma/data-encryption.key

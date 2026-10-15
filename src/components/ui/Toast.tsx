@@ -21,9 +21,9 @@ export const ToastContainer: React.FC = () => {
 
         const borders = {
           success: 'border-emerald-500/30 bg-surface',
-          error: 'border-rose-500/30 bg-[#241416]',
-          warning: 'border-amber-500/30 bg-[#242013]',
-          info: 'border-blue-500/30 bg-[#141d28]',
+          error: 'border-rose-500/30 bg-rose-950/60',
+          warning: 'border-amber-500/30 bg-amber-950/60',
+          info: 'border-blue-500/30 bg-slate-900',
         };
 
         return (

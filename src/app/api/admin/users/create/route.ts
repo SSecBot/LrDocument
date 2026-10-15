@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, requireAdmin, validatePassword } from '@/lib/auth';
+import { hashPassword, requireAdmin, validateNewPassword } from '@/lib/auth';
 import { seedDefaultUserData } from '@/lib/userSeed';
 import { handleRouteError, normalizeEmail, normalizeName, readJsonObject } from '@/lib/apiUtils';
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Lütfen geçerli bir e-posta adresi giriniz.' }, { status: 400 });
     }
 
-    const passwordError = validatePassword(body.password);
+    const passwordError = await validateNewPassword(body.password);
     if (passwordError) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }

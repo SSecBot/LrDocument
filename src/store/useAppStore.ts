@@ -6,7 +6,6 @@ import {
   Task,
   CalendarEvent,
   FolderItem,
-  MediaItem,
   FinanceTransaction,
   FinanceCategoryItem,
   FinanceTransactionType,
@@ -19,16 +18,17 @@ import {
   ExchangeRates,
   UserProfile,
 } from '@/types';
-import {
-  INITIAL_FOLDERS,
-  INITIAL_FINANCE_CATEGORIES,
-} from '@/data/initialData';
+import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
+import { DEFAULT_PREFERENCES, parsePreferences, type UserPreferences } from '@/lib/preferences';
+import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { generateId, toLocalDateString } from '@/lib/utils';
 import {
   DEFAULT_EXCHANGE_RATES,
   fetchLiveExchangeRates,
   convertCurrencyToTRY,
 } from '@/lib/exchangeRates';
+
+export type SettingsSection = 'hesap' | 'guvenlik' | 'ogrenci' | 'ders' | 'tercihler';
 
 export interface ToastMessage {
   id: string;
@@ -44,12 +44,21 @@ interface AppState {
   isLoadingAuth: boolean;
   isLoadingData: boolean;
   checkAuth: (force?: boolean) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (all?: boolean) => Promise<void>;
+  switchAccount: (userId: string) => Promise<string | null>;
   loadUserData: () => Promise<void>;
+
+  // Admin-defined defaults and the user's server-side UI preferences
+  systemSettings: SystemSettings;
+  preferences: UserPreferences;
+  setPreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
 
   // Navigation & UI
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
+  settingsSection: SettingsSection;
+  openSettings: (section?: SettingsSection) => void;
+  setSettingsSection: (section: SettingsSection) => void;
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (open: boolean) => void;
   isCommandPaletteOpen: boolean;
@@ -106,12 +115,6 @@ interface AppState {
   updateEventStatus: (id: string, status: EventStatus) => void;
   rescheduleEvent: (id: string, newDate: string) => void;
 
-  // Media
-  mediaItems: MediaItem[];
-  addMediaItem: (item: Omit<MediaItem, 'id' | 'createdAt'>) => string;
-  updateMediaItem: (id: string, partial: Partial<MediaItem>) => void;
-  deleteMediaItem: (id: string) => void;
-
   // Finance & Multi-Currency
   transactions: FinanceTransaction[];
   financeCategories: FinanceCategoryItem[];
@@ -137,12 +140,13 @@ const globalState: {
   isLoadingAuth: boolean;
   isLoadingData: boolean;
   activeTab: ActiveTab;
+  settingsSection: SettingsSection;
   isMobileSidebarOpen: boolean;
   isCommandPaletteOpen: boolean;
   isNotificationPanelOpen: boolean;
   toasts: ToastMessage[];
-  readNotificationIds: string[];
-  dismissedNotificationIds: string[];
+  systemSettings: SystemSettings;
+  preferences: UserPreferences;
   notes: Note[];
   activeNoteId: string | null;
   activeFolder: string;
@@ -150,7 +154,6 @@ const globalState: {
   tasks: Task[];
   kanbanCards: KanbanCard[];
   events: CalendarEvent[];
-  mediaItems: MediaItem[];
   transactions: FinanceTransaction[];
   financeCategories: FinanceCategoryItem[];
   exchangeRates: ExchangeRates;
@@ -160,20 +163,20 @@ const globalState: {
   isLoadingAuth: true,
   isLoadingData: false,
   activeTab: 'dashboard',
+  settingsSection: 'hesap',
   isMobileSidebarOpen: false,
   isCommandPaletteOpen: false,
   isNotificationPanelOpen: false,
   toasts: [],
-  readNotificationIds: [],
-  dismissedNotificationIds: [],
+  systemSettings: DEFAULT_SYSTEM_SETTINGS,
+  preferences: DEFAULT_PREFERENCES,
   notes: [],
   activeNoteId: null,
   activeFolder: 'all',
-  folders: INITIAL_FOLDERS,
+  folders: [],
   tasks: [],
   kanbanCards: [],
   events: [],
-  mediaItems: [],
   transactions: [],
   financeCategories: INITIAL_FINANCE_CATEGORIES,
   exchangeRates: DEFAULT_EXCHANGE_RATES,
@@ -185,7 +188,7 @@ function notify() {
   listeners.forEach((fn) => fn());
 }
 
-type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'media' | 'finance' | 'folder' | 'category';
+type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder' | 'category';
 
 // Upserts are debounced per record so typing in an editor sends one request per pause, not per keystroke.
 const UPSERT_DEBOUNCE_MS = 500;
@@ -261,9 +264,15 @@ function flushPendingMutations() {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', flushPendingMutations);
+  window.addEventListener('pagehide', () => {
+    flushPendingMutations();
+    flushPreferences(true);
+  });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushPendingMutations();
+    if (document.visibilityState === 'hidden') {
+      flushPendingMutations();
+      flushPreferences(true);
+    }
   });
 }
 
@@ -325,7 +334,8 @@ export function getEffectiveTaskPriority(task: Task): TaskPriority {
 }
 
 export function isTransactionOverdue(trans: FinanceTransaction): boolean {
-  if (trans.isConfirmed) return false;
+  // Debts are paid through "Asgariyi öde" in Krediler ve borçlar, not by confirming the balance.
+  if (trans.isConfirmed || trans.isDebt) return false;
   const now = new Date();
   const dateObj = new Date(trans.date);
   dateObj.setHours(23, 59, 59, 999);
@@ -348,7 +358,7 @@ export function getComputedNotifications(): AppNotification[] {
         message: `Son teslim tarihi (${task.dueDate}) geçmiş ve henüz tamamlanmamış. Öncelik "Yüksek" olarak işaretlendi.`,
         type: 'task_overdue',
         priority: 'yuksek',
-        isRead: globalState.readNotificationIds.includes(`notif-task-${task.id}`),
+        isRead: globalState.preferences.readNotificationIds.includes(`notif-task-${task.id}`),
         targetTab: 'tasks',
         targetId: task.id,
         actionType: 'complete_task',
@@ -365,7 +375,7 @@ export function getComputedNotifications(): AppNotification[] {
         message: `₺${trans.amount.toLocaleString('tr-TR')} tutarındaki ${trans.category} işlemi (${trans.date}) onay bekliyor. Öncelik "Yüksek" seviyesine yükseltildi.`,
         type: 'finance_overdue',
         priority: 'yuksek',
-        isRead: globalState.readNotificationIds.includes(`notif-trans-${trans.id}`),
+        isRead: globalState.preferences.readNotificationIds.includes(`notif-trans-${trans.id}`),
         targetTab: 'finance',
         targetId: trans.id,
         actionType: 'confirm_finance',
@@ -392,7 +402,7 @@ export function getComputedNotifications(): AppNotification[] {
           message: `${whenText} ${ev.time ? ev.time + ' saatinde' : ''} ${ev.platform ? '[' + ev.platform + '] ' : ''}${ev.description || 'Yayın ve içerik planı takvimde yer alıyor.'}`,
           type: 'calendar_upcoming',
           priority: isToday ? 'yuksek' : 'orta',
-          isRead: globalState.readNotificationIds.includes(`notif-event-${ev.id}`),
+          isRead: globalState.preferences.readNotificationIds.includes(`notif-event-${ev.id}`),
           targetTab: 'calendar',
           targetId: ev.id,
           actionType: 'view',
@@ -402,12 +412,64 @@ export function getComputedNotifications(): AppNotification[] {
     }
   });
 
-  return notifs.filter((n) => !globalState.dismissedNotificationIds.includes(n.id));
+  return notifs.filter((n) => !globalState.preferences.dismissedNotificationIds.includes(n.id));
 }
 
 // ---------------------------------------------------------------------------
 // Store actions (module scope: they only touch the shared singleton state)
 // ---------------------------------------------------------------------------
+
+/** Virtual note views that are not stored folders. */
+export const NOTE_VIEWS = ['all', 'favorites'] as const;
+function isRealFolder(id: string): boolean {
+  return !!id && !(NOTE_VIEWS as readonly string[]).includes(id);
+}
+
+/** Replaces the cached system defaults (after an admin saved new ones). */
+export function applySystemSettings(settings: SystemSettings) {
+  globalState.systemSettings = settings;
+  if (globalState.preferences.exchangeMarkupTRY === null) {
+    globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: settings.finance.exchangeMarkupTRY };
+  }
+  notify();
+}
+
+let systemSettingsRequest: Promise<void> | null = null;
+function loadSystemSettings(): Promise<void> {
+  systemSettingsRequest ??= fetch('/api/settings')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json) => {
+      if (!json?.settings) return;
+      // The admin's markup applies until the user picks an own one.
+      applySystemSettings(resolveSystemSettings(json.settings));
+    })
+    .catch(() => {})
+    .finally(() => {
+      systemSettingsRequest = null;
+    });
+  return systemSettingsRequest;
+}
+
+// Preference changes are batched and saved encrypted on the server (nothing is kept in the browser).
+let pendingPrefs: Partial<UserPreferences> = {};
+let prefsTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushPreferences(keepalive = false) {
+  if (prefsTimer) clearTimeout(prefsTimer);
+  prefsTimer = null;
+  if (!globalState.isAuthenticated || Object.keys(pendingPrefs).length === 0) return;
+  const body = JSON.stringify(pendingPrefs);
+  pendingPrefs = {};
+  fetch('/api/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body, keepalive }).catch(() => {});
+}
+
+function setPreference<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) {
+  globalState.preferences = { ...globalState.preferences, [key]: value };
+  pendingPrefs = { ...pendingPrefs, [key]: value };
+  if (prefsTimer) clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(() => flushPreferences(), 600);
+  notify();
+}
 
 const checkAuth = async (force: boolean = false) => {
   if (isAuthInitialized && !force) return;
@@ -418,6 +480,7 @@ const checkAuth = async (force: boolean = false) => {
       notify();
     }
 
+    loadSystemSettings();
     // Refresh live currency exchange rates on session start
     fetchExchangeRates().catch(() => {});
 
@@ -427,6 +490,7 @@ const checkAuth = async (force: boolean = false) => {
     if (data.authenticated && data.user) {
       globalState.currentUser = data.user;
       globalState.isAuthenticated = true;
+      startPresence();
       await loadUserData();
     } else {
       globalState.currentUser = null;
@@ -454,9 +518,12 @@ const loadUserData = async () => {
         globalState.tasks = json.data.tasks || [];
         globalState.kanbanCards = json.data.kanbanCards || [];
         globalState.events = json.data.events || [];
-        globalState.mediaItems = json.data.mediaItems || [];
         globalState.transactions = json.data.transactions || [];
-        globalState.folders = json.data.folders?.length ? json.data.folders : INITIAL_FOLDERS;
+        globalState.folders = json.data.folders || [];
+        globalState.preferences = parsePreferences(json.data.preferences);
+        if (globalState.preferences.exchangeMarkupTRY !== null) {
+          globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: globalState.preferences.exchangeMarkupTRY };
+        }
         globalState.financeCategories = json.data.financeCategories?.length
           ? json.data.financeCategories
           : INITIAL_FINANCE_CATEGORIES;
@@ -485,11 +552,8 @@ const loadUserData = async () => {
   }
 };
 
-const logout = async () => {
-  flushPendingMutations();
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-  } catch {}
+/** Clears every in-memory record and reloads, so no data of the previous account survives. */
+function leaveTo(path: string) {
   globalState.currentUser = null;
   globalState.isAuthenticated = false;
   isAuthInitialized = false;
@@ -498,13 +562,61 @@ const logout = async () => {
   globalState.tasks = [];
   globalState.kanbanCards = [];
   globalState.events = [];
-  globalState.mediaItems = [];
   globalState.transactions = [];
+  globalState.folders = [];
+  globalState.preferences = DEFAULT_PREFERENCES;
   notify();
-  // Full reload on purpose: guarantees no previous user's data stays in memory.
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-  window.location.href = '/login';
+  window.location.href = path;
+}
+
+/** Signs out of the active account; another remembered account (if any) becomes active. */
+const logout = async (all = false) => {
+  flushPendingMutations();
+  flushPreferences(true);
+  let switched = false;
+  try {
+    const res = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all }),
+    });
+    const data = await res.json().catch(() => ({}));
+    switched = !!data.switchedTo;
+  } catch {}
+  leaveTo(switched ? '/dashboard' : '/login');
 };
+
+/** Switches to another account that is signed in on this browser. */
+const switchAccount = async (userId: string): Promise<string | null> => {
+  flushPendingMutations();
+  flushPreferences(true);
+  try {
+    const res = await fetch('/api/auth/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) return (await res.json().catch(() => ({}))).error || 'Hesap değiştirilemedi.';
+  } catch {
+    return 'Sunucuya ulaşılamadı.';
+  }
+  leaveTo('/dashboard');
+  return null;
+};
+
+// Presence ping for the admin's live-user count (every minute while the tab is visible).
+let presenceTimer: ReturnType<typeof setInterval> | null = null;
+function startPresence() {
+  if (presenceTimer || typeof window === 'undefined') return;
+  const ping = () => {
+    if (document.visibilityState === 'visible' && globalState.isAuthenticated) {
+      fetch('/api/auth/me', { cache: 'no-store' }).catch(() => {});
+    }
+  };
+  presenceTimer = setInterval(ping, 60_000);
+  document.addEventListener('visibilitychange', ping);
+}
+
 
 const addToast = (toast: Omit<ToastMessage, 'id'>) => pushToast(toast);
 
@@ -524,22 +636,19 @@ const removeToast = (id: string) => {
 };
 
 const markNotificationAsRead = (id: string) => {
-  if (!globalState.readNotificationIds.includes(id)) {
-    globalState.readNotificationIds = [...globalState.readNotificationIds, id];
-    notify();
+  if (!globalState.preferences.readNotificationIds.includes(id)) {
+    setPreference('readNotificationIds', [...globalState.preferences.readNotificationIds, id].slice(-500));
   }
 };
 
 const markAllNotificationsAsRead = () => {
   const allIds = getComputedNotifications().map((n) => n.id);
-  globalState.readNotificationIds = Array.from(new Set([...globalState.readNotificationIds, ...allIds]));
-  notify();
+  setPreference('readNotificationIds', Array.from(new Set([...globalState.preferences.readNotificationIds, ...allIds])).slice(-500));
 };
 
 const deleteNotification = (id: string) => {
-  if (!globalState.dismissedNotificationIds.includes(id)) {
-    globalState.dismissedNotificationIds = [...globalState.dismissedNotificationIds, id];
-    notify();
+  if (!globalState.preferences.dismissedNotificationIds.includes(id)) {
+    setPreference('dismissedNotificationIds', [...globalState.preferences.dismissedNotificationIds, id].slice(-500));
   }
 };
 
@@ -619,6 +728,13 @@ const deleteFolder = (id: string) => {
   if (globalState.activeFolder === id) {
     globalState.activeFolder = 'all';
   }
+  // The notes stay; they just leave the deleted folder.
+  globalState.notes = globalState.notes.map((n) => {
+    if (n.folder !== id) return n;
+    const moved = { ...n, folder: '' };
+    mutateDB('note', 'upsert', n.id, moved);
+    return moved;
+  });
   mutateDB('folder', 'delete', id);
   notify();
 };
@@ -629,7 +745,7 @@ const addNote = (partial?: Partial<Note>): string => {
     id,
     title: partial?.title || 'Yeni Not',
     content: partial?.content || '',
-    folder: partial?.folder || (globalState.activeFolder !== 'all' ? globalState.activeFolder : 'genel'),
+    folder: partial?.folder ?? (isRealFolder(globalState.activeFolder) ? globalState.activeFolder : ''),
     tags: partial?.tags || [],
     isFavorite: partial?.isFavorite || false,
     isPinned: partial?.isPinned || false,
@@ -807,32 +923,6 @@ const rescheduleEvent = (id: string, newDate: string) => {
   notify();
 };
 
-const addMediaItem = (item: Omit<MediaItem, 'id' | 'createdAt'>): string => {
-  const id = generateId();
-  const newItem: MediaItem = {
-    ...item,
-    id,
-    createdAt: new Date().toISOString(),
-  };
-  globalState.mediaItems = [newItem, ...globalState.mediaItems];
-  mutateDB('media', 'create', id, newItem);
-  notify();
-  return id;
-};
-
-const updateMediaItem = (id: string, partial: Partial<MediaItem>) => {
-  globalState.mediaItems = globalState.mediaItems.map((m) => (m.id === id ? { ...m, ...partial } : m));
-  const updated = globalState.mediaItems.find((m) => m.id === id);
-  if (updated) mutateDB('media', 'upsert', id, updated);
-  notify();
-};
-
-const deleteMediaItem = (id: string) => {
-  globalState.mediaItems = globalState.mediaItems.filter((m) => m.id !== id);
-  mutateDB('media', 'delete', id);
-  notify();
-};
-
 let exchangeRatesRequest: Promise<void> | null = null;
 
 const fetchExchangeRates = (): Promise<void> => {
@@ -855,7 +945,7 @@ const fetchExchangeRates = (): Promise<void> => {
 const setExchangeRateMarkup = (markup: number) => {
   if (!Number.isFinite(markup) || markup < 0) return;
   globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: markup };
-  notify();
+  setPreference('exchangeMarkupTRY', markup);
 };
 
 const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string => {
@@ -961,6 +1051,17 @@ const setActiveTab = (tab: ActiveTab) => {
   notify();
 };
 
+const setSettingsSection = (section: SettingsSection) => {
+  globalState.settingsSection = section;
+  notify();
+};
+
+const openSettings = (section: SettingsSection = 'hesap') => {
+  globalState.settingsSection = section;
+  globalState.activeTab = 'settings';
+  notify();
+};
+
 const setIsMobileSidebarOpen = (open: boolean) => {
   globalState.isMobileSidebarOpen = open;
   notify();
@@ -1009,16 +1110,24 @@ export function useAppStore(): AppState {
   const unreadNotificationCount = notifications.filter((n) => !n.isRead).length;
 
   return {
+    systemSettings: globalState.systemSettings,
+    preferences: globalState.preferences,
+    setPreference,
+
     currentUser: globalState.currentUser,
     isAuthenticated: globalState.isAuthenticated,
     isLoadingAuth: globalState.isLoadingAuth,
     isLoadingData: globalState.isLoadingData,
     checkAuth,
     logout,
+    switchAccount,
     loadUserData,
 
     activeTab: globalState.activeTab,
     setActiveTab,
+    settingsSection: globalState.settingsSection,
+    openSettings,
+    setSettingsSection,
     isMobileSidebarOpen: globalState.isMobileSidebarOpen,
     setIsMobileSidebarOpen,
     isCommandPaletteOpen: globalState.isCommandPaletteOpen,
@@ -1070,11 +1179,6 @@ export function useAppStore(): AppState {
     deleteEvent,
     updateEventStatus,
     rescheduleEvent,
-
-    mediaItems: globalState.mediaItems,
-    addMediaItem,
-    updateMediaItem,
-    deleteMediaItem,
 
     transactions: globalState.transactions,
     financeCategories: globalState.financeCategories,

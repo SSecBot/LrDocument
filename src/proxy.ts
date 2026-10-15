@@ -54,7 +54,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/settings') ||
     pathname.startsWith('/profile');
 
-  if (isAuthPage && session?.status === 'APPROVED') {
+  // /login?ekle=1 lets a signed-in user add another account (account switcher).
+  const addingAccount = pathname === '/login' && request.nextUrl.searchParams.get('ekle') === '1';
+  if (isAuthPage && session?.status === 'APPROVED' && !addingAccount) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

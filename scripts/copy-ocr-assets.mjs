@@ -1,7 +1,7 @@
-// Copies the OCR engine (tesseract.js worker + WASM core) and the Turkish language data into
-// public/ocr so the academic-calendar import works without any third-party CDN.
+// Copies the OCR engine (tesseract.js worker + WASM core), the Turkish language data and the pdf.js
+// helper data into public/ocr so the academic-calendar import works without any third-party CDN.
 // Runs automatically after `npm install` / `npm ci` and before `dev` / `build`.
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,19 @@ const files = [
   [join(pkgDir('tesseract.js-core'), 'tesseract-core-simd-lstm.wasm.js'), join(out, 'core', 'tesseract-core-simd-lstm.wasm.js')],
   [join(pkgDir('@tesseract.js-data/tur'), '4.0.0_best_int', 'tur.traineddata.gz'), join(out, 'lang', 'tur.traineddata.gz')],
 ];
+
+// pdf.js helper data: standard (non-embedded) fonts, CMaps and the WASM image decoders
+// (JPEG 2000 / JBIG2, common in scanned PDFs). Needed to render pages for OCR on every device.
+const pdfjsDir = pkgDir('pdfjs-dist');
+for (const [sub, keep] of [
+  ['standard_fonts', () => true],
+  ['cmaps', () => true],
+  ['wasm', (f) => !f.startsWith('quickjs')],
+]) {
+  for (const f of readdirSync(join(pdfjsDir, sub))) {
+    if (keep(f)) files.push([join(pdfjsDir, sub, f), join(out, 'pdfjs', sub, f)]);
+  }
+}
 
 let copied = 0;
 for (const [from, to] of files) {

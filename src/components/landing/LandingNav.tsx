@@ -5,15 +5,8 @@ import Link from 'next/link';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 
-const LINKS = [
-  ['#ozellikler', 'Özellikler'],
-  ['#ogrenciler', 'Öğrenciler'],
-  ['#fiyatlar', 'Fiyatlar'],
-  ['#sss', 'SSS'],
-] as const;
-
 /** Top bar of the landing page; only asks the server whether a session exists (no user data). */
-export function LandingNav() {
+export function LandingNav({ links }: { links: [string, string][] }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -35,7 +28,7 @@ export function LandingNav() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-7 text-[13px] text-subtle" aria-label="Sayfa bölümleri">
-          {LINKS.map(([href, label]) => (
+          {links.map(([href, label]) => (
             <a key={href} href={href} className="hover:text-fg transition-colors">
               {label}
             </a>
@@ -70,7 +63,7 @@ export function LandingNav() {
       </div>
       {open && (
         <nav className="md:hidden border-t border-line/70 px-4 py-2 grid" aria-label="Sayfa bölümleri">
-          {LINKS.map(([href, label]) => (
+          {links.map(([href, label]) => (
             <a key={href} href={href} onClick={() => setOpen(false)} className="py-3 text-sm text-body border-b border-line/50 last:border-0">
               {label}
             </a>

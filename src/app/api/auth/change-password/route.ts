@@ -6,7 +6,8 @@ import {
   requireAuth,
   setSessionCookie,
   signSessionToken,
-  validatePassword,
+  sessionMaxAgeSeconds,
+  validateNewPassword,
 } from '@/lib/auth';
 import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Yeni şifreler birbiriyle eşleşmiyor.' }, { status: 400 });
     }
 
-    const passwordError = validatePassword(newPassword);
+    const passwordError = await validateNewPassword(newPassword);
     if (passwordError) {
       return NextResponse.json({ error: passwordError.replace('Şifre', 'Yeni şifre') }, { status: 400 });
     }
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
       },
     });
 
+    const maxAge = await sessionMaxAgeSeconds();
     const token = await signSessionToken({
       userId: updated.id,
       email: updated.email,
@@ -61,13 +63,13 @@ export async function POST(req: Request) {
       role: updated.role === 'ADMIN' ? 'ADMIN' : 'USER',
       status: 'APPROVED',
       sv: updated.sessionVersion,
-    });
+    }, maxAge);
 
     const response = NextResponse.json({
       success: true,
       message: 'Şifreniz başarıyla güncellendi. Diğer cihazlardaki oturumlar sonlandırıldı.',
     });
-    setSessionCookie(response, token);
+    setSessionCookie(response, token, maxAge);
     return response;
   } catch (error) {
     return handleRouteError(error, 'Change password error', 'Şifre değiştirilirken bir hata oluştu.');

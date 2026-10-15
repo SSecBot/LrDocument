@@ -11,7 +11,6 @@ import {
   GraduationCap,
   CheckSquare,
   Calendar,
-  Image as ImageIcon,
   Wallet,
   Plus,
   ArrowRight,
@@ -38,9 +37,9 @@ export const DashboardOverview: React.FC = () => {
     tasks,
     kanbanCards,
     events,
-    mediaItems,
     transactions,
     setActiveTab,
+    setPreference,
     setActiveNoteId,
     addNote,
   } = useAppStore();
@@ -51,7 +50,8 @@ export const DashboardOverview: React.FC = () => {
   const futureEvents = events.filter((e) => e.date >= todayStr && e.status !== 'iptal');
 
   const totalIncome = transactions.filter((t) => t.type === 'gelir').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = transactions.filter((t) => t.type === 'gider').reduce((sum, t) => sum + t.amount, 0);
+  // Debt balances (Kredi / borç) are not spending; their payments are recorded as expenses.
+  const totalExpense = transactions.filter((t) => t.type === 'gider' && !t.isDebt).reduce((sum, t) => sum + t.amount, 0);
   const netBalance = totalIncome - totalExpense;
 
   const recentNotes = [...notes]
@@ -67,13 +67,13 @@ export const DashboardOverview: React.FC = () => {
     setActiveTab('notes');
   };
 
-  const stats: { tab: ActiveTab; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
-    { tab: 'notes', label: 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
-    { tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
-    { tab: 'kanban', label: 'Kanban', value: kanbanCards.length, hint: `${inProgressKanban} aktif`, icon: Kanban },
-    { tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
-    { tab: 'media', label: 'Medya', value: mediaItems.length, hint: 'öğe', icon: ImageIcon },
+  const stats: { key: string; tab: ActiveTab; board?: boolean; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
+    { key: 'notes', tab: 'notes', label: 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
+    { key: 'tasks', tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
+    { key: 'kanban', tab: 'tasks', board: true, label: 'Kanban', value: kanbanCards.length, hint: `${inProgressKanban} aktif`, icon: Kanban },
+    { key: 'calendar', tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
     {
+      key: 'finance',
       tab: 'finance',
       label: 'Net bakiye',
       value: <span className={netBalance < 0 ? 'text-rose-400' : 'text-emerald-400'}>{formatCurrencyTRY(netBalance)}</span>,
@@ -136,11 +136,14 @@ export const DashboardOverview: React.FC = () => {
         {studentAccess && <StudentDashboardCard />}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
-          {stats.map(({ tab, label, value, hint, icon: Icon }) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+          {stats.map(({ key, tab, board, label, value, hint, icon: Icon }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={key}
+              onClick={() => {
+                if (tab === 'tasks') setPreference('tasksView', board ? 'pano' : 'liste');
+                setActiveTab(tab);
+              }}
               className="text-left bg-surface hover:bg-surface-2 border border-line hover:border-line-strong rounded-lg px-3 py-2.5 transition-colors group"
             >
               <div className="flex items-center justify-between text-muted">

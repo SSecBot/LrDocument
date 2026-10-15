@@ -19,7 +19,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const variantClasses = {
     default: 'bg-surface-2 text-body border border-line-strong',
-    forest: 'bg-brand/25 text-[#4ade80] border border-brand/50',
+    forest: 'bg-brand/25 text-emerald-400 border border-brand/50',
     secondary: 'bg-surface text-subtle border border-line',
     outline: 'bg-transparent text-body border border-line-strong',
     danger: 'bg-rose-950/40 text-rose-300 border border-rose-800/40',

@@ -7,9 +7,11 @@ import type { AcademicData, Course, CourseSession, SessionKind } from '@/lib/aca
 import { DAYS, DAYS_SHORT, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
 import { parseSchedule, type ParsedCourse } from '@/lib/academic/scheduleParser';
 import { extractPdfItems, type PdfJsLike } from '@/lib/academic/pdfText';
-import { loadPdfJs } from '@/lib/academic/pdfjsLoader';
+import { loadPdfJs, pdfDocumentOptions } from '@/lib/academic/pdfjsLoader';
+import { describePdfError } from '@/lib/academic/pdfErrors';
 import { emptyCourse } from './CourseModal';
 import { btnGhost, btnPrimary, btnSecondary } from './ui';
+import { useAppStore } from '@/store/useAppStore';
 
 interface Props {
   isOpen: boolean;
@@ -55,6 +57,8 @@ function groupsFor(parsed: ParsedCourse[], year: number | null): string[] {
 const smallInput = 'h-8 bg-surface-2 border border-line rounded-md px-2 text-xs text-fg focus:outline-none focus:border-line-strong';
 
 export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYear, update }: Props) {
+  const { systemSettings } = useAppStore();
+  const courseDefaults = { credit: systemSettings.academic.defaultCredit, ects: systemSettings.academic.defaultEcts };
   const [rows, setRows] = useState<Row[] | null>(null);
   const [parsed, setParsed] = useState<ParsedCourse[]>([]);
   const [year, setYear] = useState<number | null>(null);
@@ -104,7 +108,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
     setBusy(true);
     try {
       const pdfjs = await loadPdfJs<PdfJsLike>();
-      const items = await extractPdfItems(pdfjs, new Uint8Array(await file.arrayBuffer()));
+      const items = await extractPdfItems(pdfjs, new Uint8Array(await file.arrayBuffer()), pdfDocumentOptions());
       const result = parseSchedule(items);
       setWarnings(result.warnings);
       if (result.courses.length === 0) {
@@ -120,7 +124,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
       setRows(buildRows(result.courses, y, g));
     } catch (err) {
       console.error(err);
-      setError('PDF okunamadı. Dosya bozuk ya da şifreli olabilir.');
+      setError(describePdfError(err));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -176,7 +180,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
             instructor: existing.instructor || r.instructor?.slice(0, 80) || '',
           };
         } else {
-          const base = emptyCourse(termId, d.grading, colorIndex++);
+          const base = emptyCourse(termId, d.grading, colorIndex++, courseDefaults);
           const hours = weeklyHoursFromSessions(sessions);
           list.push({
             ...base,

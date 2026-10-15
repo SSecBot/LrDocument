@@ -1,21 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { SigmaLogo } from '@/components/ui/SigmaLogo';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Lock,
   Mail,
   ArrowRight,
-  ShieldCheck,
   Clock,
   AlertCircle,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
-  const { checkAuth, isAuthenticated, currentUser } = useAppStore();
+  // ?ekle=1: a signed-in user adds another account; the current one stays signed in.
+  const adding = useSearchParams().get('ekle') === '1';
+  const { isAuthenticated, currentUser } = useAppStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,10 +34,10 @@ export default function LoginPage() {
   const [isPendingApproval, setIsPendingApproval] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && currentUser) {
+    if (isAuthenticated && currentUser && !adding) {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, currentUser, router]);
+  }, [isAuthenticated, currentUser, router, adding]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,8 +64,9 @@ export default function LoginPage() {
         return;
       }
 
-      await checkAuth(true);
-      router.push('/dashboard');
+      // Full reload: no data of a previously active account may stay in memory.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = '/dashboard';
     } catch {
       setErrorMessage('Bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
       setLoading(false);
@@ -69,19 +80,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-emerald-600 text-white mb-4 border border-emerald-400/30">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center justify-center gap-2">
-            LrDocument <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">PRO</span>
+          <SigmaLogo size="lg" className="mb-4" />
+          <h1 className="text-2xl font-semibold text-fg tracking-tight">
+            LrDocument
           </h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Matematik & İçerik Üretim Alanı
+          <p className="text-sm text-subtle mt-1">
+            {adding ? 'Başka bir hesap ekleyin; mevcut hesabınız açık kalır.' : 'Hesabınıza giriş yapın'}
           </p>
         </div>
 
         {/* Login Box */}
-        <div className="bg-surface/90 border border-line backdrop-blur-xl rounded-xl p-6 relative">
+        <div className="bg-surface border border-line rounded-xl p-6 relative">
           {/* Pending Approval Notification */}
           {isPendingApproval && (
             <div className="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 animate-in fade-in slide-in-from-top-2">
@@ -119,7 +128,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ornek@alanadi.com"
-                  className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                  className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                 />
               </div>
             </div>
@@ -139,7 +148,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                  className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                 />
               </div>
             </div>
@@ -147,7 +156,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-2 bg-brand hover:bg-brand-hover text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -162,12 +171,19 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Link */}
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 space-y-2">
+          {adding && (
+            <p className="text-sm">
+              <Link href="/dashboard" className="text-subtle hover:text-fg">
+                Vazgeç, panele dön
+              </Link>
+            </p>
+          )}
           <p className="text-sm text-neutral-400">
             Hesabınız yok mu?{' '}
             <Link
               href="/register"
-              className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+              className="text-brand-light hover:text-fg font-medium transition-colors"
             >
               Kayıt Talebi Oluştur
             </Link>

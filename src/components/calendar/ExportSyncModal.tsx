@@ -192,7 +192,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
             {/* Google Calendar Direct Web Sync */}
             <div className="bg-surface border border-line rounded-xl p-4 sm:p-5 space-y-3 hover:border-brand transition-colors">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-[#142028] border border-[#1e3a4e] text-sky-400">
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-sky-400">
                   <ExternalLink className="w-5 h-5" />
                 </div>
                 <div>
@@ -215,7 +215,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                     </div>
                     <button
                       onClick={() => handleOpenGoogleCalendar(ev)}
-                      className="min-h-[36px] px-3 py-1.5 bg-[#1a2d3d] hover:bg-[#24425a] text-sky-300 border border-sky-800/40 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                      className="min-h-[36px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-800/40 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
                     >
                       <span>Google’a Aktar</span>
                       <ExternalLink className="w-3 h-3" />

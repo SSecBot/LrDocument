@@ -25,7 +25,8 @@ export const EventModal: React.FC<EventModalProps> = ({
   initialDate,
   editEvent,
 }) => {
-  const { addEvent, updateEvent, deleteEvent } = useAppStore();
+  const { addEvent, updateEvent, deleteEvent, systemSettings } = useAppStore();
+  const defaults = systemSettings.calendar;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -52,8 +53,8 @@ export const EventModal: React.FC<EventModalProps> = ({
       setTitle(editEvent.title);
       setDescription(editEvent.description || '');
       setDate(editEvent.date);
-      setTime(editEvent.time || '18:00');
-      setDurationMinutes(editEvent.durationMinutes || 60);
+      setTime(editEvent.time || defaults.defaultEventTime);
+      setDurationMinutes(editEvent.durationMinutes || defaults.defaultEventDurationMinutes);
       setEventType(editEvent.eventType || 'yayin');
       setPlatform(editEvent.platform || 'YouTube');
       setStatus(editEvent.status);
@@ -62,16 +63,12 @@ export const EventModal: React.FC<EventModalProps> = ({
       setTitle('');
       setDescription('');
       setDate(initialDate || toLocalDateString());
-      setTime('18:00');
-      setDurationMinutes(60);
-      setEventType('yayin');
+      setTime(defaults.defaultEventTime);
+      setDurationMinutes(defaults.defaultEventDurationMinutes);
+      setEventType('gorev');
       setPlatform('YouTube');
       setStatus('planlandi');
-      setChecklist([
-        { id: generateId(), text: 'Kapak resmi (Thumbnail) tasarımı bitti', done: false },
-        { id: generateId(), text: 'Video kurgusu ve ses dengelemesi tamam', done: false },
-        { id: generateId(), text: 'Açıklama, etiketler ve kaynakça eklendi', done: false },
-      ]);
+      setChecklist([]);
     }
   }
 
@@ -146,9 +143,9 @@ export const EventModal: React.FC<EventModalProps> = ({
           <label className="block text-xs font-semibold text-white mb-1.5">Etkinlik Türü</label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'yayin', label: '🔴 Yayın / Video', desc: 'Sosyal Medya' },
-              { id: 'gorev', label: '🟡 Görev Teslimi', desc: 'İş Planı' },
-              { id: 'ozel_gun', label: '🟢 Özel Gün / Not', desc: 'Kilometre Taşı' },
+              { id: 'yayin', label: 'Yayın / Video', desc: 'Sosyal Medya' },
+              { id: 'gorev', label: 'Görev Teslimi', desc: 'İş Planı' },
+              { id: 'ozel_gun', label: 'Özel Gün / Not', desc: 'Kilometre Taşı' },
             ].map((t) => (
               <button
                 type="button"

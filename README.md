@@ -90,8 +90,11 @@ cd /var/www/lrdocument
 # .env dosyasını oluşturun (Prisma yalnızca .env dosyasını okur)
 cp .env.example .env
 
-# JWT_SECRET için güçlü bir anahtar üretip .env içine yazın (zorunlu)
+# JWT_SECRET ve DATA_ENCRYPTION_KEY için ayrı ayrı güçlü anahtarlar üretip .env içine yazın (zorunlu)
 openssl rand -base64 48
+openssl rand -base64 48
+# DATA_ENCRYPTION_KEY kullanıcı verilerini (notlar, görevler, finans, ders bilgileri) şifreler.
+# Bu anahtarı güvenli bir yere yedekleyin: kaybolursa şifreli veriler okunamaz, asla değiştirmeyin.
 
 # İlk yönetici hesabı için ADMIN_EMAIL ve ADMIN_PASSWORD değerlerini .env içinde doldurun
 
@@ -192,25 +195,22 @@ sudo ufw status
 
 ---
 
-## 3. Güncelleme & Sürüm Yenileme Scripti
+## 3. Güncelleme
 
-Gelecekte kodlarınızda bir değişiklik yaptığınızda VPS sunucunuzu tek komutla güncellemek için `/var/www/lrdocument/update.sh` dosyası oluşturabilirsiniz:
+Sunucuda tek komut:
 
 ```bash
-#!/bin/bash
-echo "🚀 LrDocument güncelleniyor..."
-cd /var/www/lrdocument
-git pull origin main
-npm install
-npm run build
-pm2 restart lrdocument
-echo "✅ Güncelleme tamamlandı ve uygulama yeniden başlatıldı!"
+bash /var/www/lrdocument/scripts/update.sh
 ```
 
-Çalıştırma izni vermek için:
-```bash
-chmod +x /var/www/lrdocument/update.sh
-```
+Betik sırasıyla: veritabanını yedekler (`/var/lib/lrdocument/backups`), veritabanını kalıcı klasöre taşır,
+`JWT_SECRET` zayıfsa yeniler, `DATA_ENCRYPTION_KEY` yoksa bir kez üretip `/var/lib/lrdocument/keys/`
+altına yedekler, kodu çeker, bağımlılıkları kurar, şemayı uygular, derler ve PM2 sürecini yeniden başlatır.
+Betiğin kendisi değiştiyse yeni sürümüyle baştan çalışır.
+
+**Veri şifreleme:** Kullanıcı içerikleri sunucuda kullanıcıya özel anahtarla (AES-256-GCM) şifreli
+saklanır. Eski, şifresiz kayıtlar kullanıcının ilk girişinde otomatik şifrelenir. Veritabanı yedeklerini
+`/var/lib/lrdocument/keys/data-encryption-key` dosyasıyla birlikte saklayın.
 
 ---
 

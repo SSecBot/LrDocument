@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Note } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { KatexPreview } from './KatexPreview';
-import { MathDrawer } from './MathDrawer';
+import { MathSymbolBar } from './MathDrawer';
 import {
   Columns2,
   Eye,
@@ -18,9 +18,9 @@ import {
   Tag,
   Folder,
   Calendar,
-  Sparkles,
   Sigma,
   ChevronLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { formatTurkishDate, slugifyFilename } from '@/lib/utils';
 
@@ -39,10 +39,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     addTask,
     setActiveTab,
     addToast,
+    preferences,
+    setPreference,
+    systemSettings,
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split');
-  const [isMathDrawerOpen, setIsMathDrawerOpen] = useState(false);
+  const symbolsOpen = preferences.mathDrawerOpen;
   const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -116,7 +119,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     addTask({
       title: `"${note.title}" notunu incele ve geliştir`,
       completed: false,
-      priority: 'orta',
+      priority: systemSettings.tasks.defaultPriority,
       linkedNoteId: note.id,
     });
     setActiveTab('tasks');
@@ -151,14 +154,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
         {/* View Mode Toggle & Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          {/* Math Drawer Trigger Button */}
+          {/* Symbol drawer toggle (the drawer opens as a strip below this bar) */}
           <button
-            onClick={() => setIsMathDrawerOpen(true)}
-            className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-brand border border-brand/60 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold transition-all group"
-            title="LaTeX Sembol Çekmecesini Aç"
+            onClick={() => setPreference('mathDrawerOpen', !symbolsOpen)}
+            aria-expanded={symbolsOpen}
+            className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${
+              symbolsOpen ? 'bg-surface-4 border-line-strong text-fg' : 'bg-surface-2 border-line-strong text-body hover:text-fg'
+            }`}
+            title={symbolsOpen ? 'Sembol çekmecesini kapat' : 'Sembol çekmecesini aç'}
           >
-            <Sigma className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-            <span className="hidden sm:inline">LaTeX Sembolleri</span>
+            <Sigma className="w-4 h-4" />
+            <span className="hidden sm:inline">Semboller</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${symbolsOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {/* View switches */}
@@ -269,11 +276,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             onChange={(e) => updateNote(note.id, { folder: e.target.value })}
             className="bg-surface-2 text-body border border-line-strong rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand min-h-[34px]"
           >
+            <option value="">Klasörsüz</option>
             {folders.map(f => (
               <option key={f.id} value={f.id}>
                 {f.name}
               </option>
             ))}
+            {!!note.folder && !folders.some((f) => f.id === note.folder) && <option value={note.folder}>Silinmiş klasör</option>}
           </select>
         </div>
 
@@ -311,21 +320,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         </div>
       </div>
 
+      {symbolsOpen && <MathSymbolBar onInsertLatex={handleInsertLatex} />}
+
       {/* Main editor / preview content area */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Editor Column */}
         {(viewMode === 'edit' || viewMode === 'split') && (
           <div className={`flex flex-col h-full border-r border-line ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
-            <div className="px-4 py-2 bg-surface border-b border-line text-[11px] font-medium text-muted flex items-center justify-between">
-              <span>MARKDOWN & FORMÜL GİRDİSİ</span>
-              <button
-                onClick={() => setIsMathDrawerOpen(true)}
-                className="text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
-              >
-                <Sigma className="w-3 h-3" />
-                <span>Sembol Çekmecesini Aç</span>
-              </button>
-            </div>
+            <div className="px-4 py-2 bg-surface border-b border-line text-[11px] font-medium text-muted">Markdown ve formül</div>
             <textarea
               ref={textareaRef}
               value={note.content}
@@ -341,10 +343,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <div className={`flex flex-col h-full bg-app overflow-hidden ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
             {/* Header for Right Panel */}
             <div className="px-4 py-2 bg-surface border-b border-line flex items-center justify-between sticky top-0 z-10">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                <span className="text-xs font-bold text-white tracking-tight">CANLI ÖNİZLEME (KaTeX)</span>
-              </div>
+              <span className="text-[11px] font-medium text-muted">Önizleme</span>
 
               <span className="text-[11px] text-muted">
                 {wordCount} kelime • {charCount} karakter
@@ -365,18 +364,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <span>{wordCount} kelime</span>
           <span>{charCount} karakter</span>
         </div>
-        <div className="flex items-center gap-1.5 text-emerald-400 font-medium text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Otomatik Kaydedildi</span>
+        <div className="flex items-center gap-1.5 text-muted text-[11px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Otomatik kaydedilir</span>
         </div>
       </div>
 
-      {/* Slide-over Math Drawer */}
-      <MathDrawer
-        isOpen={isMathDrawerOpen}
-        onClose={() => setIsMathDrawerOpen(false)}
-        onInsertLatex={handleInsertLatex}
-      />
     </div>
   );
 };
