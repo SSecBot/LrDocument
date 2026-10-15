@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Kanban,
   KeyRound,
+  Lightbulb,
   ListChecks,
   Lock,
   MailCheck,
@@ -335,6 +336,31 @@ export default async function LandingPage() {
             </div>
           </section>
         )}
+
+        {/* Feedback note: the app grows with its users' requests */}
+        <section aria-labelledby="geri-bildirim-baslik" className="border-t border-line/70">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 rounded-2xl border border-sky-500/25 bg-sky-500/[0.06] px-5 py-6 sm:px-7">
+              <span className="w-11 h-11 rounded-xl bg-sky-500/15 text-sky-300 flex items-center justify-center shrink-0" aria-hidden="true">
+                <Lightbulb className="w-5 h-5" />
+              </span>
+              <div className="space-y-2">
+                <h2 id="geri-bildirim-baslik" className="text-lg font-semibold tracking-tight text-fg">
+                  LrDocument’i sizinle birlikte geliştiriyoruz
+                </h2>
+                <p className="text-[14px] text-subtle leading-relaxed">
+                  Her istek, öneri ve hata bildirimi bizim için çok değerli. Yeni özelliklerin önemli bir kısmı kullanıcılarımızın
+                  geri bildirimlerinden doğuyor; bir şeyin eksik ya da zor olduğunu söylemeniz, uygulamayı herkes için daha iyi hâle
+                  getiriyor.
+                </p>
+                <p className="text-[13px] text-muted leading-relaxed">
+                  Giriş yaptıktan sonra <span className="text-body">Ayarlar › Destek</span> bölümünden bize doğrudan yazabilir,
+                  bildirimlerinizin durumunu ve yanıtımızı aynı yerden takip edebilirsiniz.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {c.cta.visible && (
           <section aria-labelledby="cta-baslik" className="border-t border-line/70">
