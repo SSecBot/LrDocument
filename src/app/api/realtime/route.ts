@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 const HEARTBEAT_MS = 20_000;
 
 /**
- * Live stream of a corporate workspace's changes (Server-Sent Events). The session is checked
+ * Live stream of an account's changes (Server-Sent Events): the other devices of a person, and the
+ * whole team in a corporate workspace. The session is checked
  * again with every heartbeat, so removed members, new codes and changed permissions take effect
  * within seconds.
  */
@@ -15,7 +16,6 @@ export async function GET(req: Request) {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   const session = await sessionFromToken(token);
   if (!session) return new Response(null, { status: 401 });
-  if (session.accountType !== 'CORPORATE') return new Response(null, { status: 204 });
 
   const encoder = new TextEncoder();
   let cleanup = () => {};

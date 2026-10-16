@@ -15,6 +15,8 @@ const fields = {
   exchangeMarkupTRY: z.number().min(0).max(1000).nullable(),
   readNotificationIds: z.array(z.string().max(200)).max(500),
   dismissedNotificationIds: z.array(z.string().max(200)).max(500),
+  /** Show new notifications as system (Windows / macOS / Android) notifications on this device. */
+  desktopNotifications: z.boolean(),
 };
 
 export type UserPreferences = { [K in keyof typeof fields]: z.infer<(typeof fields)[K]> };
@@ -29,6 +31,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   exchangeMarkupTRY: null,
   readNotificationIds: [],
   dismissedNotificationIds: [],
+  desktopNotifications: false,
 };
 
 /**

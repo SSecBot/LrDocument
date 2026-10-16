@@ -64,7 +64,7 @@ export type SystemSettings = z.infer<typeof systemSettingsSchema>;
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   pricing: { monthly: 100, lifetime: 1999, studentDiscountPercent: 50, corporatePercent: 75, corporateMinSeats: 2, corporateMaxSeats: 500 },
-  finance: { loanMonthlyInterestRate: 3.75, loanMinPaymentRate: 20, exchangeMarkupTRY: 2.5, defaultCurrency: 'TRY' },
+  finance: { loanMonthlyInterestRate: 3.75, loanMinPaymentRate: 20, exchangeMarkupTRY: 0, defaultCurrency: 'TRY' },
   academic: {
     tomorrowFromHour: 17,
     defaultCredit: 3,

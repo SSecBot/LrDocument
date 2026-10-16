@@ -140,7 +140,7 @@ export const Header: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-line pb-2">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white">Canlı Kur & Marj Bilgisi</span>
+                    <span className="text-xs font-bold text-white">{exchangeRates.markupTRY > 0 ? 'Canlı Kur & Marj Bilgisi' : 'Canlı Kur Bilgisi'}</span>
                   </div>
                   <button
                     onClick={handleRefreshRates}
@@ -158,10 +158,14 @@ export const Header: React.FC = () => {
                       <span>🇺🇸 USD / TRY</span>
                       <span className="font-mono">{exchangeRates.USD.toFixed(2)} ₺</span>
                     </div>
-                    <div className="text-xs font-mono font-bold text-white">
-                      → {(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺
-                    </div>
-                    <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                    {exchangeRates.markupTRY > 0 && (
+                      <>
+                        <div className="text-xs font-mono font-bold text-white">
+                          → {(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺
+                        </div>
+                        <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                      </>
+                    )}
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-app border border-line space-y-1">
@@ -169,10 +173,14 @@ export const Header: React.FC = () => {
                       <span>🇪🇺 EUR / TRY</span>
                       <span className="font-mono">{exchangeRates.EUR.toFixed(2)} ₺</span>
                     </div>
-                    <div className="text-xs font-mono font-bold text-white">
-                      → {(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺
-                    </div>
-                    <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                    {exchangeRates.markupTRY > 0 && (
+                      <>
+                        <div className="text-xs font-mono font-bold text-white">
+                          → {(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺
+                        </div>
+                        <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                      </>
+                    )}
                   </div>
                 </div>
 

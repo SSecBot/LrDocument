@@ -1,9 +1,8 @@
 import { canView, ENTITY_MODULE, type CorpPermissions } from './corporate';
 
 // ---------------------------------------------------------------------------
-// Live updates inside a corporate workspace (Server-Sent Events).
-//
-// Every open tab of a workspace keeps one stream; a saved change is pushed to the other tabs at
+// Live updates (Server-Sent Events): every open tab and device of an account — and, in a corporate
+// workspace, of the whole team — keeps one stream; a saved change is pushed to the other tabs at
 // once, filtered by each viewer's permissions. The hub lives in this process's memory, which fits
 // the single pm2 process the app is deployed as. (Several processes would need a shared broker.)
 // ---------------------------------------------------------------------------

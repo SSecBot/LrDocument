@@ -56,6 +56,7 @@ model User {
   studentDocument StudentDocument?
   verificationCodes VerificationCode[]
   feedback     Feedback[]
+  pushSubscriptions PushSubscription[]
 
   @@index([status, subscriptionType])
   @@index([status, subscriptionPlan])
@@ -115,9 +116,13 @@ model Task {
   description    String?
   completed      Boolean   @default(false)
   priority       String    @default("orta")
+  /// Görev süresi aralığı: optional first day; dueDate is the last day.
+  startDate      String?
   dueDate        String?
   linkedNoteId   String?
   linkedScriptId String?
+  /// Display name of who added it (kurumsal: owner or member).
+  createdBy      String?
   createdAt      DateTime  @default(now())
   completedAt    DateTime?
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -140,6 +145,7 @@ model CalendarEvent {
   linkedTaskId    String?
   status          String   @default("planlandi")
   checklist       String   @default("[]") // JSON string of EventChecklistItem[]
+  createdBy       String?
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -188,6 +194,7 @@ model FinanceTransaction {
   isDebt              Boolean  @default(false)
   monthlyInterestRate Float?
   minPaymentRate      Float?
+  createdBy          String?
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -220,6 +227,7 @@ model KanbanCard {
   tags           String   @default("[]")
   linkedScriptId String?
   linkedNoteId   String?
+  createdBy      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -299,9 +307,10 @@ model Customer {
   paymentDay  Int      @default(1)
   startDate   String   // YYYY-MM-DD, commitment start
   endDate     String   // YYYY-MM-DD, commitment end
-  /// JSON: [{ month: "YYYY-MM", paidAt: "YYYY-MM-DD", amount }]
+  /// JSON: [{ month: "YYYY-MM", paidAt: "YYYY-MM-DD", amount, by? }] — `by`: who recorded the payment
   payments    String   @default("[]")
   notes       String?
+  createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -375,4 +384,29 @@ model UniversityCalendar {
   sourceUrl    String?
   updatedBy    String?
   updatedAt    DateTime @updatedAt
+}
+
+/// Web Push: a phone / computer that receives notifications even while the app is closed.
+/// `userId` is the account (kurumsal: the owner); `memberId` is set for a corporate member's device.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  memberId  String?
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  lastOkAt  DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Reminders already pushed (e.g. "task overdue"), so each one is sent once.
+model PushSent {
+  key       String   @id
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

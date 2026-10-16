@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import { PwaRegister } from '@/components/PwaRegister';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -21,11 +22,9 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
     ],
-    apple: [
-      { url: '/apple-touch-icon.svg', type: 'image/svg+xml' },
-    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
   },
   appleWebApp: {
     capable: true,
@@ -51,6 +50,7 @@ export default function RootLayout({
     <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
       <body className="min-h-full bg-app text-fg flex flex-col antialiased selection:bg-brand selection:text-white">
         {children}
+        <PwaRegister />
       </body>
     </html>
   );

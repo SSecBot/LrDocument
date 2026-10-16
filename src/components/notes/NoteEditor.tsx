@@ -50,7 +50,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
   // Kurumsal: members with view-only access to Ortak Notlar read the note, they cannot change it.
   const editable = canEdit(currentUser, 'notes');
 
-  const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>(editable ? 'split' : 'preview');
+  // Opens in the editor; Bölünmüş (editor + preview) and Önizleme are one click away.
+  const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>(editable ? 'edit' : 'preview');
   const symbolsOpen = preferences.mathDrawerOpen;
   const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);

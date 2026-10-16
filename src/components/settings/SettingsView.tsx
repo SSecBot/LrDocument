@@ -13,6 +13,7 @@ import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
 import { EmailSection, EmailVerificationPanel, TwoFactorSection } from './SecuritySections';
 import { StudentEmailSection } from './StudentEmailSection';
 import { AccountSwitchSection, SupportSection } from './SupportSections';
+import { CurrencyPanel, InstallAppPanel, NotificationsPanel } from './PreferenceExtras';
 
 export function SettingsView() {
   const { currentUser, settingsSection, setSettingsSection } = useAppStore();
@@ -222,8 +223,7 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
 }
 
 function PreferencesSection() {
-  const { preferences, setPreference, exchangeRates, setExchangeRateMarkup, systemSettings } = useAppStore();
-  const [markup, setMarkup] = useState(String(exchangeRates.markupTRY));
+  const { preferences, setPreference } = useAppStore();
   return (
     <>
       <Panel title="Görünüm" description="Bu tercihler hesabınıza kaydedilir; her cihazda aynı görünür.">
@@ -240,24 +240,9 @@ function PreferencesSection() {
           />
         </div>
       </Panel>
-      <Panel title="Döviz" description={`USD/EUR işlemlerinde kura eklenen marj. Yönetici varsayılanı: ${systemSettings.finance.exchangeMarkupTRY.toFixed(2)} TL.`}>
-        <form
-          className="flex items-end gap-2 max-w-xs"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const n = Number(markup.replace(',', '.'));
-            if (Number.isFinite(n) && n >= 0 && n <= 1000) setExchangeRateMarkup(n);
-          }}
-        >
-          <label className="flex-1">
-            <span className={labelCls}>Kur marjı (TL)</span>
-            <input className={fieldCls} inputMode="decimal" value={markup} onChange={(e) => setMarkup(e.target.value)} />
-          </label>
-          <button type="submit" className={primaryBtn}>
-            Kaydet
-          </button>
-        </form>
-      </Panel>
+      <CurrencyPanel />
+      <NotificationsPanel />
+      <InstallAppPanel />
       <Panel title="Gizlilik">
         <ul className="space-y-2 text-xs text-subtle leading-relaxed list-disc pl-4">
           <li>Tarayıcınızda çerez, önbellek veya yerel depolama ile hiçbir kişisel veri tutulmaz; yalnızca oturumunuzu tanıyan, JavaScript’in okuyamadığı tek bir oturum çerezi vardır.</li>

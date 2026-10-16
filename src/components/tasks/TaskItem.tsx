@@ -17,7 +17,9 @@ import {
   Edit2,
   X,
   Save,
+  UserRound,
 } from 'lucide-react';
+import { isCorporate } from '@/lib/corporate';
 import { formatTurkishDate, getRelativeTimeTurkish } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
@@ -35,6 +37,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     setActiveNoteId,
     setActiveTab,
     addToast,
+    currentUser,
   } = useAppStore();
 
   const [isCrossLinkModalOpen, setIsCrossLinkModalOpen] = useState(false);
@@ -45,6 +48,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority);
   const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
+  const [editStartDate, setEditStartDate] = useState(task.startDate || '');
+  const rangeDays =
+    task.startDate && task.dueDate
+      ? Math.round((Date.parse(`${task.dueDate}T00:00:00Z`) - Date.parse(`${task.startDate}T00:00:00Z`)) / 86_400_000) + 1
+      : 0;
 
   const linkedNote = task.linkedNoteId ? notes.find(n => n.id === task.linkedNoteId) : null;
 
@@ -73,6 +81,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
       priority: editPriority,
+      startDate: editStartDate && editDueDate && editStartDate <= editDueDate ? editStartDate : undefined,
       dueDate: editDueDate || undefined,
     });
 
@@ -89,6 +98,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     setEditDescription(task.description || '');
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate || '');
+    setEditStartDate(task.startDate || '');
     setIsEditing(false);
   };
 
@@ -158,7 +168,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="block text-[11px] font-bold text-subtle mb-1">Öncelik</label>
                   <select
@@ -173,10 +183,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-subtle mb-1">Son Teslim Tarihi</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">Başlangıç (isteğe bağlı)</label>
+                  <input
+                    type="date"
+                    value={editStartDate}
+                    max={editDueDate || undefined}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">{editStartDate ? 'Bitiş Tarihi' : 'Son Teslim Tarihi'}</label>
                   <input
                     type="date"
                     value={editDueDate}
+                    min={editStartDate || undefined}
                     onChange={(e) => setEditDueDate(e.target.value)}
                     className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
                   />
@@ -266,9 +288,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     }`}
                   >
                     <Calendar className="w-3 h-3 text-emerald-400" />
-                    <span>{getRelativeTimeTurkish(task.dueDate)} ({formatTurkishDate(task.dueDate)})</span>
+                    {task.startDate ? (
+                      <span>
+                        {formatTurkishDate(task.startDate)} – {formatTurkishDate(task.dueDate)} ({rangeDays} gün)
+                      </span>
+                    ) : (
+                      <span>{getRelativeTimeTurkish(task.dueDate)} ({formatTurkishDate(task.dueDate)})</span>
+                    )}
                     {overdue && <AlertCircle className="w-3 h-3 text-rose-400 ml-0.5" />}
                   </div>
+                )}
+
+                {/* Kurumsal: who added it */}
+                {isCorporate(currentUser) && task.createdBy && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-muted min-h-[32px]" title="Ekleyen">
+                    <UserRound className="w-3 h-3" /> {task.createdBy}
+                  </span>
                 )}
 
                 {/* Linked Note Jump */}

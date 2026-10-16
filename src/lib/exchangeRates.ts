@@ -4,7 +4,7 @@ export const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
   USD: 36.50,
   EUR: 39.20,
   lastUpdated: new Date().toISOString(),
-  markupTRY: 2.50,
+  markupTRY: 0,
   isLive: false,
 };
 
@@ -19,8 +19,8 @@ let sessionCachedRates: ExchangeRates | null = null;
  * 4. Memory Session Cache
  * 5. Realistic Default Fallback
  */
-export async function fetchLiveExchangeRates(currentMarkup: number = 2.50): Promise<ExchangeRates> {
-  const markup = typeof currentMarkup === 'number' && !isNaN(currentMarkup) ? currentMarkup : 2.50;
+export async function fetchLiveExchangeRates(currentMarkup: number = 0): Promise<ExchangeRates> {
+  const markup = typeof currentMarkup === 'number' && !isNaN(currentMarkup) ? currentMarkup : 0;
 
   // 1. Try Primary Provider (open.er-api.com)
   try {
@@ -158,7 +158,7 @@ export function convertCurrencyToTRY(
   originalAmount: number;
   currency: CurrencyCode;
 } {
-  const markup = customMarkup !== undefined && !isNaN(customMarkup) ? customMarkup : (rates.markupTRY || 2.50);
+  const markup = customMarkup !== undefined && !isNaN(customMarkup) ? customMarkup : (rates.markupTRY ?? 0);
 
   if (currency === 'TRY') {
     return {

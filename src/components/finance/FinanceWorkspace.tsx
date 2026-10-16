@@ -25,8 +25,10 @@ import {
   RefreshCw,
   Coins,
   Sparkles,
+  UserRound,
 } from 'lucide-react';
 import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
+import { isCorporate } from '@/lib/corporate';
 import { formatCurrencyWithCode } from '@/lib/exchangeRates';
 import { getTransactionsForMonth, calculateMRRSummary } from '@/lib/recurringFinance';
 
@@ -38,7 +40,9 @@ export const FinanceWorkspace: React.FC = () => {
     exchangeRates,
     fetchExchangeRates,
     addToast,
+    currentUser,
   } = useAppStore();
+  const showAuthor = isCorporate(currentUser);
 
   const [typeFilter, setTypeFilter] = useState<FinanceTransactionType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'recurring' | 'unconfirmed' | 'confirmed'>('all');
@@ -227,7 +231,8 @@ export const FinanceWorkspace: React.FC = () => {
                 Gelir ve Gider Yönetimi
               </h1>
               <p className="text-[11px] sm:text-xs text-muted hidden sm:block">
-                Çoklu para birimi (TRY, USD, EUR), düzenli gelir/gider otomasyonu ve canlı kur marjı (+{exchangeRates.markupTRY.toFixed(2)} TL)
+                Çoklu para birimi (TRY, USD, EUR), düzenli gelir/gider otomasyonu ve canlı kur
+                {exchangeRates.markupTRY > 0 ? ` (+${exchangeRates.markupTRY.toFixed(2)} TL marj)` : ''}
               </p>
             </div>
           </div>
@@ -271,14 +276,16 @@ export const FinanceWorkspace: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xs font-bold text-white tracking-tight">
-                  Döviz Kurları & +{exchangeRates.markupTRY.toFixed(2)} TL Marj
+                  Döviz Kurları{exchangeRates.markupTRY > 0 ? ` & +${exchangeRates.markupTRY.toFixed(2)} TL Marj` : ''}
                 </h3>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800/80 font-mono">
                   {exchangeRates.isLive ? 'Canlı API' : 'Yedek Kur'}
                 </span>
               </div>
               <p className="text-[11px] text-subtle hidden sm:block">
-                Yabancı para birimli (USD, EUR) işlemler TL kasasına dönüştürülürken kur marjı uygulanır.
+                {exchangeRates.markupTRY > 0
+                  ? 'Yabancı para birimli (USD, EUR) işlemler TL kasasına dönüştürülürken kur marjı uygulanır.'
+                  : 'Yabancı para birimli (USD, EUR) işlemler canlı kurla TL’ye çevrilir. Marj eklemek için: Ayarlar › Tercihler › Döviz.'}
               </p>
             </div>
           </div>
@@ -288,18 +295,22 @@ export const FinanceWorkspace: React.FC = () => {
             <div className="px-3 py-1.5 rounded-lg bg-app/90 border border-brand-line text-xs flex items-center gap-1.5">
               <span className="font-bold text-sky-400 font-mono">$ USD</span>
               <span className="text-subtle font-mono">{exchangeRates.USD.toFixed(2)} ₺</span>
-              <span className="text-[10px] text-emerald-400 font-bold font-mono">
-                → {(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺
-              </span>
+              {exchangeRates.markupTRY > 0 && (
+                <span className="text-[10px] text-emerald-400 font-bold font-mono">
+                  → {(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺
+                </span>
+              )}
             </div>
 
             {/* EUR Card */}
             <div className="px-3 py-1.5 rounded-lg bg-app/90 border border-brand-line text-xs flex items-center gap-1.5">
               <span className="font-bold text-purple-400 font-mono">€ EUR</span>
               <span className="text-subtle font-mono">{exchangeRates.EUR.toFixed(2)} ₺</span>
-              <span className="text-[10px] text-emerald-400 font-bold font-mono">
-                → {(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺
-              </span>
+              {exchangeRates.markupTRY > 0 && (
+                <span className="text-[10px] text-emerald-400 font-bold font-mono">
+                  → {(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺
+                </span>
+              )}
             </div>
 
             {/* Refresh Rates Button */}
@@ -637,6 +648,12 @@ export const FinanceWorkspace: React.FC = () => {
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-2 text-subtle border border-line-strong">
                             {tr.category}
                           </span>
+
+                          {showAuthor && tr.createdBy && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full text-muted inline-flex items-center gap-1" title="Ekleyen">
+                              <UserRound className="w-3 h-3" /> {tr.createdBy}
+                            </span>
+                          )}
 
                           {isForeignCurrency && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-950/70 text-sky-300 border border-sky-800/60 font-mono">

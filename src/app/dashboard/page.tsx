@@ -20,6 +20,9 @@ import { TeamWorkspace } from '@/components/team/TeamWorkspace';
 import { hasStudentAccess } from '@/lib/access';
 import { accessOf, CORP_MODULE_LABEL, type CorpModule } from '@/lib/corporate';
 import { Eye, ShieldCheck } from 'lucide-react';
+import type { ActiveTab } from '@/types';
+
+const OPENABLE_TABS = new Set(['dashboard', 'notes', 'tasks', 'calendar', 'finance', 'customers', 'academic', 'settings']);
 
 const TAB_MODULE: Partial<Record<string, CorpModule>> = {
   notes: 'notes',
@@ -31,13 +34,25 @@ const TAB_MODULE: Partial<Record<string, CorpModule>> = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { activeTab, isAuthenticated, isLoadingAuth, currentUser } = useAppStore();
+  const { activeTab, isAuthenticated, isLoadingAuth, currentUser, setActiveTab } = useAppStore();
 
   useEffect(() => {
     if (!isLoadingAuth && !isAuthenticated) {
       router.push('/login');
     }
   }, [isLoadingAuth, isAuthenticated, router]);
+
+  // Shortcuts of the installed app and notification clicks open a section: /dashboard?sekme=tasks
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('sekme');
+    if (tab && OPENABLE_TABS.has(tab)) {
+      setActiveTab(tab as ActiveTab);
+      params.delete('sekme');
+      window.history.replaceState(null, '', `/dashboard${params.size ? `?${params}` : ''}`);
+    }
+  }, [isAuthenticated, setActiveTab]);
 
   if (isLoadingAuth) {
     return (

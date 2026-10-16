@@ -13,6 +13,7 @@ import {
   Trash2,
   ArrowRight,
   X,
+  Users,
 } from 'lucide-react';
 
 interface NotificationPanelProps {
@@ -60,6 +61,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return <AlertTriangle className="w-4 h-4 text-amber-400" />;
       case 'calendar_upcoming':
         return <Calendar className="w-4 h-4 text-emerald-400" />;
+      case 'activity':
+        return <Users className="w-4 h-4 text-sky-400" />;
       default:
         return <Bell className="w-4 h-4 text-sky-400" />;
     }

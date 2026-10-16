@@ -18,11 +18,12 @@ import {
   ExchangeRates,
   UserProfile,
   Customer,
+  CustomerPayment,
 } from '@/types';
 import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
 import { DEFAULT_PREFERENCES, parsePreferences, type UserPreferences } from '@/lib/preferences';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
-import { generateId, toLocalDateString } from '@/lib/utils';
+import { formatCurrencyTRY, generateId, toLocalDateString } from '@/lib/utils';
 import { CORP_MODULE_LABEL, ENTITY_MODULE, canEdit, isCorporate, type CorpModule } from '@/lib/corporate';
 import {
   DEFAULT_EXCHANGE_RATES,
@@ -168,6 +169,8 @@ type GlobalState = {
   exchangeRates: ExchangeRates;
   customers: Customer[];
   remoteEdits: Record<string, { by: string; at: number }>;
+  /** Kurumsal: what teammates added while this tab is open (newest first). */
+  activity: AppNotification[];
 };
 
 const globalState: GlobalState = {
@@ -195,12 +198,19 @@ const globalState: GlobalState = {
   exchangeRates: DEFAULT_EXCHANGE_RATES,
   customers: [],
   remoteEdits: {},
+  activity: [],
 };
 
 const listeners = new Set<() => void>();
 
 function notify() {
   listeners.forEach((fn) => fn());
+  scheduleDesktopCheck();
+}
+
+/** Display name stored as "Ekleyen" (the server sets the authoritative value). */
+function authorName(): string | null {
+  return globalState.currentUser?.name ?? null;
 }
 
 type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder' | 'category' | 'customer';
@@ -381,7 +391,10 @@ export function getEffectiveTransactionPriority(trans: FinanceTransaction): Task
 }
 
 export function getComputedNotifications(): AppNotification[] {
-  const notifs: AppNotification[] = [];
+  const notifs: AppNotification[] = globalState.activity.map((a) => ({
+    ...a,
+    isRead: globalState.preferences.readNotificationIds.includes(a.id),
+  }));
 
   globalState.tasks.forEach((task) => {
     if (!task.completed && isTaskOverdue(task)) {
@@ -525,12 +538,18 @@ const checkAuth = async (force: boolean = false) => {
       globalState.isAuthenticated = true;
       startPresence();
       await loadUserData();
-      if (isCorporate(globalState.currentUser)) startRealtime();
+      startRealtime();
     } else {
       globalState.currentUser = null;
       globalState.isAuthenticated = false;
     }
   } catch {
+    // No connection: show the offline page (served by the service worker) instead of the sign-in
+    // page, so a signed-in user is not sent to log in again.
+    if (typeof navigator !== 'undefined' && !navigator.onLine && typeof window !== 'undefined') {
+      window.location.replace('/offline.html');
+      return;
+    }
     globalState.currentUser = null;
     globalState.isAuthenticated = false;
   } finally {
@@ -558,6 +577,7 @@ const loadUserData = async (silent = false) => {
         globalState.customers = json.data.customers || [];
         globalState.folders = json.data.folders || [];
         globalState.preferences = parsePreferences(json.data.preferences);
+        if (!silent) syncPushSubscription();
         if (globalState.preferences.exchangeMarkupTRY !== null) {
           globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: globalState.preferences.exchangeMarkupTRY };
         }
@@ -585,6 +605,7 @@ const loadUserData = async (silent = false) => {
     });
   } finally {
     globalState.isLoadingData = false;
+    dataLoadedOnce = true;
     notify();
   }
 };
@@ -592,6 +613,11 @@ const loadUserData = async (silent = false) => {
 /** Clears every in-memory record and reloads, so no data of the previous account survives. */
 function leaveTo(path: string) {
   stopRealtime();
+  desktopSeen = null;
+  dataLoadedOnce = false;
+  // The next account on this browser must not receive the previous one's notifications.
+  const unsubscribed = unsubscribePush();
+  globalState.activity = [];
   globalState.currentUser = null;
   globalState.isAuthenticated = false;
   isAuthInitialized = false;
@@ -605,7 +631,10 @@ function leaveTo(path: string) {
   globalState.folders = [];
   globalState.preferences = DEFAULT_PREFERENCES;
   notify();
-  window.location.href = path;
+  // Navigate once the device is unsubscribed (at most 1.5 s).
+  Promise.race([unsubscribed, new Promise((resolve) => setTimeout(resolve, 1500))]).finally(() => {
+    window.location.href = path;
+  });
 }
 
 /** Signs out of the active account; another remembered account (if any) becomes active. */
@@ -667,11 +696,63 @@ const ENTITY_STATE: Record<MutationEntity, keyof GlobalState> = {
   customer: 'customers',
 };
 
+/** Kurumsal: a teammate's new record (or customer payment) as a live notification. */
+function activityFor(evt: RealtimeEvent, before: Record<string, unknown> | undefined): AppNotification | null {
+  if (!isCorporate(globalState.currentUser) || evt.action === 'delete' || !evt.data) return null;
+  if (!evt.by || evt.by === globalState.currentUser?.name) return null;
+  const d = evt.data;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  let title = '';
+  let message = '';
+  let targetTab: ActiveTab = 'dashboard';
+  if (evt.entity === 'customer') {
+    const paidBefore = Array.isArray(before?.payments) ? before.payments.length : 0;
+    const paid = Array.isArray(d.payments) ? (d.payments as CustomerPayment[]) : [];
+    if (!before) {
+      title = `${evt.by} yeni müşteri ekledi`;
+      message = str(d.name);
+    } else if (paid.length > paidBefore) {
+      const last = [...paid].sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0];
+      title = `${evt.by} ödeme kaydetti`;
+      message = `${str(d.name)} · ${formatCurrencyTRY(last?.amount ?? 0)}`;
+    } else return null;
+    targetTab = 'customers';
+  } else {
+    if (before) return null; // only new records
+    if (evt.entity === 'task') [title, targetTab] = [`${evt.by} yeni görev ekledi`, 'tasks'];
+    else if (evt.entity === 'kanban') [title, targetTab] = [`${evt.by} panoya kart ekledi`, 'tasks'];
+    else if (evt.entity === 'event') [title, targetTab] = [`${evt.by} takvime etkinlik ekledi`, 'calendar'];
+    else if (evt.entity === 'note') [title, targetTab] = [`${evt.by} yeni not ekledi`, 'notes'];
+    else if (evt.entity === 'finance') {
+      title = `${evt.by} yeni ${d.type === 'gider' ? 'gider' : 'gelir'} kaydı ekledi`;
+      targetTab = 'finance';
+    } else return null;
+    message = evt.entity === 'finance' ? `${str(d.title)} · ${formatCurrencyTRY(Number(d.amount) || 0)}` : str(d.title) || 'Başlıksız';
+  }
+  return {
+    id: `act-${evt.entity}-${evt.id}-${Date.now().toString(36)}`,
+    title,
+    message,
+    type: 'activity',
+    priority: 'orta',
+    isRead: false,
+    targetTab,
+    targetId: evt.id,
+    actionType: 'view',
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function applyRealtimeEvent(evt: RealtimeEvent) {
   if (evt.origin === CLIENT_ID) return;
   const key = ENTITY_STATE[evt.entity];
   if (!key || typeof evt.id !== 'string') return;
   const list = globalState[key] as unknown as { id: string }[];
+  const activity = activityFor(evt, list.find((r) => r.id === evt.id) as Record<string, unknown> | undefined);
+  if (activity) {
+    globalState.activity = [activity, ...globalState.activity].slice(0, 30);
+    pushToast({ type: 'info', title: activity.title, message: activity.message });
+  }
   if (evt.action === 'delete') {
     globalState[key] = list.filter((r) => r.id !== evt.id) as never;
     if (evt.entity === 'note' && globalState.activeNoteId === evt.id) globalState.activeNoteId = null;
@@ -724,7 +805,11 @@ function startPresence() {
       fetch('/api/auth/me', { cache: 'no-store' }).catch(() => {});
     }
   };
-  presenceTimer = setInterval(ping, 60_000);
+  presenceTimer = setInterval(() => {
+    ping();
+    // Time-based reminders (overdue tasks, today's events) appear without a reload.
+    notify();
+  }, 60_000);
   document.addEventListener('visibilitychange', () => {
     ping();
     // Kurumsal: the workspace is shared, so pick up teammates' changes when the tab is shown again
@@ -740,6 +825,167 @@ function startPresence() {
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// Live notifications: a notification that appears while the app is open (a teammate's new record,
+// a task that just became overdue, today's event) is also shown as a system notification when the
+// user turned that on and the window is in the background (installed app on Windows included).
+// ---------------------------------------------------------------------------
+let desktopSeen: Set<string> | null = null;
+let desktopTimer: ReturnType<typeof setTimeout> | null = null;
+let dataLoadedOnce = false;
+
+function scheduleDesktopCheck() {
+  if (desktopTimer || typeof window === 'undefined') return;
+  desktopTimer = setTimeout(() => {
+    desktopTimer = null;
+    checkDesktopNotifications();
+  }, 800);
+}
+
+function checkDesktopNotifications() {
+  if (!globalState.isAuthenticated || !dataLoadedOnce || globalState.isLoadingData) return;
+  const unread = getComputedNotifications().filter((n) => !n.isRead);
+  // The first look only records what is already there; only later arrivals are announced.
+  if (!desktopSeen) {
+    desktopSeen = new Set(unread.map((n) => n.id));
+    return;
+  }
+  const fresh = unread.filter((n) => !desktopSeen!.has(n.id));
+  if (!fresh.length) return;
+  fresh.forEach((n) => desktopSeen!.add(n.id));
+  if (!globalState.preferences.desktopNotifications || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  // In the foreground the bell (and the toast for teammates' changes) is enough; with Web Push the
+  // server already notifies this device.
+  if (pushActive || (document.visibilityState === 'visible' && document.hasFocus())) return;
+  for (const n of fresh.slice(0, 3)) showSystemNotification(n);
+}
+
+function showSystemNotification(n: AppNotification) {
+  const options: NotificationOptions = {
+    body: n.message.slice(0, 180),
+    tag: n.id,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
+    data: { tab: n.targetTab ?? 'dashboard' },
+  };
+  const fallback = () => {
+    try {
+      const shown = new Notification(n.title, options);
+      shown.onclick = () => {
+        window.focus();
+        if (n.targetTab) setActiveTab(n.targetTab);
+        shown.close();
+      };
+    } catch {}
+  };
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => (reg ? reg.showNotification(n.title, options) : fallback()))
+      .catch(fallback);
+  } else fallback();
+}
+
+/** Asks for permission (must run from a click) and stores the choice. Returns the result. */
+// Web Push (phones included): with a push subscription the server delivers the notifications, also
+// while the app is closed; the in-page system notifications above are then not needed.
+let pushActive = false;
+
+function pushSupported(): boolean {
+  return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined';
+}
+
+function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
+  const pad = '='.repeat((4 - (value.length % 4)) % 4);
+  const raw = atob((value + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/** Subscribes this device and registers it with the server. Returns false when push is unavailable. */
+async function subscribePush(test: boolean): Promise<boolean> {
+  if (!pushSupported() || Notification.permission !== 'granted') return false;
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+    ]);
+    if (!reg) return false;
+    const keyRes = await fetch('/api/push', { cache: 'no-store' });
+    if (!keyRes.ok) return false;
+    const { publicKey } = await keyRes.json();
+    let sub = await reg.pushManager.getSubscription();
+    // A subscription made with another server key (e.g. a reinstalled server) is replaced.
+    const currentKey = sub?.options.applicationServerKey;
+    if (sub && currentKey && btoa(String.fromCharCode(...new Uint8Array(currentKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') !== publicKey) {
+      await sub.unsubscribe().catch(() => {});
+      sub = null;
+    }
+    sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
+    const res = await fetch('/api/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON(), test }),
+    });
+    pushActive = res.ok;
+    return res.ok;
+  } catch {
+    pushActive = false;
+    return false;
+  }
+}
+
+async function unsubscribePush() {
+  pushActive = false;
+  if (!pushSupported()) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch('/api/push', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+    await sub.unsubscribe();
+  } catch {}
+}
+
+/** After sign-in: keep this device's push subscription in step with the saved preference. */
+function syncPushSubscription() {
+  if (!globalState.preferences.desktopNotifications || !pushSupported() || Notification.permission !== 'granted') return;
+  void subscribePush(false);
+}
+
+export async function enableDesktopNotifications(on: boolean): Promise<NotificationPermission | 'unsupported'> {
+  if (typeof Notification === 'undefined') return 'unsupported';
+  if (!on) {
+    setPreference('desktopNotifications', false);
+    await unsubscribePush();
+    return Notification.permission;
+  }
+  const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+  setPreference('desktopNotifications', permission === 'granted');
+  // Phones and installed apps: the server sends a test notification through Web Push.
+  if (permission === 'granted' && !(await subscribePush(true))) {
+    showSystemNotification({
+      id: 'lr-test',
+      title: 'Bildirimler açık',
+      message: 'Yeni bildirimler artık burada da görünecek.',
+      type: 'system',
+      priority: 'orta',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return permission;
+}
+
+// A click on a system notification shown by the service worker opens the related page.
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
+    const tab = e.data && e.data.type === 'lr-open-tab' ? (e.data.tab as ActiveTab) : null;
+    if (tab) setActiveTab(tab);
+  });
+}
 
 const addToast = (toast: Omit<ToastMessage, 'id'>) => pushToast(toast);
 
@@ -941,6 +1187,7 @@ const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
   const newTask: Task = {
     ...task,
     id,
+    createdBy: authorName(),
     createdAt: new Date().toISOString(),
   };
   globalState.tasks = [newTask, ...globalState.tasks];
@@ -995,6 +1242,7 @@ const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>)
   const newCard: KanbanCard = {
     ...card,
     id,
+    createdBy: authorName(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -1037,6 +1285,7 @@ const addEvent = (event: Omit<CalendarEvent, 'id' | 'createdAt'>): string => {
   const newEvent: CalendarEvent = {
     ...event,
     id,
+    createdBy: authorName(),
     createdAt: new Date().toISOString(),
   };
   globalState.events = [...globalState.events, newEvent];
@@ -1126,6 +1375,7 @@ const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'
     effectiveRate: convertedInfo?.effectiveRate,
     exchangeRate: convertedInfo?.liveRate,
     markupTRY: convertedInfo?.markup,
+    createdBy: authorName(),
     createdAt: new Date().toISOString(),
   };
   globalState.transactions = [newTransaction, ...globalState.transactions];
@@ -1183,7 +1433,7 @@ const addCustomer = (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>)
   if (!guardEdit('customers')) return '';
   const id = generateId();
   const now = new Date().toISOString();
-  const created: Customer = { ...customer, id, createdAt: now, updatedAt: now };
+  const created: Customer = { ...customer, id, createdBy: authorName(), createdAt: now, updatedAt: now };
   globalState.customers = [...globalState.customers, created];
   mutateDB('customer', 'create', id, created);
   notify();

@@ -46,7 +46,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [currency, setCurrency] = useState<CurrencyCode>('TRY');
-  const [markupTRY, setMarkupTRY] = useState<number>(2.50);
+  const [markupTRY, setMarkupTRY] = useState<number>(0);
   const [category, setCategory] = useState<string>('YouTube Geliri');
   const [date, setDate] = useState(toLocalDateString());
   const [endDate, setEndDate] = useState<string>('');
@@ -75,7 +75,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setTitle(editTransaction.title);
       setCurrency(editTransaction.currency || 'TRY');
       setAmount(editTransaction.originalAmount !== undefined ? editTransaction.originalAmount : editTransaction.amount);
-      setMarkupTRY(editTransaction.markupTRY !== undefined ? editTransaction.markupTRY : (exchangeRates.markupTRY || 2.50));
+      setMarkupTRY(editTransaction.markupTRY !== undefined ? editTransaction.markupTRY : (exchangeRates.markupTRY ?? 0));
       setCategory(editTransaction.category);
       setDate(editTransaction.date);
       setEndDate(editTransaction.endDate || '');
@@ -92,7 +92,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setTitle('');
       setAmount('');
       setCurrency(systemSettings.finance.defaultCurrency);
-      setMarkupTRY(exchangeRates.markupTRY || 2.50);
+      setMarkupTRY(exchangeRates.markupTRY ?? 0);
       setIsDebt(false);
       setInterestRate(systemSettings.finance.loanMonthlyInterestRate);
       setMinRate(systemSettings.finance.loanMinPaymentRate);

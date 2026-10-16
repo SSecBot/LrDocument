@@ -51,7 +51,7 @@ function toDraft(c: Customer | null): Draft {
 }
 
 export function CustomerModal({ customer, editable, onClose, onCreated }: Props) {
-  const { addCustomer, updateCustomer, deleteCustomer, addToast } = useAppStore();
+  const { addCustomer, updateCustomer, deleteCustomer, addToast, currentUser } = useAppStore();
   const [draft, setDraft] = useState<Draft>(() => toDraft(customer));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const today = toLocalDateString(new Date());
@@ -98,7 +98,9 @@ export function CustomerModal({ customer, editable, onClose, onCreated }: Props)
     const exists = customer.payments.some((p) => p.month === month);
     const payments: CustomerPayment[] = exists
       ? customer.payments.filter((p) => p.month !== month)
-      : [...customer.payments, { month, paidAt: today, amount: customer.monthlyFee }].sort((a, b) => a.month.localeCompare(b.month));
+      : [...customer.payments, { month, paidAt: today, amount: customer.monthlyFee, ...(currentUser?.name ? { by: currentUser.name } : {}) }].sort((a, b) =>
+          a.month.localeCompare(b.month)
+        );
     updateCustomer(customer.id, { payments });
   };
 
@@ -157,7 +159,7 @@ export function CustomerModal({ customer, editable, onClose, onCreated }: Props)
                       }`}
                     >
                       {item.state === 'paid'
-                        ? `Ödendi · ${formatTurkishDate(item.payment!.paidAt)}`
+                        ? `Ödendi · ${formatTurkishDate(item.payment!.paidAt)}${item.payment!.by ? ` · ${item.payment!.by}` : ''}`
                         : item.state === 'overdue'
                           ? `Gecikti · son gün ${formatTurkishDate(item.due)}`
                           : `Son gün ${formatTurkishDate(item.due)}`}

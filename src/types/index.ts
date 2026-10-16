@@ -24,8 +24,12 @@ export interface Task {
   description?: string;
   completed: boolean;
   priority: TaskPriority;
+  /** Görev süresi aralığı: first day (optional); dueDate is the last day. YYYY-MM-DD */
+  startDate?: string;
   dueDate?: string; // YYYY-MM-DD
   linkedNoteId?: string;
+  /** Who added it (shown in corporate workspaces) */
+  createdBy?: string | null;
   createdAt: string;
   completedAt?: string;
 }
@@ -53,6 +57,8 @@ export interface CalendarEvent {
   linkedTaskId?: string;
   status: EventStatus;
   checklist: EventChecklistItem[];
+  /** Who added it (shown in corporate workspaces) */
+  createdBy?: string | null;
   createdAt: string;
 }
 
@@ -126,11 +132,13 @@ export interface FinanceTransaction {
   monthlyInterestRate?: number | null;
   /** Minimum payment as a percentage of the balance. */
   minPaymentRate?: number | null;
+  /** Who added it (shown in corporate workspaces) */
+  createdBy?: string | null;
   createdAt: string;
 }
 
 // In-App Notification System
-export type NotificationType = 'task_overdue' | 'finance_overdue' | 'calendar_upcoming' | 'system';
+export type NotificationType = 'task_overdue' | 'finance_overdue' | 'calendar_upcoming' | 'activity' | 'system';
 
 export interface AppNotification {
   id: string;
@@ -160,6 +168,8 @@ export interface KanbanCard {
   dueDate?: string; // YYYY-MM-DD
   tags: string[];
   linkedNoteId?: string;
+  /** Who added it (shown in corporate workspaces) */
+  createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -169,6 +179,8 @@ export interface CustomerPayment {
   month: string; // YYYY-MM
   paidAt: string; // YYYY-MM-DD
   amount: number;
+  /** Who recorded the payment (set by the server) */
+  by?: string;
 }
 
 export interface Customer {
@@ -185,6 +197,8 @@ export interface Customer {
   endDate: string; // YYYY-MM-DD (taahhüt bitişi)
   payments: CustomerPayment[];
   notes?: string | null;
+  /** Who added it (shown in corporate workspaces) */
+  createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }

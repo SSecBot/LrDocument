@@ -5,6 +5,9 @@ import { landingContentSchema, resolveLandingContent, type LandingContent } from
 const KEY = 'system';
 const TTL_MS = 30_000;
 let cache: { value: SystemSettings; at: number } | null = null;
+/** Done once: the döviz kur marjı used to default to 2.50 TL; it now starts at 0 (opt-in). */
+const MARKUP_MIGRATION_KEY = 'migration:markupZero';
+let markupChecked = false;
 
 /** Current system defaults (short in-process cache; refreshed immediately after an admin save). */
 export async function getSystemSettings(): Promise<SystemSettings> {
@@ -16,7 +19,23 @@ export async function getSystemSettings(): Promise<SystemSettings> {
   } catch (error) {
     console.error('[settings] Sistem ayarları okunamadı, varsayılanlar kullanılıyor:', error);
   }
-  const value = resolveSystemSettings(stored);
+  let value = resolveSystemSettings(stored);
+  if (stored && !markupChecked && value.finance.exchangeMarkupTRY === 2.5) {
+    try {
+      const done = await prisma.systemSetting.findUnique({ where: { key: MARKUP_MIGRATION_KEY } });
+      if (!done) {
+        value = { ...value, finance: { ...value.finance, exchangeMarkupTRY: 0 } };
+        await prisma.systemSetting.upsert({ where: { key: KEY }, update: { value: JSON.stringify(value) }, create: { key: KEY, value: JSON.stringify(value) } });
+      }
+    } catch {}
+  }
+  if (stored && !markupChecked) {
+    markupChecked = true;
+    // Mark the migration as done so an admin who sets 2.50 TL again keeps it.
+    prisma.systemSetting
+      .upsert({ where: { key: MARKUP_MIGRATION_KEY }, update: {}, create: { key: MARKUP_MIGRATION_KEY, value: '1' } })
+      .catch(() => {});
+  }
   cache = { value, at: Date.now() };
   return value;
 }

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { BadRequestError, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
-import { encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
+import { decryptText, encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
 import { ENTITY_MODULE, accessOf } from '@/lib/corporate';
 import { publish, toClientShape } from '@/lib/realtime';
+import { sendPush, workspaceDevices } from '@/lib/push';
 
 type Row = Record<string, unknown>;
 
@@ -68,17 +69,22 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function date(v: unknown, fallback: string): string {
   return typeof v === 'string' && DATE_RE.test(v) ? v : fallback;
 }
-/** Customer payments: one entry per paid month of the commitment. */
-function payments(v: unknown): string {
+/**
+ * Customer payments: one entry per paid month of the commitment. `by` (who recorded it) is kept from
+ * the stored entry and set by the server for new ones; the client cannot change it.
+ */
+function payments(v: unknown, ctx?: MutateContext): string {
   const list = Array.isArray(v) ? v : [];
-  const out: { month: string; paidAt: string; amount: number }[] = [];
+  const out: { month: string; paidAt: string; amount: number; by?: string }[] = [];
   const seen = new Set<string>();
   for (const p of list.slice(0, 600)) {
     if (!p || typeof p !== 'object') continue;
     const { month, paidAt, amount } = p as Record<string, unknown>;
     if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month) || seen.has(month)) continue;
     seen.add(month);
-    out.push({ month, paidAt: date(paidAt, `${month}-01`), amount: Math.max(0, float(amount, 0)) });
+    // Payments stored before authors were recorded keep no author ('').
+    const by = ctx?.paymentAuthors.has(month) ? ctx.paymentAuthors.get(month) : ctx?.author;
+    out.push({ month, paidAt: date(paidAt, `${month}-01`), amount: Math.max(0, float(amount, 0)), ...(by ? { by } : {}) });
   }
   return JSON.stringify(out);
 }
@@ -92,13 +98,19 @@ type Delegate = {
   deleteMany: (args: { where: { id: string; userId: string } }) => Promise<unknown>;
 };
 
+/** Who is saving, and (customers) who recorded the payments already stored. */
+interface MutateContext {
+  author: string;
+  paymentAuthors: Map<string, string>;
+}
+
 interface EntityDef {
   delegate: () => Delegate;
   /** Model name for at-rest encryption of its text fields. */
   model: EncryptedModel;
-  fields: (d: Row) => Row;
+  fields: (d: Row, ctx: MutateContext) => Row;
   /** Extra fields only set on creation. */
-  createOnly?: (d: Row) => Row;
+  createOnly?: (d: Row, ctx: MutateContext) => Row;
   /** Folder / category ids are namespaced per user in the DB. */
   namespaced?: boolean;
 }
@@ -126,10 +138,16 @@ const ENTITIES: Record<string, EntityDef> = {
       description: optText(d.description, MAX_SHORT),
       completed: Boolean(d.completed),
       priority: oneOf(d.priority, PRIORITIES, 'orta'),
+      // Görev süresi aralığı: a start day only makes sense before (or on) the due day.
+      startDate:
+        typeof d.startDate === 'string' && DATE_RE.test(d.startDate) && typeof d.dueDate === 'string' && DATE_RE.test(d.dueDate) && d.startDate <= d.dueDate
+          ? d.startDate
+          : null,
       dueDate: optText(d.dueDate, 40),
       linkedNoteId: ref(d.linkedNoteId),
       completedAt: optDate(d.completedAt),
     }),
+    createOnly: (_d, ctx) => ({ createdBy: ctx.author }),
   },
   kanban: {
     delegate: () => prisma.kanbanCard as unknown as Delegate,
@@ -144,6 +162,7 @@ const ENTITIES: Record<string, EntityDef> = {
       tags: tags(d.tags),
       linkedNoteId: ref(d.linkedNoteId),
     }),
+    createOnly: (_d, ctx) => ({ createdBy: ctx.author }),
   },
   event: {
     delegate: () => prisma.calendarEvent as unknown as Delegate,
@@ -161,6 +180,7 @@ const ENTITIES: Record<string, EntityDef> = {
       status: oneOf(d.status, ['planlandi', 'hazirlaniyor', 'yayinlandi', 'iptal'] as const, 'planlandi'),
       checklist: jsonArray(d.checklist, MAX_SHORT * 4),
     }),
+    createOnly: (_d, ctx) => ({ createdBy: ctx.author }),
   },
   finance: {
     delegate: () => prisma.financeTransaction as unknown as Delegate,
@@ -190,11 +210,12 @@ const ENTITIES: Record<string, EntityDef> = {
       monthlyInterestRate: d.type === 'gider' && d.isDebt ? rate(d.monthlyInterestRate, 50) : null,
       minPaymentRate: d.type === 'gider' && d.isDebt ? rate(d.minPaymentRate, 100) : null,
     }),
+    createOnly: (_d, ctx) => ({ createdBy: ctx.author }),
   },
   customer: {
     delegate: () => prisma.customer as unknown as Delegate,
     model: 'customer',
-    fields: (d) => {
+    fields: (d, ctx) => {
       const startDate = date(d.startDate, new Date().toISOString().slice(0, 10));
       const endDate = date(d.endDate, startDate);
       return {
@@ -207,10 +228,11 @@ const ENTITIES: Record<string, EntityDef> = {
         paymentDay: int(d.paymentDay, 1, 1, 31),
         startDate,
         endDate: endDate < startDate ? startDate : endDate,
-        payments: payments(d.payments),
+        payments: payments(d.payments, ctx),
         notes: optText(d.notes, MAX_SHORT),
       };
     },
+    createOnly: (_d, ctx) => ({ createdBy: ctx.author }),
   },
   folder: {
     namespaced: true,
@@ -234,6 +256,37 @@ const ENTITIES: Record<string, EntityDef> = {
     createOnly: (d) => ({ isSystem: Boolean(d.isSystem) }),
   },
 };
+
+const TRY = (n: unknown) => `${(Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺`;
+
+/** Notification text for a teammate's new record or newly recorded customer payment (null: none). */
+function activityPush(entity: string, plain: Row, existingCtx: MutateContext | null, by: string): { title: string; body: string; tab: string } | null {
+  const title = String(plain.title ?? '');
+  if (entity === 'customer') {
+    if (!existingCtx) return { title: `${by} yeni müşteri ekledi`, body: String(plain.name ?? ''), tab: 'customers' };
+    let added: { month: string; amount: number }[] = [];
+    try {
+      added = (JSON.parse(String(plain.payments)) as { month: string; amount: number }[]).filter((p) => !existingCtx.paymentAuthors.has(p.month));
+    } catch {}
+    if (!added.length) return null;
+    return { title: `${by} ödeme kaydetti`, body: `${plain.name} · ${TRY(added.reduce((sum, p) => sum + p.amount, 0))}`, tab: 'customers' };
+  }
+  if (existingCtx) return null; // only new records
+  switch (entity) {
+    case 'task':
+      return { title: `${by} yeni görev ekledi`, body: title, tab: 'tasks' };
+    case 'kanban':
+      return { title: `${by} panoya kart ekledi`, body: title, tab: 'tasks' };
+    case 'event':
+      return { title: `${by} takvime etkinlik ekledi`, body: `${title} · ${plain.date ?? ''}`, tab: 'calendar' };
+    case 'note':
+      return { title: `${by} yeni not ekledi`, body: title || 'Başlıksız not', tab: 'notes' };
+    case 'finance':
+      return { title: `${by} yeni ${plain.type === 'gider' ? 'gider' : 'gelir'} kaydı ekledi`, body: `${title} · ${TRY(plain.amount)}`, tab: 'finance' };
+    default:
+      return null;
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -268,10 +321,9 @@ export async function POST(req: Request) {
     const dbId = def.namespaced ? `${userId}_${rawId}` : rawId;
     const delegate = def.delegate();
 
-    // Kurumsal: push the change to the team's other open tabs (see /api/realtime).
+    // Push the change to the account's other open tabs and devices (kurumsal: the whole team).
     const origin = (req.headers.get('x-client-id') ?? '').slice(0, 64);
     const broadcast = (payload?: Record<string, unknown>) => {
-      if (session.accountType !== 'CORPORATE') return;
       publish(userId, { entity: entity as string, action, id: rawId, data: payload, by: session.name, origin });
     };
 
@@ -287,17 +339,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
     }
 
-    const plain = def.fields(data);
+    const ctx: MutateContext = { author: session.name.slice(0, 80), paymentAuthors: new Map() };
+    if (entity === 'customer' && existing) {
+      // Keep who recorded each already-stored payment.
+      const row = await prisma.customer.findUnique({ where: { id: dbId }, select: { payments: true } });
+      try {
+        const stored = JSON.parse(decryptText(userId, row?.payments ?? '') || '[]') as { month?: string; by?: string }[];
+        for (const p of stored) if (p.month) ctx.paymentAuthors.set(p.month, p.by ?? '');
+      } catch {}
+    }
+    const plain = def.fields(data, ctx);
+    const created = existing ? {} : (def.createOnly?.(data, ctx) ?? {});
     const fields = encryptRow(def.model, userId, plain);
     await delegate.upsert({
       where: { id: dbId },
       update: fields,
-      create: { id: dbId, userId, ...fields, ...(def.createOnly?.(data) ?? {}) },
+      create: { id: dbId, userId, ...fields, ...created },
     });
+
+    // Kurumsal: teammates' phones and computers get a notification, even with the app closed.
+    if (session.accountType === 'CORPORATE') {
+      const push = activityPush(entity as string, plain, existing ? ctx : null, session.name);
+      if (push) {
+        const entityModule = ENTITY_MODULE[entity as string];
+        after(async () => sendPush(await workspaceDevices(userId, entityModule, { memberId: session.memberId ?? null }), { ...push, tag: `act-${entity}-${rawId}` }));
+      }
+    }
 
     const now = new Date().toISOString();
     broadcast({
-      ...toClientShape({ ...plain, ...(existing ? {} : (def.createOnly?.(data) ?? {})) }),
+      ...toClientShape({ ...plain, ...created }),
       id: rawId,
       updatedAt: now,
       ...(existing ? {} : { createdAt: now }),

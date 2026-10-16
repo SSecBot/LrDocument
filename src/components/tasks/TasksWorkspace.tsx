@@ -22,6 +22,9 @@ export const TasksWorkspace: React.FC = () => {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickPriority, setQuickPriority] = useState<TaskPriority>(systemSettings.tasks.defaultPriority);
   const [quickDueDate, setQuickDueDate] = useState('');
+  // Görev süresi aralığı: optional first day before the due day.
+  const [quickRange, setQuickRange] = useState(false);
+  const [quickStartDate, setQuickStartDate] = useState('');
 
   const completedCount = tasks.filter(t => t.completed).length;
   const totalCount = tasks.length;
@@ -31,15 +34,18 @@ export const TasksWorkspace: React.FC = () => {
     e.preventDefault();
     if (!quickTitle.trim()) return;
 
+    const range = quickRange && quickStartDate && quickDueDate && quickStartDate <= quickDueDate;
     addTask({
       title: quickTitle.trim(),
       priority: quickPriority,
+      startDate: range ? quickStartDate : undefined,
       dueDate: quickDueDate || undefined,
       completed: false,
     });
 
     setQuickTitle('');
     setQuickDueDate('');
+    setQuickStartDate('');
     setQuickPriority('orta');
   };
 
@@ -48,7 +54,8 @@ export const TasksWorkspace: React.FC = () => {
   const filteredTasks = tasks.filter((t) => {
     const effectivePriority = getEffectiveTaskPriority(t);
 
-    if (activeFilter === 'today' && t.dueDate !== todayStr) return false;
+    const onToday = t.startDate && t.dueDate ? t.startDate <= todayStr && todayStr <= t.dueDate : t.dueDate === todayStr;
+    if (activeFilter === 'today' && !onToday) return false;
     if (activeFilter === 'high' && effectivePriority !== 'yuksek') return false;
     if (activeFilter === 'pending' && t.completed) return false;
     if (activeFilter === 'completed' && !t.completed) return false;
@@ -114,16 +121,42 @@ export const TasksWorkspace: React.FC = () => {
             <option value="dusuk">Düşük</option>
           </select>
 
-          {/* Due Date */}
+          {/* Due date, or a date range (Aralık) */}
           <div className="min-h-[40px] flex items-center gap-1.5 bg-surface-2 border border-line-strong rounded-lg px-2.5 py-1.5 text-xs text-subtle">
             <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            {quickRange && (
+              <>
+                <input
+                  type="date"
+                  value={quickStartDate}
+                  max={quickDueDate || undefined}
+                  onChange={(e) => setQuickStartDate(e.target.value)}
+                  className="bg-transparent text-xs text-white focus:outline-none"
+                  aria-label="Başlangıç tarihi"
+                />
+                <span className="text-muted" aria-hidden="true">–</span>
+              </>
+            )}
             <input
               type="date"
               value={quickDueDate}
+              min={quickRange ? quickStartDate || undefined : undefined}
               onChange={(e) => setQuickDueDate(e.target.value)}
               className="bg-transparent text-xs text-white focus:outline-none"
+              aria-label={quickRange ? 'Bitiş tarihi' : 'Son tarih'}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setQuickRange((r) => !r)}
+            aria-pressed={quickRange}
+            className={`min-h-[40px] px-2.5 rounded-lg border text-xs transition-colors ${
+              quickRange ? 'border-brand bg-brand-soft text-fg' : 'border-line-strong bg-surface-2 text-subtle hover:text-fg'
+            }`}
+            title="Görevi bir tarih aralığına yay (başlangıç – bitiş)"
+          >
+            Aralık
+          </button>
 
           {/* Submit button */}
           <button

@@ -29,6 +29,27 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
+## Bu güncellemede gelenler (görev aralığı, canlı bildirim, Windows uygulaması)
+
+Veritabanına yalnızca boş yeni alanlar eklenir; ek ayar gerekmez.
+
+- **Görevlerde tarih aralığı:** "Aralık" ile görev bir başlangıç–bitiş aralığına yayılır; takvimde aralığın her gününde görünür.
+- **Kurumsal "Ekleyen":** görev, pano kartı, gelir/gider ve müşteri ödemelerinde kimin eklediği görünür (sunucu kaydeder, değiştirilemez).
+- **Canlı bildirimler:** ekip arkadaşının eklediği görev, ödeme, not vb. anında bildirim ve uyarı olarak düşer; gecikme/hatırlatmalar
+  sayfa yenilemeden güncellenir. Ayarlar › Tercihler › *Masaüstü bildirimleri* açılırsa uygulama arka plandayken Windows bildirimi de gelir.
+  Bireysel hesaplarda da diğer cihazlardaki değişiklikler anında görünür.
+- **Telefon bildirimleri (Web Push):** Ayarlar › Tercihler › *Telefon ve bilgisayar bildirimleri* açılan cihaza, uygulama kapalıyken
+  de bildirim gelir: ekibin eklediği görev/ödeme/not ve gecikmiş görev, bugünkü etkinlik, vadesi geçen işlem hatırlatmaları
+  (08:00–22:00 arası, her biri bir kez). Ayar gerekmez: sunucu anahtarı ilk kullanımda `/var/lib/lrdocument/vapid-keys.json`
+  olarak oluşur; **bu dosyayı silmeyin**, silinirse cihazların bildirimi yeniden açması gerekir. Sunucunun dışarıya 443 (HTTPS)
+  portundan çıkabilmesi yeterli. iPhone'da bildirim için site önce Safari › Paylaş › *Ana Ekrana Ekle* ile yüklenmelidir (iOS 16.4+).
+- **Windows uygulaması (PWA):** Edge/Chrome adres çubuğundaki "Uygulamayı yükle" ile kurulur (Ayarlar › Tercihler › Uygulama).
+  Yükleme için sitenin **HTTPS** ile açılması gerekir.
+- **Notlar** doğrudan editörde açılır (Bölünmüş/Önizleme bir tık uzakta).
+- **Döviz kur marjı** varsayılanı **0 TL**. Kullanıcı isterse Ayarlar › Tercihler › Döviz'den açar. Eski 2,50 TL varsayılanı ilk açılışta bir kez 0'a çekilir.
+
+---
+
 ## Bu güncellemede gelenler (üniversiteler, talepler, öğrenci e-postası)
 
 Veritabanına yeni tablolar ve boş alanlar eklenir; mevcut veriler değişmez. Ek bir ayar gerekmez.

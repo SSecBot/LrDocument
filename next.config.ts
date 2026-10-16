@@ -46,6 +46,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      // Service worker of the installable app: always revalidated, allowed to control the whole site.
+      { source: "/sw.js", headers: [{ key: "Service-Worker-Allowed", value: "/" }] },
       // Pages are never stored by the browser or proxies; only hashed build assets
       // (/_next/static) and the public OCR engine files are cacheable.
       {

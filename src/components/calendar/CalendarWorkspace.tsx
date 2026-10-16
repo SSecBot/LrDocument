@@ -165,7 +165,9 @@ export const CalendarWorkspace: React.FC = () => {
   });
 
   const eventsOn = (date: string) => (shown('etkinlik') ? events.filter((e) => e.date === date) : []);
-  const tasksOn = (date: string) => (shown('gorev') ? tasks.filter((t) => t.dueDate === date) : []);
+  // A task with a date range (Aralık) is shown on every day of it.
+  const tasksOn = (date: string) =>
+    shown('gorev') ? tasks.filter((t) => (t.startDate && t.dueDate ? t.startDate <= date && date <= t.dueDate : t.dueDate === date)) : [];
   const transactionsOn = (date: string) => (shown('finans') ? transactions.filter((t) => isTransactionActiveOnDate(t, date)) : []);
   const notesOn = (date: string) => notes.filter((n) => n.updatedAt.startsWith(date) || n.createdAt.startsWith(date));
 

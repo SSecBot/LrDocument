@@ -19,7 +19,9 @@ import {
   PlayCircle,
   FileText,
   Calendar,
+  UserRound,
 } from 'lucide-react';
+import { isCorporate } from '@/lib/corporate';
 import { formatTurkishDate } from '@/lib/utils';
 
 interface ColumnDef {
@@ -95,7 +97,9 @@ export const KanbanWorkspace: React.FC = () => {
     deleteKanbanCard,
     setActiveNoteId,
     setActiveTab,
+    currentUser,
   } = useAppStore();
+  const showAuthor = isCorporate(currentUser);
 
   const [selectedProjectType, setSelectedProjectType] = useState<KanbanProjectType | 'all'>('all');
   const [activeMobileColumn, setActiveMobileColumn] = useState<KanbanColumnId | 'all'>('all');
@@ -376,6 +380,12 @@ export const KanbanWorkspace: React.FC = () => {
                           </span>
                         ) : (
                           <span className="text-muted">Tarih belirtilmedi</span>
+                        )}
+
+                        {showAuthor && card.createdBy && (
+                          <span className="flex items-center gap-1 text-muted" title="Ekleyen">
+                            <UserRound className="w-3 h-3" /> {card.createdBy}
+                          </span>
                         )}
 
                         {card.linkedNoteId && (
