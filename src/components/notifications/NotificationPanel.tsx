@@ -77,7 +77,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       />
 
       {/* Flyout Panel */}
-      <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-[420px] max-w-[calc(100vw-24px)] bg-surface border border-line rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[80vh] animate-fade-in select-none">
+      <div className="fixed inset-x-3 top-[calc(4rem+env(safe-area-inset-top))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-[420px] max-w-[calc(100vw-24px)] bg-surface border border-line rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[80vh] animate-fade-in select-none">
         {/* Panel Header */}
         <div className="p-4 border-b border-line bg-surface flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">

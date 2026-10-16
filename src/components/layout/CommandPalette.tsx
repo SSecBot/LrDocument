@@ -89,7 +89,7 @@ export const CommandPalette: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center pt-20 p-4 animate-fade-in select-none">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[calc(5rem+env(safe-area-inset-top))] animate-fade-in select-none">
       <div
         className="fixed inset-0"
         onClick={() => setIsCommandPaletteOpen(false)}

@@ -244,7 +244,7 @@ export const Sidebar: React.FC = () => {
       {isMobileSidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex animate-fade-in">
           <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileSidebarOpen(false)} />
-          <div className="relative w-4/5 max-w-[288px] h-full z-10 border-r border-line">
+          <div className="relative w-4/5 max-w-[288px] h-full z-10 border-r border-line bg-surface safe-top">
             {renderSidebarContent(true)}
           </div>
         </div>

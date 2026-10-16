@@ -50,7 +50,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-app text-fg">
+    <div className="flex h-dvh w-full overflow-hidden bg-app text-fg safe-top">
       <CommandPalette />
       <ToastContainer />
       <Sidebar />

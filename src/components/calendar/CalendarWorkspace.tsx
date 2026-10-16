@@ -668,7 +668,7 @@ export const CalendarWorkspace: React.FC = () => {
       {mobilePanelOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobilePanelOpen(false)} aria-hidden="true" />
-          <aside className="relative w-full max-w-md h-full bg-surface border-l border-line flex flex-col safe-bottom animate-fade-in">{panel}</aside>
+          <aside className="relative w-full max-w-md h-full bg-surface border-l border-line flex flex-col safe-top safe-bottom animate-fade-in">{panel}</aside>
         </div>
       )}
 
