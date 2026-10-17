@@ -346,7 +346,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:items-end gap-2.5">
               <div>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted">
@@ -548,9 +548,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                 className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
               >
-                <option value="yuksek">Yüksek (Kira, Fatura, Büyük Ödemeler)</option>
-                <option value="orta">Orta (Operasyonel Masraflar, Düzenli Gelir)</option>
-                <option value="dusuk">Düşük (İsteğe Bağlı & Küçük Masraflar)</option>
+                <option value="yuksek">Yüksek — kira, fatura</option>
+                <option value="orta">Orta — düzenli giderler</option>
+                <option value="dusuk">Düşük — isteğe bağlı</option>
               </select>
             </div>
           </div>

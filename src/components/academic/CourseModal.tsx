@@ -239,9 +239,9 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
             </button>
           </div>
           {draft.assessments.map((a) => (
-            <div key={a.id} className="grid grid-cols-[1fr_1fr_80px_auto] gap-2 items-center">
-              <input className={inputCls} value={a.name} onChange={(e) => setAssessment(a.id, { name: e.target.value })} />
-              <select className={inputCls} value={a.type} onChange={(e) => setAssessment(a.id, { type: e.target.value as AssessmentType })}>
+            <div key={a.id} className="grid grid-cols-[1fr_88px_auto] sm:grid-cols-[1fr_1fr_88px_auto] gap-2 items-center pb-2 sm:pb-0 border-b border-line sm:border-0 last:border-0">
+              <input className={`${inputCls} col-span-3 sm:col-span-1`} value={a.name} aria-label="Değerlendirme adı" onChange={(e) => setAssessment(a.id, { name: e.target.value })} />
+              <select className={inputCls} aria-label="Değerlendirme türü" value={a.type} onChange={(e) => setAssessment(a.id, { type: e.target.value as AssessmentType })}>
                 {Object.entries(ASSESSMENT_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}

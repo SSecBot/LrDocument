@@ -84,9 +84,35 @@ export const Modal: React.FC<ModalProps> = ({
       }
     };
     window.addEventListener('keydown', onKeyDown);
+
+    // iPhone / iPad: the on-screen keyboard covers the bottom of the layout viewport without resizing
+    // it, so a centred dialog (or a bottom sheet) would sit behind it. Track the visible area instead.
+    const vv = window.visualViewport;
+    const root = document.documentElement;
+    const onViewport = () => {
+      if (!vv) return;
+      const keyboard = window.innerHeight - vv.height > 120;
+      root.style.setProperty('--vv-height', `${Math.round(vv.height)}px`);
+      const backdrop = dialogRef.current?.parentElement;
+      if (backdrop) {
+        backdrop.dataset.keyboard = String(keyboard);
+        backdrop.style.top = keyboard ? `${Math.round(vv.offsetTop)}px` : '';
+      }
+      // Keep the focused field in sight above the keyboard.
+      if (keyboard && document.activeElement instanceof HTMLElement && dialogRef.current?.contains(document.activeElement)) {
+        document.activeElement.scrollIntoView({ block: 'nearest' });
+      }
+    };
+    vv?.addEventListener('resize', onViewport);
+    vv?.addEventListener('scroll', onViewport);
+    onViewport();
+
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onKeyDown);
+      vv?.removeEventListener('resize', onViewport);
+      vv?.removeEventListener('scroll', onViewport);
+      if (stack.length <= 1) root.style.removeProperty('--vv-height');
       stack.splice(stack.indexOf(me), 1);
       if (stack.length === 0) document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.({ preventScroll: true });
@@ -99,7 +125,7 @@ export const Modal: React.FC<ModalProps> = ({
   // panel) is never clipped or positioned against its parent.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 md:p-6 bg-black/70 backdrop-blur-[2px] animate-backdrop"
+      className="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 md:p-6 bg-black/70 backdrop-blur-[2px] animate-backdrop"
       onMouseDown={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -111,7 +137,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={titleId}
         aria-describedby={subtitle ? subtitleId : undefined}
         tabIndex={-1}
-        className={`modal-panel w-full ${maxWidth} bg-surface border border-line sm:rounded-xl rounded-t-2xl shadow-2xl shadow-black/40 flex flex-col max-h-[92dvh] sm:max-h-[88dvh] outline-none animate-sheet-up sm:animate-pop-in`}
+        className={`modal-panel w-full ${maxWidth} bg-surface border border-line sm:rounded-xl rounded-t-2xl shadow-2xl shadow-black/40 flex flex-col outline-none animate-sheet-up sm:animate-pop-in`}
       >
         {/* Grab handle (phones) */}
         <div className="sm:hidden flex justify-center pt-2 pb-0.5 shrink-0" aria-hidden="true">

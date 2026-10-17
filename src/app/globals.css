@@ -176,9 +176,20 @@ body {
     padding: 0.875rem 1.25rem 1rem;
   }
 }
+/* Fields in a row may shrink (an input's default width would push its neighbour out of the dialog). */
+.modal-body :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+/* On-screen keyboard (iPhone / iPad): the dialog fits the visible area above it (see Modal.tsx). */
+.modal-panel { max-height: min(var(--modal-max, 92dvh), var(--vv-height, 100dvh)); }
+@media (min-width: 640px) {
+  .modal-panel { --modal-max: 88dvh; }
+  .modal-backdrop[data-keyboard='true'] { align-items: flex-start; padding-top: max(0.75rem, env(safe-area-inset-top)); }
+}
+.modal-backdrop[data-keyboard='true'] { height: var(--vv-height, 100dvh); }
+
 /* Phones: full-width, thumb-sized buttons, primary action on top */
 @media (max-width: 639.98px) {
-  .modal-body .modal-actions,
+  /* The row itself spans the body edge to edge through its negative margins: no width here. */
+  .modal-body .modal-actions { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 0.5rem; }
   .modal-body .modal-actions > div:not(:empty) { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 0.5rem; width: 100%; }
   .modal-body .modal-actions > :empty { display: none; }
   .modal-body .modal-actions button { width: 100%; min-height: 44px; justify-content: center; }

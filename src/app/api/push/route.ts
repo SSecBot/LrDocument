@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { getClientIp, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
-import { isAllowedEndpoint, sendPush, vapidPublicKey } from '@/lib/push';
+import { isAllowedEndpoint, rememberPushSite, sendPush, vapidPublicKey } from '@/lib/push';
 
 // Telefon ve bilgisayar bildirimleri (Web Push): the device's subscription is stored here; the
 // server then pushes notifications to it even while the app is closed.
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     const wait = rateLimit(`push-sub:${session.memberId ?? session.userId}`, 20, 60 * 60_000);
     if (wait) return tooManyRequests(wait);
     const body = await readJsonObject(req, 4096);
+    await rememberPushSite(req);
     const parsed = subscriptionSchema.safeParse(body.subscription);
     if (!parsed.success || !isAllowedEndpoint(parsed.data.endpoint)) {
       return NextResponse.json({ error: 'Bu tarayıcının bildirim aboneliği kabul edilmedi.' }, { status: 400 });

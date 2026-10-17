@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { NoteEditor } from './NoteEditor';
+import { SecretNotes } from './SecretNotes';
 import { FolderItem } from '@/types';
 import {
   Plus,
@@ -28,6 +29,7 @@ import {
   ChevronDown,
   GripVertical,
   Check,
+  Lock,
 } from 'lucide-react';
 import { applyOrder, moveId, moveIdTo, type UserPreferences } from '@/lib/preferences';
 import { importNoteFile, ImportError, NOTE_IMPORT_ACCEPT } from '@/lib/noteImport';
@@ -262,6 +264,12 @@ export const NotesWorkspace: React.FC = () => {
     setMobileView('editor');
   };
 
+  // Gizli notlar: personal, so not for corporate members signed in with a code.
+  const secretAllowed = !currentUser?.memberId;
+  if (activeFolder === 'secret' && secretAllowed) {
+    return <SecretNotes onExit={() => setActiveFolder('all')} />;
+  }
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-app">
       <input
@@ -420,6 +428,19 @@ export const NotesWorkspace: React.FC = () => {
                 {notes.filter(n => n.isFavorite).length}
               </span>
             </button>
+
+            {secretAllowed && (
+              <button
+                onClick={() => { setActiveFolder('secret'); setSelectedTag(null); }}
+                className="w-full min-h-[36px] flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-subtle hover:text-white hover:bg-surface-2"
+              >
+                <div className="flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Gizli Notlar</span>
+                </div>
+                <span className="text-[10px] text-muted">şifreli</span>
+              </button>
+            )}
 
             {orderedFolders.map((folder, index) => {
               const count = notes.filter(n => n.folder === folder.id).length;

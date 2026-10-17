@@ -36,10 +36,48 @@ export function vapidPublicKey(): string {
   return keys().publicKey;
 }
 
-function subject(): string {
-  const site = process.env.SITE_URL?.trim();
-  if (site && /^https:\/\//.test(site)) return site;
-  return 'mailto:no-reply@lrdocument.local';
+// ---------------------------------------------------------------------------
+// VAPID "sub" (contact of the sender). Apple (iPhone / iPad / Mac Safari) refuses messages whose
+// contact is not a real https address or e-mail (HTTP 403 BadJwtToken), while Google and Microsoft
+// accept anything — so it must be the site's own https address: SITE_URL, otherwise the domain the
+// site was opened on (remembered from requests), otherwise the admin's e-mail.
+// ---------------------------------------------------------------------------
+
+const SITE_KEY = 'pushSite';
+let siteCache: string | null = null;
+
+/** A public domain name (not localhost, not an IP address). */
+function publicHost(host: string): string | null {
+  const h = host.split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) || /^[\d.]+$/.test(h) || h.endsWith('.local') || h.endsWith('.localhost') || h.endsWith('.test')) return null;
+  return h;
+}
+
+/** Remembers the domain the site is used on (called by the subscribe and admin routes). */
+export async function rememberPushSite(req: Request): Promise<void> {
+  const host = publicHost(req.headers.get('x-forwarded-host') || req.headers.get('host') || '');
+  if (!host) return;
+  const value = `https://${host}`;
+  if (siteCache === value) return;
+  siteCache = value;
+  await prisma.systemSetting.upsert({ where: { key: SITE_KEY }, update: { value }, create: { key: SITE_KEY, value } }).catch(() => {});
+}
+
+export async function pushSubject(): Promise<string> {
+  const site = process.env.SITE_URL?.trim().replace(/\/+$/, '');
+  if (site && /^https:\/\/[^/]+$/.test(site)) {
+    try {
+      if (publicHost(new URL(site).host)) return site;
+    } catch {}
+  }
+  if (!siteCache) {
+    const row = await prisma.systemSetting.findUnique({ where: { key: SITE_KEY } }).catch(() => null);
+    siteCache = row?.value ?? null;
+  }
+  if (siteCache) return siteCache;
+  const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, select: { email: true } }).catch(() => null);
+  if (admin?.email && publicHost(admin.email.split('@')[1] ?? '')) return `mailto:${admin.email}`;
+  return 'mailto:no-reply@lrdocument.com.tr';
 }
 
 /**
@@ -112,6 +150,7 @@ export async function getPushStatus(): Promise<PushStatus> {
 export async function sendPush(subs: Sub[], payload: PushPayload): Promise<number> {
   if (!subs.length) return 0;
   const { publicKey, privateKey } = keys();
+  const sub = await pushSubject();
   const body = JSON.stringify({ ...payload, title: payload.title.slice(0, 120), body: payload.body.slice(0, 240) });
   let sent = 0;
   let lastError: string | null = null;
@@ -119,7 +158,7 @@ export async function sendPush(subs: Sub[], payload: PushPayload): Promise<numbe
     subs.map(async (s) => {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, {
-          vapidDetails: { subject: subject(), publicKey, privateKey },
+          vapidDetails: { subject: sub, publicKey, privateKey },
           TTL: 12 * 60 * 60,
           urgency: 'normal',
           timeout: 10_000,
@@ -130,7 +169,9 @@ export async function sendPush(subs: Sub[], payload: PushPayload): Promise<numbe
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
         else {
-          lastError = `${pushServiceOf(s.endpoint)}: ${status ? `HTTP ${status}` : 'bağlantı kurulamadı'} — ${String((err as Error).message ?? '').slice(0, 120)}`;
+          const detail = String((err as { body?: string }).body ?? (err as Error).message ?? '').slice(0, 120);
+          lastError = `${pushServiceOf(s.endpoint)}: ${status ? `HTTP ${status}` : 'bağlantı kurulamadı'} — ${detail}`;
+          if (status === 403 && /apple/.test(s.endpoint)) lastError += ` (gönderici adresi: ${sub}; sunucuda SITE_URL=https://alanadiniz olarak ayarlayın)`;
           console.warn(`[push] gönderilemedi: ${lastError}`);
         }
       }

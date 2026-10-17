@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
-import { getPushStatus, pushServiceOf, sendPush } from '@/lib/push';
+import { getPushStatus, pushServiceOf, rememberPushSite, sendPush } from '@/lib/push';
 import { getSweepInfo, runReminderSweep } from '@/lib/pushReminders';
 
 /** Short device description from the browser's user agent. */
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
     const wait = rateLimit(`push-admin:${session.userId}`, 10, 15 * 60_000);
     if (wait) return tooManyRequests(wait);
     const body = await readJsonObject(req, 1024);
+    await rememberPushSite(req);
 
     if (body.action === 'test') {
       const devices = await prisma.pushSubscription.findMany({

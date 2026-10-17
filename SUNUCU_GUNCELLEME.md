@@ -29,7 +29,23 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu güncellemede gelenler (hatırlatma bildirimleri, sıralama, genel bakış düzeni, güvenlik)
+## Bu güncellemede gelenler (gizli notlar, iPhone/iPad bildirimleri, açılır pencereler)
+
+`update.sh` veritabanına iki yeni tablo ekler (SecretVault, SecretNote); mevcut veriye dokunulmaz.
+
+- **Gizli notlar:** Notlar › *Gizli Notlar*. İlk açılışta ayrı bir şifre belirlenir; notlar tarayıcıda şifrelenip öyle kaydedilir,
+  sunucu ve yönetici içeriği göremez. Görünümden çıkınca, 5 dakika işlem yapılmayınca veya uygulama 1 dakikadan uzun arka planda
+  kalınca kilitlenir. Şifre unutulursa kurtarılamaz; "Şifremi unuttum" hesap şifresiyle tüm gizli notları silip sıfırlar.
+  Kurumsal kodla giren üyelerde yoktur (ortak alana kişisel not yazılmasın diye).
+- **iPhone / iPad bildirimleri:** Apple, gönderici adresi gerçek bir https adresi olmayan bildirimleri reddediyordu (HTTP 403).
+  Sunucu artık sitenin açıldığı alan adını (https://alanadiniz) kullanır. İsterseniz `.env` dosyasına `SITE_URL=https://alanadiniz`
+  ekleyerek sabitleyebilirsiniz. Güncellemeden sonra iPhone/iPad'de Ayarlar › Tercihler'den bildirimi bir kez kapatıp açın.
+- **Açılır pencereler:** telefonda alt buton satırı tam genişlikte; dar ekranda taşan satırlar (kategori ekleme, kontrol listesi,
+  ders değerlendirmeleri) düzeltildi; iPhone/iPad'de klavye açılınca pencere klavyenin üstünde kalır.
+
+---
+
+## Önceki güncellemede gelenler (hatırlatma bildirimleri, sıralama, genel bakış düzeni, güvenlik)
 
 Veritabanı değişmez; ek ayar gerekmez.
 

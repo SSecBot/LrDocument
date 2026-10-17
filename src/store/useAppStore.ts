@@ -466,7 +466,7 @@ export function getComputedNotifications(): AppNotification[] {
 // ---------------------------------------------------------------------------
 
 /** Virtual note views that are not stored folders. */
-export const NOTE_VIEWS = ['all', 'favorites'] as const;
+export const NOTE_VIEWS = ['all', 'favorites', 'secret'] as const;
 function isRealFolder(id: string): boolean {
   return !!id && !(NOTE_VIEWS as readonly string[]).includes(id);
 }
