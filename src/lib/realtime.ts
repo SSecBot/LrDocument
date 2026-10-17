@@ -21,6 +21,8 @@ export interface RealtimeEvent {
 
 interface Listener {
   send: (chunk: string) => void;
+  /** Ends the stream (used when the account opens more streams than allowed). */
+  close?: () => void;
   viewer: { accountType?: string | null; permissions?: CorpPermissions | null };
 }
 
@@ -28,9 +30,19 @@ type Hub = Map<string, Set<Listener>>;
 const g = globalThis as unknown as { __lrRealtimeHub?: Hub };
 const hub: Hub = (g.__lrRealtimeHub ??= new Map());
 
+/** Open streams per account (a corporate team shares one); the oldest is closed beyond this. */
+const MAX_STREAMS_PER_ACCOUNT = 100;
+
 export function subscribe(ownerId: string, listener: Listener): () => void {
   let set = hub.get(ownerId);
   if (!set) hub.set(ownerId, (set = new Set()));
+  while (set.size >= MAX_STREAMS_PER_ACCOUNT) {
+    const oldest = set.values().next().value!;
+    set.delete(oldest);
+    try {
+      oldest.close?.();
+    } catch {}
+  }
   set.add(listener);
   return () => {
     set.delete(listener);

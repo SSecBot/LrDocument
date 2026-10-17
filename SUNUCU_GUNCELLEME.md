@@ -29,7 +29,24 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu güncellemede gelenler (görev aralığı, canlı bildirim, Windows uygulaması)
+## Bu güncellemede gelenler (hatırlatma bildirimleri, sıralama, genel bakış düzeni, güvenlik)
+
+Veritabanı değişmez; ek ayar gerekmez.
+
+- **Hatırlatma bildirimleri (telefon, tablet, bilgisayar):** görevin son günü geldiğinde ve süresi geçtiğinde; ödeme / tahsilat
+  günü geldiğinde ve geçtiğinde (tekrarlayan ödemeler ve kredi / borç ödeme günü dahil); öğrencilerde dersten **15 dakika önce**
+  (tatil, sınav haftası ve dönem dışı günlerde gönderilmez) ve sınav günü sabahı. Gün hatırlatmaları 08:00–22:00 arası, ders
+  hatırlatmaları ders saatine göre gider; her biri bir kez.
+- **Notlar:** klasörler "Sırala" ile oklarla veya sürükleyerek; notlar "Sırala" menüsünden son düzenlenen / oluşturma / başlık /
+  elle sıralanır. Sıralama kişiseldir ve sunucuda saklanır (her cihazda aynı).
+- **Genel bakış › Düzenle:** bölümler gösterilir / gizlenir / sıralanır; yeni "Yaklaşan görevler" ve "Yaklaşan ödemeler" bölümleri.
+- **Güvenlik:** tüm API isteklerinde site dışı (CSRF) kontrolü sıkılaştırıldı; büyük istek gövdeleri bellekte biriktirilmeden
+  reddedilir; canlı bağlantı ve kayıt sayısına üst sınır; şifre sıfırlama / doğrulama kodu istekleri hesabın var olup olmadığını
+  belli etmez.
+
+---
+
+## Önceki güncellemede gelenler (görev aralığı, canlı bildirim, Windows uygulaması)
 
 Veritabanına yalnızca boş yeni alanlar eklenir; ek ayar gerekmez.
 
@@ -43,6 +60,8 @@ Veritabanına yalnızca boş yeni alanlar eklenir; ek ayar gerekmez.
   (08:00–22:00 arası, her biri bir kez). Ayar gerekmez: sunucu anahtarı ilk kullanımda `/var/lib/lrdocument/vapid-keys.json`
   olarak oluşur; **bu dosyayı silmeyin**, silinirse cihazların bildirimi yeniden açması gerekir. Sunucunun dışarıya 443 (HTTPS)
   portundan çıkabilmesi yeterli. iPhone'da bildirim için site önce Safari › Paylaş › *Ana Ekrana Ekle* ile yüklenmelidir (iOS 16.4+).
+  **Test:** Yönetici Paneli › Varsayılanlar › *Bildirimler* › önce "Bu cihazda bildirimleri aç", sonra **Bana test bildirimi gönder**.
+  Aynı yerde kayıtlı cihaz sayısı, son başarılı gönderim/hata ve "Hatırlatmaları şimdi çalıştır" düğmesi var.
 - **Windows uygulaması (PWA):** Edge/Chrome adres çubuğundaki "Uygulamayı yükle" ile kurulur (Ayarlar › Tercihler › Uygulama).
   Yükleme için sitenin **HTTPS** ile açılması gerekir.
 - **Notlar** doğrudan editörde açılır (Bölünmüş/Önizleme bir tık uzakta).

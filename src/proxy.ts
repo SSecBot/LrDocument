@@ -15,6 +15,8 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  */
 function isCrossSiteMutation(request: NextRequest): boolean {
   if (SAFE_METHODS.has(request.method)) return false;
+  // Modern browsers label every request; a cross-site one is refused even without an Origin header.
+  if (request.headers.get('sec-fetch-site') === 'cross-site') return true;
   const origin = request.headers.get('origin');
   if (!origin) return false;
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
@@ -74,6 +76,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Every API route (also ids containing a dot, which the pattern below skips) gets the CSRF check.
+    '/api/:path*',
     /*
      * Match all request paths except for:
      * - _next/static, _next/image (build assets)

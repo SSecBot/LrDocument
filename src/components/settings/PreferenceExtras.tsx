@@ -92,8 +92,9 @@ export function NotificationsPanel() {
               <BellRing className="w-4 h-4 text-subtle" /> Telefon ve bilgisayar bildirimleri
             </span>
             <span className="block text-xs text-muted mt-0.5">
-              Bu cihaza (Android, iPhone, Windows, Mac) bildirim gelir; uygulama kapalıyken de. Ekibinizin eklediği görev ve ödemeler, gecikmiş
-              görevler ve günün etkinlikleri. Her cihazda ayrı açılır.
+              Bu cihaza (telefon, tablet, bilgisayar) bildirim gelir; uygulama kapalıyken de: görevin son günü geldiğinde / geçtiğinde, ödeme
+              günü geldiğinde / geçtiğinde, günün etkinlikleri, öğrencilerde dersten 15 dakika önce ve sınav günü; kurumsalda ekibin eklediği
+              görev ve ödemeler. Her cihazda ayrı açılır.
             </span>
           </span>
           <input

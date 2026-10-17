@@ -22,7 +22,7 @@ import { accessOf, CORP_MODULE_LABEL, type CorpModule } from '@/lib/corporate';
 import { Eye, ShieldCheck } from 'lucide-react';
 import type { ActiveTab } from '@/types';
 
-const OPENABLE_TABS = new Set(['dashboard', 'notes', 'tasks', 'calendar', 'finance', 'customers', 'academic', 'settings']);
+const OPENABLE_TABS = new Set(['dashboard', 'notes', 'tasks', 'calendar', 'finance', 'customers', 'academic', 'settings', 'admin']);
 
 const TAB_MODULE: Partial<Record<string, CorpModule>> = {
   notes: 'notes',

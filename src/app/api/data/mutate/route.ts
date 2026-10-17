@@ -96,7 +96,11 @@ type Delegate = {
   findUnique: (args: { where: { id: string }; select: { userId: true } }) => Promise<{ userId: string } | null>;
   upsert: (args: { where: { id: string }; update: Row; create: Row }) => Promise<Row>;
   deleteMany: (args: { where: { id: string; userId: string } }) => Promise<unknown>;
+  count: (args: { where: { userId: string } }) => Promise<number>;
 };
+
+/** Records of one kind an account may keep; stops a script from filling the disk. */
+const MAX_ROWS_PER_ENTITY = 20_000;
 
 /** Who is saving, and (customers) who recorded the payments already stored. */
 interface MutateContext {
@@ -337,6 +341,10 @@ export async function POST(req: Request) {
     const existing = await delegate.findUnique({ where: { id: dbId }, select: { userId: true } });
     if (existing && existing.userId !== userId) {
       return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
+    }
+
+    if (!existing && (await delegate.count({ where: { userId } })) >= MAX_ROWS_PER_ENTITY) {
+      return NextResponse.json({ error: 'Bu bölümdeki kayıt sınırına ulaşıldı. Eski kayıtları silip tekrar deneyin.' }, { status: 409 });
     }
 
     const ctx: MutateContext = { author: session.name.slice(0, 80), paymentAuthors: new Map() };

@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
     const user = await findUserByLoginEmail(email);
 
     if (body.action === 'send') {
+      // Same limit for every address, so a "too many codes" answer does not reveal that the account exists.
+      const emailWait =
+        rateLimit(`pw-reset-resend:${email}`, 1, 60_000) || rateLimit(`pw-reset-email:${email}`, 5, 60 * 60_000);
+      if (emailWait) return tooManyRequests(emailWait);
       if (user) {
         try {
           await issueCode(user.id, 'password-reset', email, siteHostFrom(requestHost(req)));

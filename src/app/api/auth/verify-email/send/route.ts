@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
     } else {
       const email = normalizeEmail(body.email);
       if (!email) return NextResponse.json({ error: 'Geçerli bir e-posta adresi girin.' }, { status: 400 });
+      // Same limit for every address, so a "too many codes" answer does not reveal that the account exists.
+      const emailWait =
+        rateLimit(`verify-send-resend:${email}`, 1, 60_000) || rateLimit(`verify-send-email:${email}`, 5, 60 * 60_000);
+      if (emailWait) return tooManyRequests(emailWait);
       user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true, emailVerifiedAt: true } });
     }
 

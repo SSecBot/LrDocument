@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       const send = (chunk: string) => {
         if (!closed) controller.enqueue(encoder.encode(chunk));
       };
-      const unsubscribe = subscribe(session.userId, { send, viewer });
+      const unsubscribe = subscribe(session.userId, { send, viewer, close: () => cleanup() });
 
       const heartbeat = setInterval(async () => {
         const current = await sessionFromToken(token).catch(() => null);

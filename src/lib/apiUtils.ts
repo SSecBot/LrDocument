@@ -32,13 +32,29 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
   const declared = Number(req.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
 
-  let raw: string;
-  try {
-    raw = await req.text();
-  } catch {
-    throw new BadRequestError('Geçersiz istek gövdesi.');
+  // Read in chunks and stop at the cap: a chunked body without Content-Length cannot fill memory.
+  let raw = '';
+  if (req.body) {
+    const reader = req.body.getReader();
+    const decoder = new TextDecoder();
+    let received = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        if (received > maxBytes) {
+          await reader.cancel().catch(() => {});
+          throw tooLarge();
+        }
+        raw += decoder.decode(value, { stream: true });
+      }
+      raw += decoder.decode();
+    } catch (err) {
+      if (err instanceof BadRequestError) throw err;
+      throw new BadRequestError('Geçersiz istek gövdesi.');
+    }
   }
-  if (raw.length > maxBytes) throw tooLarge();
 
   let body: unknown;
   try {

@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useState, useRef } from 'react';
 import { useNow } from '@/components/academic/useNow';
 import { Note } from '@/types';
 import { canEdit } from '@/lib/corporate';
+import { applyOrder } from '@/lib/preferences';
 import { useAppStore } from '@/store/useAppStore';
 import { KatexPreview } from './KatexPreview';
 import { MathSymbolBar } from './MathDrawer';
@@ -318,7 +319,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             className="bg-surface-2 text-body border border-line-strong rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand min-h-[34px]"
           >
             <option value="">Klasörsüz</option>
-            {folders.map(f => (
+            {applyOrder(folders, preferences.folderOrder).map(f => (
               <option key={f.id} value={f.id}>
                 {f.name}
               </option>

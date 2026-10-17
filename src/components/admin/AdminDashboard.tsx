@@ -38,6 +38,7 @@ import { FeedbackInbox } from './FeedbackInbox';
 import { UniversitiesPanel } from './UniversitiesPanel';
 import { LandingEditorPanel } from './LandingEditorPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
+import { PushSettingsPanel } from './PushSettingsPanel';
 import { VerificationBadges, type VerificationAction } from './VerificationBadges';
 import { classYearLabel } from '@/lib/studentProfile';
 
@@ -803,6 +804,7 @@ export function AdminDashboard() {
         {activeTab === 'defaults' && (
           <div className="space-y-5">
             <MailSettingsPanel />
+            <PushSettingsPanel />
             <SystemDefaultsPanel />
           </div>
         )}

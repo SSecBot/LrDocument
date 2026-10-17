@@ -71,12 +71,50 @@ export interface PushPayload {
 
 type Sub = { id: string; endpoint: string; p256dh: string; auth: string };
 
+/** Which push service (and so which kind of device) a subscription belongs to. */
+export function pushServiceOf(endpoint: string): string {
+  let host = '';
+  try {
+    host = new URL(endpoint).hostname;
+  } catch {}
+  if (/googleapis\.com$/.test(host)) return 'Google (Android, Chrome)';
+  if (/push\.apple\.com$/.test(host)) return 'Apple (iPhone, iPad, Mac Safari)';
+  if (/notify\.windows\.com$/.test(host)) return 'Microsoft (Windows, Edge)';
+  if (/mozilla\.com$/.test(host)) return 'Mozilla (Firefox)';
+  return 'Diğer';
+}
+
+const STATUS_KEY = 'pushStatus';
+export interface PushStatus {
+  lastOkAt?: string;
+  lastErrorAt?: string;
+  lastError?: string;
+}
+
+async function recordStatus(patch: PushStatus) {
+  try {
+    const row = await prisma.systemSetting.findUnique({ where: { key: STATUS_KEY } });
+    const value = JSON.stringify({ ...(row ? (JSON.parse(row.value) as PushStatus) : {}), ...patch });
+    await prisma.systemSetting.upsert({ where: { key: STATUS_KEY }, update: { value }, create: { key: STATUS_KEY, value } });
+  } catch {}
+}
+
+export async function getPushStatus(): Promise<PushStatus> {
+  try {
+    const row = await prisma.systemSetting.findUnique({ where: { key: STATUS_KEY } });
+    return row ? (JSON.parse(row.value) as PushStatus) : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Sends to the given devices; subscriptions the push service no longer knows are deleted. */
 export async function sendPush(subs: Sub[], payload: PushPayload): Promise<number> {
   if (!subs.length) return 0;
   const { publicKey, privateKey } = keys();
   const body = JSON.stringify({ ...payload, title: payload.title.slice(0, 120), body: payload.body.slice(0, 240) });
   let sent = 0;
+  let lastError: string | null = null;
   await Promise.all(
     subs.map(async (s) => {
       try {
@@ -91,10 +129,15 @@ export async function sendPush(subs: Sub[], payload: PushPayload): Promise<numbe
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
-        else console.warn(`[push] gönderilemedi (${status ?? 'ağ'}): ${(err as Error).message?.slice(0, 120)}`);
+        else {
+          lastError = `${pushServiceOf(s.endpoint)}: ${status ? `HTTP ${status}` : 'bağlantı kurulamadı'} — ${String((err as Error).message ?? '').slice(0, 120)}`;
+          console.warn(`[push] gönderilemedi: ${lastError}`);
+        }
       }
     })
   );
+  if (sent) await recordStatus({ lastOkAt: new Date().toISOString() });
+  if (lastError) await recordStatus({ lastErrorAt: new Date().toISOString(), lastError });
   return sent;
 }
 

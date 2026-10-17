@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
+import { getClientIp, handleRouteError, rateLimit, readJsonObject, tooManyRequests } from '@/lib/apiUtils';
 import { isAllowedEndpoint, sendPush, vapidPublicKey } from '@/lib/push';
 
 // Telefon ve bilgisayar bildirimleri (Web Push): the device's subscription is stored here; the
@@ -72,8 +72,10 @@ export async function POST(req: Request) {
  * Stops notifications for a device. Works without a session (it is also called right after
  * signing out); the endpoint is an unguessable address known only to that browser.
  */
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
+    const wait = rateLimit(`push-unsub-ip:${getClientIp(req)}`, 60, 15 * 60_000);
+    if (wait) return tooManyRequests(wait);
     const body = await readJsonObject(req, 2048).catch(() => ({}) as Record<string, unknown>);
     const endpoint = typeof body.endpoint === 'string' ? body.endpoint : '';
     if (endpoint) await prisma.pushSubscription.deleteMany({ where: { endpoint } });

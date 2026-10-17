@@ -23,7 +23,13 @@ import {
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+  Check,
 } from 'lucide-react';
+import { applyOrder, moveId, moveIdTo, type UserPreferences } from '@/lib/preferences';
 import { importNoteFile, ImportError, NOTE_IMPORT_ACCEPT } from '@/lib/noteImport';
 import { describePdfError } from '@/lib/academic/pdfErrors';
 import { formatTurkishDate } from '@/lib/utils';
@@ -125,11 +131,70 @@ export const NotesWorkspace: React.FC = () => {
     return true;
   });
 
-  // Sort notes: pinned first, then updated date descending
+  // Sıralama: pinned first, then the chosen order (son düzenlenen, oluşturma, başlık or elle).
+  const noteSort = preferences.noteSort;
+  const byUpdated = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const manualIds = applyOrder(byUpdated, preferences.noteOrder).map((n) => n.id);
+  const manualRank = new Map(manualIds.map((id, i) => [id, i]));
   const sortedNotes = [...filteredNotes].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    switch (noteSort) {
+      case 'created':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case 'title':
+        return (a.title || '').localeCompare(b.title || '', 'tr', { sensitivity: 'base', numeric: true });
+      case 'manual':
+        return (manualRank.get(a.id) ?? 0) - (manualRank.get(b.id) ?? 0);
+      default:
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+  });
+
+  const saveNoteOrder = (ids: string[]) => setPreference('noteOrder', ids.slice(0, 1000));
+  /** Elle sıralama: one step up / down among the notes shown (within the pinned / unpinned group). */
+  const stepNote = (id: string, step: -1 | 1) => {
+    const i = sortedNotes.findIndex((n) => n.id === id);
+    const neighbor = sortedNotes[i + step];
+    if (i < 0 || !neighbor || neighbor.isPinned !== sortedNotes[i].isPinned) return;
+    saveNoteOrder(moveIdTo(manualIds, id, neighbor.id));
+  };
+
+  // Klasör sırası (kişisel tercih)
+  const orderedFolders = applyOrder(folders, preferences.folderOrder);
+  const folderIds = orderedFolders.map((f) => f.id);
+  const [reorderFolders, setReorderFolders] = useState(false);
+  const [dragging, setDragging] = useState<{ kind: 'folder' | 'note'; id: string } | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const dropHandlers = (kind: 'folder' | 'note', id: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (dragging?.kind !== kind || dragging.id === id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dropTarget !== id) setDropTarget(id);
+    },
+    onDragLeave: () => {
+      if (dropTarget === id) setDropTarget(null);
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      if (dragging?.kind !== kind) return;
+      if (kind === 'folder') setPreference('folderOrder', moveIdTo(folderIds, dragging.id, id));
+      else saveNoteOrder(moveIdTo(manualIds, dragging.id, id));
+      setDragging(null);
+      setDropTarget(null);
+    },
+  });
+  const dragHandlers = (kind: 'folder' | 'note', id: string) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', id);
+      setDragging({ kind, id });
+    },
+    onDragEnd: () => {
+      setDragging(null);
+      setDropTarget(null);
+    },
   });
 
   const activeNote = notes.find(n => n.id === activeNoteId) || sortedNotes[0];
@@ -301,7 +366,19 @@ export const NotesWorkspace: React.FC = () => {
         <div className="px-3 py-2 border-b border-line bg-app">
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Klasörler</span>
-            {editable && (
+            <div className="flex items-center gap-1">
+            {folders.length > 1 && (
+              <button
+                onClick={() => setReorderFolders((v) => !v)}
+                aria-pressed={reorderFolders}
+                className={`p-1 rounded transition-colors flex items-center gap-1 text-[11px] ${reorderFolders ? 'text-emerald-400' : 'text-muted hover:text-emerald-400'}`}
+                title={reorderFolders ? 'Sıralamayı bitir' : 'Klasörleri sırala (sürükleyin veya oklarla taşıyın)'}
+              >
+                {reorderFolders ? <Check className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5" />}
+                <span>{reorderFolders ? 'Bitti' : 'Sırala'}</span>
+              </button>
+            )}
+            {editable && !reorderFolders && (
             <button
               onClick={() => setIsNewFolderModalOpen(true)}
               className="text-muted hover:text-emerald-400 p-1 rounded transition-colors flex items-center gap-1 text-[11px]"
@@ -311,6 +388,7 @@ export const NotesWorkspace: React.FC = () => {
               <span>+ Klasör</span>
             </button>
             )}
+            </div>
           </div>
           <div className="space-y-0.5 max-h-40 sm:max-h-48 overflow-y-auto pr-0.5 no-scrollbar">
             <button
@@ -343,24 +421,46 @@ export const NotesWorkspace: React.FC = () => {
               </span>
             </button>
 
-            {folders.map((folder) => {
+            {orderedFolders.map((folder, index) => {
               const count = notes.filter(n => n.folder === folder.id).length;
               const isActive = activeFolder === folder.id;
 
               return (
                 <div
                   key={folder.id}
-                  onClick={() => { setActiveFolder(folder.id); setSelectedTag(null); }}
+                  {...dragHandlers('folder', folder.id)}
+                  {...dropHandlers('folder', folder.id)}
+                  onClick={() => { if (!reorderFolders) { setActiveFolder(folder.id); setSelectedTag(null); } }}
                   className={`w-full min-h-[36px] flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer group/f ${isActive
                       ? 'bg-brand/25 text-emerald-300 border border-brand/40'
                       : 'text-subtle hover:text-white hover:bg-surface-2'
-                    }`}
+                    } ${dropTarget === folder.id ? 'ring-1 ring-brand' : ''} ${dragging?.id === folder.id ? 'opacity-50' : ''}`}
                 >
                   <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                    {getFolderIcon(folder.iconName)}
+                    {reorderFolders ? <GripVertical className="w-3.5 h-3.5 text-muted shrink-0" /> : getFolderIcon(folder.iconName)}
                     <span className="truncate">{folder.name}</span>
                   </div>
 
+                  {reorderFolders ? (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPreference('folderOrder', moveId(folderIds, folder.id, -1)); }}
+                        disabled={index === 0}
+                        className="w-8 h-8 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
+                        aria-label={`${folder.name} klasörünü yukarı taşı`}
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPreference('folderOrder', moveId(folderIds, folder.id, 1)); }}
+                        disabled={index === orderedFolders.length - 1}
+                        className="w-8 h-8 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
+                        aria-label={`${folder.name} klasörünü aşağı taşı`}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
                   <div className="flex items-center gap-1 shrink-0">
                     <span className={`text-[10px] text-muted ${editable ? '[@media(hover:hover)]:group-hover/f:hidden [@media(hover:hover)]:group-focus-within/f:hidden' : ''}`}>{count}</span>
 
@@ -391,6 +491,7 @@ export const NotesWorkspace: React.FC = () => {
                       </>
                     )}
                   </div>
+                  )}
                 </div>
               );
             })}
@@ -418,6 +519,24 @@ export const NotesWorkspace: React.FC = () => {
           </div>
         )}
 
+        {/* Sıralama */}
+        <div className="px-3 py-1.5 border-b border-line flex items-center justify-between gap-2">
+          <label htmlFor="note-sort" className="text-[11px] text-muted flex items-center gap-1.5">
+            <ArrowUpDown className="w-3 h-3" /> Sırala
+          </label>
+          <select
+            id="note-sort"
+            value={noteSort}
+            onChange={(e) => setPreference('noteSort', e.target.value as UserPreferences['noteSort'])}
+            className="h-8 bg-surface-2 border border-line rounded-md px-2 text-[11px] text-body focus:outline-none focus:border-brand"
+          >
+            <option value="updated">Son düzenlenen</option>
+            <option value="created">Oluşturma tarihi</option>
+            <option value="title">Başlık (A–Z)</option>
+            <option value="manual">Elle (sürükle / oklar)</option>
+          </select>
+        </div>
+
         {/* Notes list */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
           {sortedNotes.length === 0 ? (
@@ -427,8 +546,11 @@ export const NotesWorkspace: React.FC = () => {
               {editable && <p className="text-[11px] text-subtle">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>}
             </div>
           ) : (
-            sortedNotes.map((n) => {
+            sortedNotes.map((n, index) => {
               const isSelected = activeNote?.id === n.id;
+              const manual = noteSort === 'manual';
+              const canUp = manual && index > 0 && sortedNotes[index - 1].isPinned === n.isPinned;
+              const canDown = manual && index < sortedNotes.length - 1 && sortedNotes[index + 1].isPinned === n.isPinned;
               const snippet = n.content
                 .replace(/[#*`$\n]/g, ' ')
                 .trim()
@@ -437,11 +559,12 @@ export const NotesWorkspace: React.FC = () => {
               return (
                 <div
                   key={n.id}
+                  {...(manual ? { ...dragHandlers('note', n.id), ...dropHandlers('note', n.id) } : {})}
                   onClick={() => handleSelectNoteMobile(n.id)}
                   className={`p-3 sm:p-3.5 rounded-xl cursor-pointer border transition-all relative group ${isSelected
                       ? 'bg-surface-2 border-brand'
                       : 'bg-surface hover:bg-surface-2 active:bg-surface-2 border-line hover:border-line-strong'
-                    }`}
+                    } ${dropTarget === n.id ? 'ring-1 ring-brand' : ''} ${dragging?.id === n.id ? 'opacity-50' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-xs font-semibold text-white truncate flex-1 flex items-center gap-1.5">
@@ -452,6 +575,26 @@ export const NotesWorkspace: React.FC = () => {
                     </h3>
                     {n.isFavorite && (
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                    )}
+                    {manual && (
+                      <span className="flex items-center -my-1 -mr-1 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); stepNote(n.id, -1); }}
+                          disabled={!canUp}
+                          className="w-7 h-7 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
+                          aria-label={`${n.title || 'Not'} yukarı taşı`}
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); stepNote(n.id, 1); }}
+                          disabled={!canDown}
+                          className="w-7 h-7 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
+                          aria-label={`${n.title || 'Not'} aşağı taşı`}
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
                     )}
                   </div>
 
