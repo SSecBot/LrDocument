@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowRightLeft, Bug, Clock, Lightbulb, MessageSquarePlus, Send, Undo2 } from 'lucide-react';
+import { ArrowRightLeft, BookOpen, Bug, Clock, Keyboard, Lightbulb, MessageSquarePlus, Send, Undo2 } from 'lucide-react';
+import { GUIDE_URL } from '@/components/layout/WelcomeGuide';
+import { openShortcutsHelp } from '@/components/layout/Shortcuts';
 import { useAppStore } from '@/store/useAppStore';
 import { FEEDBACK_KIND_LABEL, FEEDBACK_STATUS_LABEL, isOpenStatus, type FeedbackItem, type UserFeedbackKind } from '@/lib/feedback';
 import { getRelativeTimeTurkish } from '@/lib/utils';
@@ -170,6 +172,16 @@ export function SupportSection() {
 
   return (
     <>
+      <Panel title="Kullanım kılavuzu" description="Her sekmenin ve ayarın ne işe yaradığını adım adım anlatır.">
+        <div className="flex flex-wrap gap-2">
+          <a href={GUIDE_URL} target="_blank" rel="noopener" className={`${primaryBtn} inline-flex items-center gap-2`}>
+            <BookOpen className="w-4 h-4" /> Kılavuzu aç (PDF)
+          </a>
+          <button type="button" onClick={openShortcutsHelp} className={secondaryBtn}>
+            <Keyboard className="w-4 h-4" /> Kısayollar
+          </button>
+        </div>
+      </Panel>
       <Panel title="İstek, öneri ve hata bildirimi" description="Yazdıklarınız doğrudan yöneticiye iletilir.">
         <form onSubmit={submit} className="space-y-4 max-w-xl">
           <div role="radiogroup" aria-label="Bildirim türü" className="grid grid-cols-3 gap-2">

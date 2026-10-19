@@ -10,9 +10,15 @@ export interface Note {
   tags: string[];
   isFavorite: boolean;
   isPinned: boolean;
+  /** "text" (Markdown, default), "table" (spreadsheet JSON in content) or "pdf" (stored file) */
+  kind?: NoteKind;
+  /** PDF note: id of the encrypted file on the server */
+  fileId?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export type NoteKind = 'text' | 'table' | 'pdf';
 
 export type Platform = 'YouTube' | 'TikTok' | 'Instagram' | 'Web' | 'Podcast';
 
@@ -205,10 +211,12 @@ export interface Customer {
 
 export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik';
+/** VIP: given by an admin, no payment ever (ömür boyu ücretsiz). */
+export type SubscriptionPlan = 'Aylık' | 'Tek Seferlik' | 'VIP';
 export type SubscriptionType = 'AYLIK' | 'TEK_SEFERLIK';
 export type AccountType = 'STANDARD' | 'STUDENT' | 'CORPORATE';
-export type PaymentStatus = 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
+/** WAIVED: the admin waived payment (VIP). */
+export type PaymentStatus = 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL' | 'WAIVED';
 
 export interface UserProfile {
   id: string;
@@ -283,9 +291,11 @@ export interface AdminMetrics {
 export type ActiveTab =
   | 'dashboard'
   | 'notes'
+  | 'personalNotes'
   | 'tasks'
   | 'calendar'
   | 'finance'
+  | 'personalFinance'
   | 'customers'
   | 'team'
   | 'academic'

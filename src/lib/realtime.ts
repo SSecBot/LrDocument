@@ -17,13 +17,15 @@ export interface RealtimeEvent {
   by: string;
   /** Tab that made the change; it ignores its own echo. */
   origin: string;
+  /** Kurumsal "Şahsi" record: only this person's own tabs receive it ("owner" or a member id). */
+  personalOf?: string;
 }
 
 interface Listener {
   send: (chunk: string) => void;
   /** Ends the stream (used when the account opens more streams than allowed). */
   close?: () => void;
-  viewer: { accountType?: string | null; permissions?: CorpPermissions | null };
+  viewer: { accountType?: string | null; permissions?: CorpPermissions | null; who?: string };
 }
 
 type Hub = Map<string, Set<Listener>>;
@@ -56,7 +58,9 @@ export function publish(ownerId: string, event: RealtimeEvent) {
   const mod = ENTITY_MODULE[event.entity];
   const chunk = `data: ${JSON.stringify(event)}\n\n`;
   for (const l of set) {
-    if (mod && !canView(l.viewer, mod)) continue;
+    if (event.personalOf) {
+      if (l.viewer.who !== event.personalOf) continue;
+    } else if (mod && !canView(l.viewer, mod)) continue;
     try {
       l.send(chunk);
     } catch {

@@ -1,22 +1,18 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
+import React, { useContext, useRef, useState } from 'react';
+import { SpaceContext, useAppStore } from '@/store/useAppStore';
 import { NoteEditor } from './NoteEditor';
 import { SecretNotes } from './SecretNotes';
+import { FolderIcon, FolderIconPicker } from './folderIcons';
 import { FolderItem } from '@/types';
 import {
   Plus,
   Search,
-  Folder,
   Star,
   Pin,
   FileText,
   Tag,
-  BookOpen,
-  Sigma,
-  Binary,
-  Archive,
   FolderPlus,
   Edit2,
   Trash2,
@@ -30,13 +26,32 @@ import {
   GripVertical,
   Check,
   Lock,
+  Table2,
+  FileType2,
 } from 'lucide-react';
 import { applyOrder, moveId, moveIdTo, type UserPreferences } from '@/lib/preferences';
+import { useSwipe } from '@/lib/shortcuts';
 import { importNoteFile, ImportError, NOTE_IMPORT_ACCEPT } from '@/lib/noteImport';
+import { importTableFile, TABLE_IMPORT_ACCEPT } from '@/lib/noteExport';
+import { newDoc, parseDoc } from '@/lib/sheet/engine';
 import { describePdfError } from '@/lib/academic/pdfErrors';
 import { formatTurkishDate } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { canEdit, isCorporate } from '@/lib/corporate';
+
+const tableTextCache = new Map<string, string>();
+/** Cell values of a table note, for the note search (cached per content). */
+function searchableTableText(content: string): string {
+  let text = tableTextCache.get(content);
+  if (text === undefined) {
+    text = parseDoc(content)
+      .sheets.flatMap((s) => [s.name, ...Object.values(s.cells).map((c) => c.v)])
+      .join(' ');
+    if (tableTextCache.size > 200) tableTextCache.clear();
+    tableTextCache.set(content, text);
+  }
+  return text;
+}
 
 export const NotesWorkspace: React.FC = () => {
   const {
@@ -56,9 +71,32 @@ export const NotesWorkspace: React.FC = () => {
     currentUser,
   } = useAppStore();
   const editable = canEdit(currentUser, 'notes');
+  const space = useContext(SpaceContext);
   const collapsed = preferences.notesPanelCollapsed;
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState<string | null>(null);
+
+  // İçe aktar: first the type (Not / Tablo), then only files of that type can be chosen.
+  const [importDialog, setImportDialog] = useState(false);
+  const [importMode, setImportMode] = useState<'note' | 'table'>('note');
+  const [pdfAsText, setPdfAsText] = useState(false);
+  const [handwriting, setHandwriting] = useState(false);
+  const [newMenu, setNewMenu] = useState(false);
+
+  const isSheetFile = (f: File) => /\.(xlsx|xls|xlsm|ods|csv|tsv)$/i.test(f.name);
+
+  /** A PDF kept as it is: uploaded (encrypted on the server) and shown with the PDF reader. */
+  const uploadPdf = async (file: File): Promise<string> => {
+    if (file.size > 25 * 1024 * 1024) throw new ImportError('PDF en fazla 25 MB olabilir.');
+    const res = await fetch(`/api/files${space === 'personal' ? '?personal=1' : ''}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf', 'X-File-Name': encodeURIComponent(file.name) },
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ImportError(data.error || 'PDF yüklenemedi.');
+    return data.id as string;
+  };
 
   const handleImport = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -66,8 +104,26 @@ export const NotesWorkspace: React.FC = () => {
     for (const file of Array.from(files).slice(0, 10)) {
       setImporting(`${file.name} okunuyor…`);
       try {
-        const result = await importNoteFile(file, (p) =>
-          setImporting(p.stage === 'ocr' ? `${file.name}: sayfa ${p.page}/${p.pages} metin tanıma %${Math.round(p.progress * 100)}` : `${file.name}: sayfa ${p.page || 1}/${p.pages || '…'}`)
+        // An Excel / CSV file always becomes a table note.
+        if (importMode === 'table' || isSheetFile(file)) {
+          const t = await importTableFile(file);
+          lastId = addNote({ title: t.title, content: JSON.stringify(t.doc), kind: 'table' });
+          addToast({ type: 'success', title: 'Tablo içe aktarıldı', message: [`“${t.title}”`, ...t.notes].join(' — ') });
+          continue;
+        }
+        const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+        if (isPdf && !pdfAsText) {
+          setImporting(`${file.name} şifrelenip kaydediliyor…`);
+          const fileId = await uploadPdf(file);
+          lastId = addNote({ title: file.name.replace(/\.pdf$/i, '').slice(0, 200) || 'PDF', content: '', kind: 'pdf', fileId });
+          addToast({ type: 'success', title: 'PDF eklendi', message: `“${file.name}” uygulamada açılır; istediğinizde metne dönüştürebilirsiniz.` });
+          continue;
+        }
+        const result = await importNoteFile(
+          file,
+          (p) =>
+            setImporting(p.stage === 'ocr' ? `${file.name}: sayfa ${p.page}/${p.pages} metin tanıma %${Math.round(p.progress * 100)}` : `${file.name}: sayfa ${p.page || 1}/${p.pages || '…'}`),
+          { handwriting }
         );
         lastId = addNote({ title: result.title, content: result.content });
         addToast({
@@ -95,15 +151,19 @@ export const NotesWorkspace: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
+  // Phones: swiping from the left edge goes back from a note to the list (like the system back gesture).
+  const editorSwipe = useSwipe<HTMLDivElement>({ fromLeftEdge: 32, onRight: () => setMobileView('list'), enabled: preferences.touchGestures });
 
   // Folder Modals state
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDesc, setNewFolderDesc] = useState('');
+  const [newFolderIcon, setNewFolderIcon] = useState('Folder');
 
   const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [editFolderDesc, setEditFolderDesc] = useState('');
+  const [editFolderIcon, setEditFolderIcon] = useState('Folder');
 
   const [deletingFolder, setDeletingFolder] = useState<FolderItem | null>(null);
   const [deleteWithNotes, setDeleteWithNotes] = useState(false);
@@ -125,7 +185,8 @@ export const NotesWorkspace: React.FC = () => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = n.title.toLowerCase().includes(q);
-      const matchContent = n.content.toLowerCase().includes(q);
+      // Tables: the cell values (not the stored JSON); PDF notes: the title only.
+      const matchContent = (n.kind === 'table' ? searchableTableText(n.content) : n.kind === 'pdf' ? '' : n.content).toLowerCase().includes(q);
       const matchTag = n.tags.some(t => t.toLowerCase().includes(q));
       if (!matchTitle && !matchContent && !matchTag) return false;
     }
@@ -204,9 +265,10 @@ export const NotesWorkspace: React.FC = () => {
   const handleCreateFolder = (e: React.FormEvent) => {
     e.preventDefault();
     if (newFolderName.trim()) {
-      addFolder(newFolderName.trim(), newFolderDesc.trim());
+      addFolder(newFolderName.trim(), newFolderDesc.trim(), newFolderIcon);
       setNewFolderName('');
       setNewFolderDesc('');
+      setNewFolderIcon('Folder');
       setIsNewFolderModalOpen(false);
     }
   };
@@ -216,12 +278,13 @@ export const NotesWorkspace: React.FC = () => {
     setEditingFolder(folder);
     setEditFolderName(folder.name);
     setEditFolderDesc(folder.description || '');
+    setEditFolderIcon(folder.iconName || 'Folder');
   };
 
   const handleSaveEditFolder = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingFolder && editFolderName.trim()) {
-      updateFolder(editingFolder.id, editFolderName.trim(), editFolderDesc.trim());
+      updateFolder(editingFolder.id, editFolderName.trim(), editFolderDesc.trim(), editFolderIcon);
       setEditingFolder(null);
     }
   };
@@ -242,30 +305,33 @@ export const NotesWorkspace: React.FC = () => {
   const folderActionCls =
     'w-7 h-7 items-center justify-center rounded text-muted hover:text-emerald-400 hover:bg-surface-3 inline-flex [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover/f:inline-flex [@media(hover:hover)]:group-focus-within/f:inline-flex';
 
-  const getFolderIcon = (iconName?: string) => {
-    const cls = 'w-3.5 h-3.5 text-muted';
-    switch (iconName) {
-      case 'Sigma': return <Sigma className={cls} />;
-      case 'BookOpen': return <BookOpen className={cls} />;
-      case 'Binary': return <Binary className={cls} />;
-      case 'Archive': return <Archive className={cls} />;
-      default: return <Folder className={cls} />;
-    }
-  };
+  const getFolderIcon = (iconName?: string) => <FolderIcon name={iconName} className="w-3.5 h-3.5 text-muted shrink-0" />;
 
   const handleSelectNoteMobile = (noteId: string) => {
     setActiveNoteId(noteId);
     setMobileView('editor');
   };
 
-  const handleNewNoteMobile = () => {
-    const newId = addNote();
+  const handleNewNoteMobile = (kind: 'text' | 'table' = 'text') => {
+    setNewMenu(false);
+    const newId = kind === 'table' ? addNote({ kind: 'table', content: JSON.stringify(newDoc()) }) : addNote();
     setActiveNoteId(newId);
     setMobileView('editor');
   };
+  const openImport = () => setImportDialog(true);
+  const chooseImport = (mode: 'note' | 'table') => {
+    setImportMode(mode);
+    setImportDialog(false);
+    // The file picker opens from the click (browsers allow it only then).
+    if (fileRef.current) {
+      fileRef.current.accept = mode === 'table' ? TABLE_IMPORT_ACCEPT : NOTE_IMPORT_ACCEPT;
+      fileRef.current.click();
+    }
+  };
 
-  // Gizli notlar: personal, so not for corporate members signed in with a code.
-  const secretAllowed = !currentUser?.memberId;
+  // Gizli notlar: personal — in a corporate account they live in Şahsi Notlar, for the owner only
+  // (a member signed in with a code shares the owner's account key).
+  const secretAllowed = !currentUser?.memberId && (space === 'personal' || !isCorporate(currentUser));
   if (activeFolder === 'secret' && secretAllowed) {
     return <SecretNotes onExit={() => setActiveFolder('all')} />;
   }
@@ -295,7 +361,7 @@ export const NotesWorkspace: React.FC = () => {
             <PanelLeftOpen className="w-4 h-4" />
           </button>
           <button
-            onClick={handleNewNoteMobile}
+            onClick={() => handleNewNoteMobile()}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
             title="Yeni not"
             aria-label="Yeni not"
@@ -303,7 +369,15 @@ export const NotesWorkspace: React.FC = () => {
             <Plus className="w-4 h-4" />
           </button>
           <button
-            onClick={() => fileRef.current?.click()}
+            onClick={() => handleNewNoteMobile('table')}
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
+            title="Yeni tablo"
+            aria-label="Yeni tablo"
+          >
+            <Table2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={openImport}
             disabled={!!importing}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
             title="Dosyadan içe aktar"
@@ -323,26 +397,43 @@ export const NotesWorkspace: React.FC = () => {
         {/* Header & Search */}
         <div className="p-3.5 sm:p-4 border-b border-line space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-fg tracking-tight">{isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar'}</h2>
+            <h2 className="text-sm font-semibold text-fg tracking-tight">{space === 'personal' ? 'Şahsi Notlar' : isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar'}</h2>
             <div className="flex items-center gap-1">
               {editable && (
                 <>
               <button
-                onClick={() => fileRef.current?.click()}
+                onClick={openImport}
                 disabled={!!importing}
                 className="min-h-[36px] flex items-center gap-1.5 px-2.5 text-xs text-body hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-md transition-colors disabled:opacity-60"
-                title="PDF, Word (.docx) veya Markdown dosyasından not oluştur"
+                title="Dosyadan not veya tablo oluştur"
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 <span>İçe aktar</span>
               </button>
-              <button
-                onClick={handleNewNoteMobile}
-                className="min-h-[36px] flex items-center gap-1.5 px-2.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-medium rounded-md transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Yeni</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setNewMenu((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={newMenu}
+                  className="min-h-[36px] flex items-center gap-1.5 px-2.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-medium rounded-md transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Yeni</span>
+                </button>
+                {newMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setNewMenu(false)} aria-hidden="true" />
+                    <div role="menu" className="absolute right-0 top-full mt-1 z-40 w-48 rounded-lg border border-line bg-surface shadow-xl p-1">
+                      <button role="menuitem" onClick={() => handleNewNoteMobile('text')} className="w-full text-left px-2.5 py-2 rounded-md hover:bg-surface-2 flex items-center gap-2 text-sm text-fg">
+                        <FileText className="w-4 h-4 text-subtle" /> Not
+                      </button>
+                      <button role="menuitem" onClick={() => handleNewNoteMobile('table')} className="w-full text-left px-2.5 py-2 rounded-md hover:bg-surface-2 flex items-center gap-2 text-sm text-fg">
+                        <Table2 className="w-4 h-4 text-subtle" /> Tablo (Excel gibi)
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
                 </>
               )}
               <button
@@ -572,10 +663,16 @@ export const NotesWorkspace: React.FC = () => {
               const manual = noteSort === 'manual';
               const canUp = manual && index > 0 && sortedNotes[index - 1].isPinned === n.isPinned;
               const canDown = manual && index < sortedNotes.length - 1 && sortedNotes[index + 1].isPinned === n.isPinned;
-              const snippet = n.content
-                .replace(/[#*`$\n]/g, ' ')
-                .trim()
-                .substring(0, 90);
+              const kindLabel = n.kind === 'table' ? 'Tablo' : n.kind === 'pdf' ? 'PDF' : 'Not';
+              const snippet =
+                n.kind === 'table'
+                  ? 'Tablo notu'
+                  : n.kind === 'pdf'
+                    ? 'PDF belgesi — uygulamada açılır'
+                    : n.content
+                        .replace(/[#*`$\n]/g, ' ')
+                        .trim()
+                        .substring(0, 90);
 
               return (
                 <div
@@ -624,7 +721,14 @@ export const NotesWorkspace: React.FC = () => {
                   </p>
 
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-line text-[10px] text-muted">
-                    <span>{formatTurkishDate(n.updatedAt)}</span>
+                    <span className="flex items-center gap-1.5">
+                      {formatTurkishDate(n.updatedAt)}
+                      <span className="text-muted">·</span>
+                      <span className="inline-flex items-center gap-1">
+                        {n.kind === 'table' ? <Table2 className="w-3 h-3" /> : n.kind === 'pdf' ? <FileType2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                        {kindLabel}
+                      </span>
+                    </span>
                     <div className="flex items-center gap-1">
                       {n.tags.slice(0, 2).map(t => (
                         <span key={t} className="bg-surface-2 px-1.5 py-0.2 rounded text-subtle">
@@ -642,6 +746,8 @@ export const NotesWorkspace: React.FC = () => {
 
       {/* Main Right Area: Active Note Editor */}
       <div
+        ref={editorSwipe}
+        data-edge-back={mobileView === 'editor' ? '' : undefined}
         className={`${
           mobileView === 'editor' ? 'flex flex-1' : 'hidden'
         } md:flex md:flex-1 h-full overflow-hidden`}
@@ -663,7 +769,7 @@ export const NotesWorkspace: React.FC = () => {
             </p>
             {editable && (
             <button
-              onClick={handleNewNoteMobile}
+              onClick={() => handleNewNoteMobile()}
               className="mt-2 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all min-h-[44px]"
             >
               <Plus className="w-4 h-4" />
@@ -673,6 +779,38 @@ export const NotesWorkspace: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* İçe aktar: choose the type first */}
+      <Modal isOpen={importDialog} onClose={() => setImportDialog(false)} title="İçe aktar" subtitle="Ne tür bir not oluşturulsun?" maxWidth="max-w-lg">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-line p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <FileText className="w-4 h-4 text-emerald-400" /> Not
+            </div>
+            <p className="text-xs text-muted">PDF, Word (.docx), Markdown (.md) veya metin (.txt). PDF’ler olduğu gibi saklanır ve uygulamada açılır.</p>
+            <label className="flex items-start gap-2 text-xs text-body">
+              <input type="checkbox" className="mt-0.5 accent-[var(--color-brand)]" checked={pdfAsText} onChange={(e) => setPdfAsText(e.target.checked)} />
+              PDF’leri düzenlenebilir metne çevir
+            </label>
+            <label className={`flex items-start gap-2 text-xs ${pdfAsText ? 'text-body' : 'text-muted'}`}>
+              <input type="checkbox" className="mt-0.5 accent-[var(--color-brand)]" checked={handwriting} disabled={!pdfAsText} onChange={(e) => setHandwriting(e.target.checked)} />
+              El yazısı (taranmış elle yazılmış notlar)
+            </label>
+            <button onClick={() => chooseImport('note')} className="w-full h-10 rounded-lg bg-brand hover:bg-brand-hover text-white text-sm font-semibold">
+              Not dosyası seç
+            </button>
+          </div>
+          <div className="rounded-xl border border-line p-3 space-y-2 flex flex-col">
+            <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <Table2 className="w-4 h-4 text-emerald-400" /> Tablo
+            </div>
+            <p className="text-xs text-muted flex-1">Excel (.xlsx, .xls), LibreOffice (.ods) veya CSV. Tüm sayfalar ve formüller tablo notu olarak açılır.</p>
+            <button onClick={() => chooseImport('table')} className="w-full h-10 rounded-lg bg-brand hover:bg-brand-hover text-white text-sm font-semibold">
+              Tablo dosyası seç
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create Folder Modal */}
       <Modal
@@ -703,6 +841,10 @@ export const NotesWorkspace: React.FC = () => {
               placeholder="Bu klasördeki notların kısa açıklaması..."
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
+          </div>
+          <div>
+            <span className="block text-xs font-semibold text-white mb-1.5">Simge</span>
+            <FolderIconPicker value={newFolderIcon} onChange={setNewFolderIcon} />
           </div>
           <div className="modal-actions flex justify-end gap-2">
             <button
@@ -749,6 +891,10 @@ export const NotesWorkspace: React.FC = () => {
               onChange={(e) => setEditFolderDesc(e.target.value)}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
+          </div>
+          <div>
+            <span className="block text-xs font-semibold text-white mb-1.5">Simge</span>
+            <FolderIconPicker value={editFolderIcon} onChange={setEditFolderIcon} />
           </div>
           <div className="modal-actions flex items-center justify-end gap-2">
             <button

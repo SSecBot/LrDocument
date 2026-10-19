@@ -5,9 +5,14 @@ import { useNow } from '@/components/academic/useNow';
 import { Note } from '@/types';
 import { canEdit } from '@/lib/corporate';
 import { applyOrder } from '@/lib/preferences';
-import { useAppStore } from '@/store/useAppStore';
+import { flushPendingMutations, useAppStore } from '@/store/useAppStore';
 import { KatexPreview } from './KatexPreview';
 import { MathSymbolBar } from './MathDrawer';
+import { NoteDownloadMenu } from './NoteDownloadMenu';
+import { SpreadsheetEditor } from './SpreadsheetEditor';
+import { PdfViewer } from './PdfViewer';
+import { Modal } from '@/components/ui/Modal';
+import { pdfToText } from '@/lib/noteImport';
 import {
   Columns2,
   Eye,
@@ -16,7 +21,6 @@ import {
   Pin,
   Trash2,
   Copy,
-  Download,
   CheckSquare,
   Tag,
   Folder,
@@ -25,7 +29,7 @@ import {
   ChevronLeft,
   ChevronDown,
 } from 'lucide-react';
-import { formatTurkishDate, slugifyFilename } from '@/lib/utils';
+import { formatTurkishDate } from '@/lib/utils';
 
 interface NoteEditorProps {
   note: Note;
@@ -46,6 +50,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     setPreference,
     systemSettings,
     currentUser,
+    addNote,
+    setActiveNoteId,
     remoteEdits,
   } = useAppStore();
   // Kurumsal: members with view-only access to Ortak Notlar read the note, they cannot change it.
@@ -53,6 +59,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
   // Opens in the editor; Bölünmüş (editor + preview) and Önizleme are one click away.
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>(editable ? 'edit' : 'preview');
+  const kind = note.kind ?? 'text';
+  const isText = kind === 'text';
+  // PDF note → "Metne dönüştür" (printed or handwritten text) creates a separate text note.
+  const [convertBytes, setConvertBytes] = useState<Uint8Array | null>(null);
+  const [converting, setConverting] = useState<string | null>(null);
+  const convertPdf = async (handwriting: boolean) => {
+    const data = convertBytes;
+    setConvertBytes(null);
+    if (!data) return;
+    setConverting('Hazırlanıyor…');
+    try {
+      const notes: string[] = [];
+      const text = await pdfToText(data, notes, (p) =>
+        setConverting(p.stage === 'ocr' ? `Sayfa ${p.page}/${p.pages} okunuyor… %${Math.round(p.progress * 100)}` : p.stage === 'hazirlik' ? 'Metin tanıma hazırlanıyor…' : `Sayfa ${p.page}/${p.pages}`)
+      , handwriting);
+      if (!text.trim()) throw new Error('PDF’te okunabilir yazı bulunamadı.');
+      const id = addNote({ title: `${note.title} (metin)`, content: text.slice(0, 200_000), folder: note.folder });
+      setActiveNoteId(id);
+      addToast({ type: notes.length ? 'warning' : 'success', title: 'Metin notu oluşturuldu', message: notes.join(' ') || 'PDF’teki yazı yeni bir nota aktarıldı.' });
+    } catch (err) {
+      addToast({ type: 'error', title: 'Metne dönüştürülemedi', message: (err as Error).message });
+    } finally {
+      setConverting(null);
+    }
+  };
   const symbolsOpen = preferences.mathDrawerOpen;
   const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -116,6 +147,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     }, 50);
   };
 
+  /** Wraps the selection in Markdown marks (Ctrl+B / Ctrl+I). */
+  const wrapSelection = (mark: string) => {
+    const ta = textareaRef.current;
+    if (!ta || !editable) return;
+    const { selectionStart: start, selectionEnd: end } = ta;
+    const text = note.content;
+    const inner = text.slice(start, end) || 'metin';
+    updateNote(note.id, { content: text.slice(0, start) + mark + inner + mark + text.slice(end) });
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + mark.length, start + mark.length + inner.length);
+    }, 0);
+  };
+
+  // Klavye kısayolları: Ctrl/⌘+B kalın, +I italik, +S hemen kaydet, +Shift+E düzenle/önizleme.
+  const handleEditorKeys = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === 's') {
+      e.preventDefault();
+      flushPendingMutations();
+      addToast({ type: 'success', title: 'Kaydedildi' });
+    } else if (key === 'e' && e.shiftKey) {
+      e.preventDefault();
+      setViewMode((m) => (m === 'preview' ? 'edit' : 'preview'));
+    } else if (!e.shiftKey && (key === 'b' || key === 'i') && e.target === textareaRef.current) {
+      e.preventDefault();
+      wrapSelection(key === 'b' ? '**' : '*');
+    }
+  };
+
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && newTagInput.trim()) {
       e.preventDefault();
@@ -136,19 +198,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     addToast({ type: 'success', title: 'Panoya Kopyalandı', message: 'Markdown içeriği kopyalandı.' });
   };
 
-  const handleDownloadMarkdown = () => {
-    const blob = new Blob([note.content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${slugifyFilename(note.title, 'not')}.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    addToast({ type: 'success', title: 'İndirildi', message: 'Markdown dosyası indirildi.' });
-  };
-
   const handleCreateTaskFromNote = () => {
     addTask({
       title: `"${note.title}" notunu incele ve geliştir`,
@@ -163,7 +212,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
   const charCount = note.content.length;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-app overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-app overflow-hidden relative" onKeyDown={handleEditorKeys}>
       {/* Top action bar */}
       <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 border-b border-line bg-surface gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
@@ -190,6 +239,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         {/* View Mode Toggle & Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Symbol drawer toggle (the drawer opens as a strip below this bar) */}
+          {isText && (
           <button
             onClick={() => setPreference('mathDrawerOpen', !symbolsOpen)}
             aria-expanded={symbolsOpen}
@@ -202,8 +252,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <span className="hidden sm:inline">Semboller</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${symbolsOpen ? 'rotate-180' : ''}`} />
           </button>
+          )}
 
           {/* View switches */}
+          {isText && (
           <div className="flex bg-surface-2 p-1 rounded-lg border border-line-strong">
             <button
               onClick={() => setViewMode('edit')}
@@ -236,6 +288,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               <span>Önizleme</span>
             </button>
           </div>
+          )}
 
           {/* Pin & Favorite */}
           {editable && (
@@ -267,6 +320,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           )}
 
           {/* Quick Actions */}
+          {isText && (
           <button
             onClick={handleCopyMarkdown}
             className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center"
@@ -274,14 +328,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           >
             <Copy className="w-4 h-4" />
           </button>
+          )}
 
-          <button
-            onClick={handleDownloadMarkdown}
-            className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center"
-            title="Markdown Dosyası Olarak İndir (.md)"
-          >
-            <Download className="w-4 h-4" />
-          </button>
+          <NoteDownloadMenu note={note} />
 
           <button
             onClick={handleCreateTaskFromNote}
@@ -372,9 +421,42 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         </div>
       </div>
 
-      {symbolsOpen && <MathSymbolBar onInsertLatex={handleInsertLatex} />}
+      {isText && symbolsOpen && <MathSymbolBar onInsertLatex={handleInsertLatex} />}
+
+      {kind === 'table' && (
+        <div className="flex-1 min-h-0">
+          <SpreadsheetEditor value={note.content} readOnly={!editable} onChange={(json) => updateNote(note.id, { content: json })} />
+        </div>
+      )}
+      {kind === 'pdf' && (
+        <div className="flex-1 min-h-0">
+          {note.fileId ? (
+            <PdfViewer fileId={note.fileId} onConvert={editable ? setConvertBytes : undefined} />
+          ) : (
+            <p className="p-6 text-sm text-muted">PDF dosyası bulunamadı.</p>
+          )}
+          {converting && (
+            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg bg-surface border border-line text-xs text-body shadow-lg" aria-live="polite">
+              {converting}
+            </p>
+          )}
+        </div>
+      )}
+      <Modal isOpen={!!convertBytes} onClose={() => setConvertBytes(null)} title="Metne dönüştür" subtitle="PDF’teki yazı yeni bir metin notuna aktarılır; PDF olduğu gibi kalır." maxWidth="max-w-md">
+        <div className="grid gap-2">
+          <button onClick={() => convertPdf(false)} className="text-left p-3 rounded-lg border border-line hover:border-brand hover:bg-surface-2">
+            <span className="block text-sm text-fg font-medium">Basılı yazı</span>
+            <span className="block text-xs text-muted">Bilgisayarda yazılmış veya taranmış belgeler</span>
+          </button>
+          <button onClick={() => convertPdf(true)} className="text-left p-3 rounded-lg border border-line hover:border-brand hover:bg-surface-2">
+            <span className="block text-sm text-fg font-medium">El yazısı</span>
+            <span className="block text-xs text-muted">Elle yazılmış notların fotoğrafı / taraması. Okunaklı yazıda en iyi sonucu verir; sonucu kontrol edin.</span>
+          </button>
+        </div>
+      </Modal>
 
       {/* Main editor / preview content area */}
+      {isText && (
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Editor Column */}
         {(viewMode === 'edit' || viewMode === 'split') && (
@@ -414,7 +496,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         )}
       </div>
 
+      )}
+
       {/* Footer stats bar */}
+      {isText && (
       <div className="flex items-center justify-between px-4 sm:px-6 py-2 border-t border-line bg-surface text-xs text-muted">
         <div className="flex items-center gap-3 sm:gap-4 text-[11px]">
           <span>{wordCount} kelime</span>
@@ -425,6 +510,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <span>Otomatik kaydedilir</span>
         </div>
       </div>
+      )}
 
     </div>
   );

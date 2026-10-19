@@ -50,6 +50,7 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
         raw += decoder.decode(value, { stream: true });
       }
       raw += decoder.decode();
+      if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('İstek eksik geldi; tekrar deneyin.');
     } catch (err) {
       if (err instanceof BadRequestError) throw err;
       throw new BadRequestError('Geçersiz istek gövdesi.');
@@ -66,6 +67,29 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
     throw new BadRequestError('Geçersiz istek gövdesi.');
   }
   return body as Record<string, unknown>;
+}
+
+/** Raw request body (uploads), read in chunks and refused as soon as it grows past `maxBytes`. */
+export async function readBodyBytes(req: Request, maxBytes: number): Promise<Buffer> {
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new BadRequestError('Dosya çok büyük.', 413);
+  if (!req.body) return Buffer.alloc(0);
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel().catch(() => {});
+      throw new BadRequestError('Dosya çok büyük.', 413);
+    }
+    chunks.push(value);
+  }
+  // A body shorter than announced (connection cut, or cut by a proxy) must not be stored as a file.
+  if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('Dosya eksik geldi; tekrar deneyin.');
+  return Buffer.concat(chunks);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,26 +1,28 @@
 import { prisma } from './prisma';
-import { decryptRow, decryptText } from './dataCrypto';
-import { sendPush, workspaceDevices, type PushPayload } from './push';
+import { decryptBytes, decryptRow, decryptText, encryptBytes } from './dataCrypto';
+import { packFile, unpackFile } from './storedFiles';
+import { personDevices, sendPush, workspaceDevices, type PushPayload } from './push';
 import type { CorpModule } from './corporate';
 import { isTransactionActiveOnDate } from './recurringFinance';
 import { academicDataSchema } from './academic/schema';
 import { hasCalendar, isHoliday } from './academic/grading';
 import type { FinanceTransaction } from '@/types';
+import { DEFAULT_PREFERENCES, parsePreferences } from './preferences';
 
 // ---------------------------------------------------------------------------
 // Reminders pushed to phones, tablets and computers while the app is closed:
 //   • görev: last day is today / deadline passed
 //   • ödeme / tahsilat: date is today / date passed (also recurring ones and kredi ödeme günü)
 //   • takvim: today's events
-//   • öğrenci: a class starts in CLASS_LEAD_MIN minutes, exams today
+//   • öğrenci: a class reminder at the time chosen in Ayarlar (default 15 minutes before), exams today
 // Every reminder is sent once (PushSent); several of the same kind are grouped into one notification.
 // Runs every few minutes inside the server process (src/instrumentation.ts). Day reminders go out only
 // between 08:00 and 22:00 Türkiye time; class reminders follow the timetable.
 // ---------------------------------------------------------------------------
 
 const TZ = 'Europe/Istanbul';
-/** Minutes before a class starts that its reminder is sent. */
-export const CLASS_LEAD_MIN = 15;
+/** A reminder whose moment passed less than this long ago is still sent (the sweep runs every 5 minutes). */
+const CLASS_WINDOW_MIN = 10;
 
 export function nowTR(d = new Date()) {
   const parts = Object.fromEntries(
@@ -42,6 +44,8 @@ type Now = ReturnType<typeof nowTR>;
 interface Item {
   key: string;
   label: string;
+  /** Classes: minutes until the start (negative once it started) */
+  left?: number;
 }
 
 function group(items: Item[], one: (i: Item) => PushPayload, many: (n: number, list: string) => PushPayload): PushPayload {
@@ -63,11 +67,13 @@ async function remind(
   module: CorpModule | null,
   all: Item[],
   one: (i: Item) => PushPayload,
-  many: (n: number, list: string) => PushPayload
+  many: (n: number, list: string) => PushPayload,
+  /** Kurumsal "Şahsi" records: only this person's devices ("owner" or a member id) */
+  who?: string
 ): Promise<number> {
   const items = await unsent(all);
   if (!items.length) return 0;
-  const devices = await workspaceDevices(userId, module);
+  const devices = who ? await personDevices(userId, who) : await workspaceDevices(userId, module);
   if (!devices.length) return 0;
   // Mark first: a slow push service must not cause a second copy on the next run.
   await prisma.pushSent.createMany({ data: items.map((i) => ({ key: i.key })) });
@@ -116,8 +122,19 @@ async function dayReminders(userId: string, today: string): Promise<number> {
     (n, list) => ({ title: `Bugün ${n} etkinliğin var`, body: list, tab: 'calendar', tag: 'lr-today' })
   );
 
-  // Ödemeler ve tahsilatlar
+  // Ödemeler ve tahsilatlar: the shared ones, and each person's "Şahsi Finans" separately.
   const fin = transactions.map((raw) => decryptRow('financeTransaction', userId, raw));
+  for (const who of new Set(fin.map((t) => t.personalOf ?? ''))) {
+    sent += await financeReminders(userId, today, fin.filter((t) => (t.personalOf ?? '') === who), who || undefined);
+  }
+  return sent;
+}
+
+type FinRow = Awaited<ReturnType<typeof prisma.financeTransaction.findMany>>[number];
+
+async function financeReminders(userId: string, today: string, fin: FinRow[], who?: string): Promise<number> {
+  let sent = 0;
+  const tab = who ? 'personalFinance' : 'finance';
   const dueToday: Item[] = [];
   const overdue: Item[] = [];
   for (const t of fin) {
@@ -141,17 +158,27 @@ async function dayReminders(userId: string, today: string): Promise<number> {
     userId,
     'finance',
     dueToday,
-    (i) => ({ title: 'Bugün ödeme günü', body: i.label, tab: 'finance', tag: 'lr-due-finance' }),
-    (n, list) => ({ title: `Bugün ${n} ödeme / tahsilat günü`, body: list, tab: 'finance', tag: 'lr-due-finance' })
+    (i) => ({ title: 'Bugün ödeme günü', body: i.label, tab, tag: 'lr-due-finance' }),
+    (n, list) => ({ title: `Bugün ${n} ödeme / tahsilat günü`, body: list, tab, tag: 'lr-due-finance' }),
+    who
   );
   sent += await remind(
     userId,
     'finance',
     overdue,
-    (i) => ({ title: 'Ödeme tarihi geçti', body: i.label, tab: 'finance', tag: 'lr-overdue-finance' }),
-    (n, list) => ({ title: `${n} ödemenin tarihi geçti`, body: list, tab: 'finance', tag: 'lr-overdue-finance' })
+    (i) => ({ title: 'Ödeme tarihi geçti', body: i.label, tab, tag: 'lr-overdue-finance' }),
+    (n, list) => ({ title: `${n} ödemenin tarihi geçti`, body: list, tab, tag: 'lr-overdue-finance' }),
+    who
   );
   return sent;
+}
+
+/** Title from the real minutes left (the sweep runs every few minutes, so it may differ from the setting). */
+function classTitle(left: number, n: number): string {
+  const what = n > 1 ? `${n} ders` : 'Ders';
+  if (left > 0) return `${what} ${left} dakika sonra başlıyor`;
+  if (left === 0) return `${what} başlıyor`;
+  return `${what} ${-left} dakika önce başladı`;
 }
 
 const toMin = (hhmm: string) => {
@@ -161,8 +188,15 @@ const toMin = (hhmm: string) => {
 
 /** Öğrenci: a class of the active term starts soon; exams today (with the day reminders). */
 async function studentReminders(userId: string, now: Now, withDay: boolean): Promise<number> {
-  const profile = await prisma.studentProfile.findUnique({ where: { userId }, select: { data: true } });
+  const [profile, user] = await Promise.all([
+    prisma.studentProfile.findUnique({ where: { userId }, select: { data: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }),
+  ]);
   if (!profile) return 0;
+  let lead: number | null = DEFAULT_PREFERENCES.classReminderMinutes;
+  try {
+    if (user?.preferences) lead = parsePreferences(JSON.parse(decryptText(userId, user.preferences) || '{}')).classReminderMinutes;
+  } catch {}
   let data;
   try {
     const parsed = academicDataSchema.safeParse(JSON.parse(decryptText(userId, profile.data) || '{}'));
@@ -178,23 +212,28 @@ async function studentReminders(userId: string, now: Now, withDay: boolean): Pro
   // Classes: not outside the term's calendar, not on holidays / exam weeks / arife afternoons.
   const inTerm = !hasCalendar(term) || (now.date >= term.start && now.date <= term.end);
   const holiday = inTerm ? isHoliday(now.date, term) : undefined;
-  if (inTerm && (!holiday || holiday.half)) {
+  if (lead !== null && inTerm && (!holiday || holiday.half)) {
     const soon: Item[] = [];
     for (const c of data.courses) {
       if (c.termId !== term.id) continue;
       for (const s of c.sessions) {
         if (s.day !== now.weekday || (holiday?.half && s.start >= '13:00')) continue;
-        const left = toMin(s.start) - now.minutes;
-        if (left <= 0 || left > CLASS_LEAD_MIN) continue;
-        soon.push({ key: `class:${c.id}:${s.id}:${now.date}`, label: `${s.start} ${c.code ? `${c.code} ` : ''}${c.name}${s.room ? ` · ${s.room}` : ''}` });
+        // Reminder moment = start − lead; sent by the first sweep at or after it.
+        const since = now.minutes - (toMin(s.start) - lead);
+        if (since < 0 || since >= CLASS_WINDOW_MIN) continue;
+        soon.push({
+          key: `class:${c.id}:${s.id}:${now.date}`,
+          label: `${s.start} ${c.code ? `${c.code} ` : ''}${c.name}${s.room ? ` · ${s.room}` : ''}`,
+          left: toMin(s.start) - now.minutes,
+        });
       }
     }
     sent += await remind(
       userId,
       null,
       soon,
-      (i) => ({ title: 'Ders başlıyor', body: i.label, tab: 'academic', tag: 'lr-class' }),
-      (n, list) => ({ title: `${n} ders başlıyor`, body: list, tab: 'academic', tag: 'lr-class' })
+      (i) => ({ title: classTitle(i.left ?? lead, 1), body: i.label, tab: 'academic', tag: 'lr-class' }),
+      (n, list) => ({ title: classTitle(Math.min(...soon.map((x) => x.left ?? lead)), n), body: list, tab: 'academic', tag: 'lr-class' })
     );
   }
 
@@ -214,6 +253,38 @@ async function studentReminders(userId: string, now: Now, withDay: boolean): Pro
     );
   }
   return sent;
+}
+
+/** Uploaded files that never became (or no longer are) a note's PDF, after a day. */
+async function cleanupOrphanFiles() {
+  const old = await prisma.storedFile.findMany({ where: { purpose: 'note', createdAt: { lt: new Date(Date.now() - 86_400_000) } }, select: { id: true, userId: true } });
+  if (!old.length) return;
+  const used = new Set(
+    (await prisma.note.findMany({ where: { fileId: { in: old.map((f) => f.id) } }, select: { fileId: true } })).map((n) => n.fileId)
+  );
+  const orphans = old.filter((f) => !used.has(f.id)).map((f) => f.id);
+  if (orphans.length) await prisma.storedFile.deleteMany({ where: { id: { in: orphans } } });
+}
+
+/**
+ * Files stored before compression existed are compressed a few at a time, so the database and its
+ * backups shrink without slowing the server down.
+ */
+async function compressOldFiles() {
+  const rows = await prisma.storedFile.findMany({ where: { compression: null }, orderBy: { createdAt: 'asc' }, take: 5 });
+  for (const f of rows) {
+    try {
+      const plain = await unpackFile(decryptBytes(f.userId, Buffer.from(f.data)), null);
+      const packed = await packFile(plain);
+      // Not worth it: mark as checked ("none") so it is not tried again.
+      await prisma.storedFile.update({
+        where: { id: f.id },
+        data: packed.compression ? { compression: 'br', data: new Uint8Array(encryptBytes(f.userId, packed.data)) } : { compression: 'none' },
+      });
+    } catch {
+      await prisma.storedFile.update({ where: { id: f.id }, data: { compression: 'none' } }).catch(() => {});
+    }
+  }
 }
 
 let running = false;
@@ -250,6 +321,8 @@ export async function runReminderSweep(opts: { ignoreHours?: boolean; now?: Date
       }
     }
     await prisma.pushSent.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } });
+    await cleanupOrphanFiles().catch(() => {});
+    await compressOldFiles().catch(() => {});
     const value = JSON.stringify({ lastRunAt: new Date().toISOString(), lastSent: total });
     await prisma.systemSetting.upsert({ where: { key: SWEEP_KEY }, update: { value }, create: { key: SWEEP_KEY, value } });
   } finally {

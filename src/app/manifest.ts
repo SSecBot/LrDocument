@@ -32,7 +32,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: 'Notlar', url: '/dashboard?sekme=notes', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Görevler', url: '/dashboard?sekme=tasks', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Takvim', url: '/dashboard?sekme=calendar', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
-      { name: 'Gelir ve Gider', url: '/dashboard?sekme=finance', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Finans', url: '/dashboard?sekme=finance', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
     ],
   };
 }

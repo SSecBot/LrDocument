@@ -72,6 +72,9 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'reset') {
+      // The account password is checked here: only a few tries, like the sign-in.
+      const resetWait = rateLimit(`secret-reset:${userId}`, 5, 15 * 60_000);
+      if (resetWait) return tooManyRequests(resetWait);
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
       if (!(await comparePassword(body.password, user?.passwordHash))) {
         return NextResponse.json({ error: 'Hesap şifresi hatalı.' }, { status: 403 });

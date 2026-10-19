@@ -42,11 +42,11 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await hashPassword(body.password as string);
-    const planValue = subscriptionPlan === 'Tek Seferlik' ? 'Tek Seferlik' : 'Aylık';
-    const subType: 'AYLIK' | 'TEK_SEFERLIK' = planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
+    const planValue = subscriptionPlan === 'VIP' ? 'VIP' : subscriptionPlan === 'Tek Seferlik' ? 'Tek Seferlik' : 'Aylık';
+    const subType = planValue === 'VIP' ? 'VIP' : planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
     const roleValue = role === 'ADMIN' ? 'ADMIN' : 'USER';
     const statusValue = status === 'PENDING' || status === 'REJECTED' ? status : 'APPROVED';
-    const payStatus = statusValue === 'APPROVED' ? 'MANUAL_APPROVED' : 'PENDING';
+    const payStatus = planValue === 'VIP' ? 'WAIVED' : statusValue === 'APPROVED' ? 'MANUAL_APPROVED' : 'PENDING';
 
     const newUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({

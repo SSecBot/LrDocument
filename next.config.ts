@@ -42,10 +42,18 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Every API request passes the proxy (CSRF check), which buffers the body up to this size and
+    // silently cuts what is beyond it. Room for the largest upload (PDF notes: 25 MB) and backups;
+    // each route still enforces its own, smaller limit.
+    proxyClientMaxBodySize: '60mb',
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      // Stored files (PDF notes): even opened directly they cannot run scripts in this origin.
+      { source: "/api/files/:path*", headers: [{ key: "Content-Security-Policy", value: "sandbox; default-src 'none'; style-src 'unsafe-inline'" }] },
       // Service worker of the installable app: always revalidated, allowed to control the whole site.
       { source: "/sw.js", headers: [{ key: "Service-Worker-Allowed", value: "/" }] },
       // Pages are never stored by the browser or proxies; only hashed build assets

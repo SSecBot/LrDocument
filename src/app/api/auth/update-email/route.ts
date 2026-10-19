@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       name: updatedUser.name,
       role: updatedUser.role === 'ADMIN' ? 'ADMIN' : 'USER',
       status: 'APPROVED',
-      subscriptionPlan: (updatedUser.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
+      subscriptionPlan: (updatedUser.subscriptionPlan as 'Aylık' | 'Tek Seferlik' | 'VIP') || 'Aylık',
       sv: updatedUser.sessionVersion,
     }, maxAge);
 

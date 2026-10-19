@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useNewItemRequest } from '@/lib/shortcuts';
 import { useAppStore, getEffectiveTaskPriority } from '@/store/useAppStore';
 import { TaskItem } from './TaskItem';
 import { TaskPriority } from '@/types';
@@ -29,6 +30,9 @@ export const TasksWorkspace: React.FC = () => {
   const completedCount = tasks.filter(t => t.completed).length;
   const totalCount = tasks.length;
   const completionPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const quickInput = useRef<HTMLInputElement>(null);
+  useNewItemRequest('task', () => quickInput.current?.focus());
 
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +107,7 @@ export const TasksWorkspace: React.FC = () => {
           className="bg-surface border border-line hover:border-brand-hover p-2.5 sm:p-3 rounded-lg flex items-center gap-2 sm:gap-3 flex-wrap transition-colors"
         >
           <input
+            ref={quickInput}
             type="text"
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}

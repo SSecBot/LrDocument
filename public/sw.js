@@ -58,13 +58,19 @@ self.addEventListener('push', (event) => {
     data = { title: 'LrDocument', body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'LrDocument', {
-      body: data.body || '',
-      tag: data.tag || undefined,
-      renotify: !!data.tag,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/badge-96.png',
-      data: { tab: data.tab || 'dashboard' },
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      // LrDocument is open and shown: the window plays the person's chosen sound instead.
+      const shown = windows.some((w) => w.visibilityState === 'visible');
+      if (shown) windows.forEach((w) => w.postMessage({ type: 'lr-push' }));
+      return self.registration.showNotification(data.title || 'LrDocument', {
+        body: data.body || '',
+        tag: data.tag || undefined,
+        renotify: !!data.tag,
+        silent: shown,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/badge-96.png',
+        data: { tab: data.tab || 'dashboard' },
+      });
     })
   );
 });

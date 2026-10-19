@@ -59,6 +59,7 @@ model User {
   pushSubscriptions PushSubscription[]
   secretNotes  SecretNote[]
   secretVault  SecretVault?
+  files        StoredFile[]
 
   @@index([status, subscriptionType])
   @@index([status, subscriptionPlan])
@@ -72,6 +73,8 @@ model Folder {
   description String?
   iconName    String?  @default("Folder")
   isSystem    Boolean  @default(false)
+  /// Kurumsal "Şahsi" space: whose private record it is ("owner" or a member id); null = shared.
+  personalOf  String?
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -87,6 +90,11 @@ model Note {
   tags       String   @default("[]") // JSON string
   isFavorite Boolean  @default(false)
   isPinned   Boolean  @default(false)
+  /// "text" (Markdown), "table" (spreadsheet JSON in content) or "pdf" (fileId points to the stored PDF)
+  kind       String   @default("text")
+  fileId     String?
+  /// Kurumsal "Şahsi Notlar": owner ("owner") or member id; null = shared notes.
+  personalOf String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -196,6 +204,8 @@ model FinanceTransaction {
   isDebt              Boolean  @default(false)
   monthlyInterestRate Float?
   minPaymentRate      Float?
+  /// Kurumsal "Şahsi Finans": owner ("owner") or member id; null = shared.
+  personalOf         String?
   createdBy          String?
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -434,6 +444,29 @@ model SecretNote {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Files attached to notes (PDF). The content is encrypted with the account's key (AES-256-GCM);
+/// `sha256` (of the plain file) checks integrity on every read. Nothing is kept in the browser.
+model StoredFile {
+  id         String   @id
+  userId     String
+  /// Kurumsal "Şahsi" space owner ("owner" or a member id); null = shared.
+  personalOf String?
+  name       String
+  mime       String
+  size       Int
+  sha256     String
+  /// "note" (a PDF note) or "sound" (the person's notification sound, referenced from preferences)
+  purpose    String   @default("note")
+  /// "br": Brotli-compressed before encryption (smaller database and backups); "none": checked, not worth it;
+  /// null: stored before compression existed (compressed in the background)
+  compression String?
+  data       Bytes
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

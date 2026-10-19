@@ -6,6 +6,7 @@ import { PlatformBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { AlertBanner } from './AlertBanner';
 import { VerificationBanner } from './VerificationBanner';
+import { AcademicSummaryWidget, ExchangeWidget, FinanceSummaryWidget, MonthCalendarWidget, PinnedNotesWidget } from './ExtraWidgets';
 import { StudentDashboardCard } from '@/components/academic/StudentDashboardCard';
 import { hasStudentAccess } from '@/lib/access';
 import { canEdit, canView, isCorporate } from '@/lib/corporate';
@@ -44,6 +45,11 @@ const WIDGETS: { id: WidgetId; label: string; hint: string; wide?: boolean; visi
   { id: 'events', label: 'Yaklaşan etkinlikler', hint: 'Takvimdeki sıradaki etkinlikler', visible: true },
   { id: 'tasks', label: 'Yaklaşan görevler', hint: 'Son tarihi yaklaşan veya geçen görevler', visible: false },
   { id: 'payments', label: 'Yaklaşan ödemeler', hint: '30 gün içindeki ödeme ve tahsilatlar', visible: false },
+  { id: 'month', label: 'Aylık takvim', hint: 'Ayın etkinlik, görev, ödeme ve sınav günleri', visible: false },
+  { id: 'financeSummary', label: 'Finans analizi', hint: 'Bu ayın gelir, gider, birikim oranı ve kategorileri', visible: false },
+  { id: 'exchange', label: 'Döviz kurları', hint: 'Canlı dolar / euro kuru ve hızlı çevirici', visible: false },
+  { id: 'academic', label: 'Akademik durum', hint: 'Ortalama, devamsızlık uyarıları, sıradaki sınav', visible: false },
+  { id: 'pinned', label: 'Sabitlenmiş notlar', hint: 'İğnelediğiniz notlara hızlı erişim', visible: false },
 ];
 
 /** Saved layout, completed with widgets it does not mention yet (in their default visibility). */
@@ -191,6 +197,11 @@ export const DashboardOverview: React.FC = () => {
     events: canView(currentUser, 'calendar'),
     tasks: canView(currentUser, 'work'),
     payments: canView(currentUser, 'finance'),
+    month: true,
+    financeSummary: canView(currentUser, 'finance'),
+    exchange: true,
+    academic: studentAccess,
+    pinned: canView(currentUser, 'notes'),
   };
   const fullLayout = resolveLayout(preferences.dashboardWidgets);
   const layout = fullLayout.filter((w) => available[w.id]);
@@ -373,6 +384,11 @@ export const DashboardOverview: React.FC = () => {
     events: eventsWidget,
     tasks: tasksWidget,
     payments: paymentsWidget,
+    month: <MonthCalendarWidget />,
+    financeSummary: <FinanceSummaryWidget />,
+    exchange: <ExchangeWidget />,
+    academic: <AcademicSummaryWidget />,
+    pinned: <PinnedNotesWidget />,
   };
   const shown = layout.filter((w) => w.visible);
 

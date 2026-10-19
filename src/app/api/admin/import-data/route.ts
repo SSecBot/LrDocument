@@ -10,7 +10,9 @@ import { academicDataSchema } from '@/lib/academic/schema';
 import { catalogFields, universityById } from '@/lib/universities';
 import { emailInUse } from '@/lib/loginEmail';
 import { saveSchoolCalendar } from '@/lib/schoolCalendarServer';
-import { decryptText, encryptRow, type EncryptedModel } from '@/lib/dataCrypto';
+import { createHash } from 'crypto';
+import { decryptText, encryptBytes, encryptRow, encryptText, type EncryptedModel } from '@/lib/dataCrypto';
+import { MAX_FILE_BYTES, fileTypeFor, packFile, unpackFile, type FilePurpose } from '@/lib/storedFiles';
 
 type Row = Record<string, unknown>;
 
@@ -90,6 +92,8 @@ export async function POST(req: Request) {
     const data = body.data as Row;
 
     const summary = {
+      importedFiles: 0,
+      importedSecretNotes: 0,
       importedUsers: 0,
       importedFolders: 0,
       importedNotes: 0,
@@ -119,9 +123,9 @@ export async function POST(req: Request) {
         name: str(u.name, 'Kullanıcı').slice(0, 80) || 'Kullanıcı',
         role: oneOf(u.role, ['USER', 'ADMIN'] as const, 'USER'),
         status: oneOf(u.status, ['PENDING', 'APPROVED', 'REJECTED'] as const, 'APPROVED'),
-        subscriptionType: oneOf(u.subscriptionType, ['AYLIK', 'TEK_SEFERLIK'] as const, 'AYLIK'),
-        subscriptionPlan: oneOf(u.subscriptionPlan, ['Aylık', 'Tek Seferlik'] as const, 'Aylık'),
-        paymentStatus: oneOf(u.paymentStatus, ['PENDING', 'MANUAL_APPROVED', 'SUCCESSFUL'] as const, 'PENDING'),
+        subscriptionType: oneOf(u.subscriptionType, ['AYLIK', 'TEK_SEFERLIK', 'VIP'] as const, 'AYLIK'),
+        subscriptionPlan: oneOf(u.subscriptionPlan, ['Aylık', 'Tek Seferlik', 'VIP'] as const, 'Aylık'),
+        paymentStatus: oneOf(u.paymentStatus, ['PENDING', 'MANUAL_APPROVED', 'SUCCESSFUL', 'WAIVED'] as const, 'PENDING'),
         accountType: oneOf(u.accountType, ['STANDARD', 'STUDENT', 'CORPORATE'] as const, 'STANDARD'),
         organization: optStr(u.organization)?.slice(0, 120) ?? null,
         seats: optNum(u.seats) === null ? null : Math.max(1, Math.round(optNum(u.seats)!)),
@@ -163,6 +167,8 @@ export async function POST(req: Request) {
       description: optStr(f.description),
       iconName: str(f.iconName, 'Folder'),
       isSystem: Boolean(f.isSystem),
+      // Kurumsal "Şahsi" records stay private after a restore.
+      personalOf: optStr(f.personalOf),
     }), 'folder');
 
     summary.importedNotes = await importOwnedRows(asRows(data.notes), prisma.note as unknown as Delegate, userIdMap, (n) => ({
@@ -172,6 +178,9 @@ export async function POST(req: Request) {
       tags: jsonStr(n.tags),
       isFavorite: Boolean(n.isFavorite),
       isPinned: Boolean(n.isPinned),
+      kind: oneOf(n.kind, ['text', 'table', 'pdf'] as const, 'text'),
+      fileId: optStr(n.fileId),
+      personalOf: optStr(n.personalOf),
     }), 'note');
 
     summary.importedScripts = await importOwnedRows(asRows(data.scripts), prisma.script as unknown as Delegate, userIdMap, (s) => ({
@@ -189,10 +198,12 @@ export async function POST(req: Request) {
       description: optStr(t.description),
       completed: Boolean(t.completed),
       priority: str(t.priority, 'orta'),
+      startDate: optStr(t.startDate),
       dueDate: optStr(t.dueDate),
       linkedNoteId: optStr(t.linkedNoteId),
       linkedScriptId: optStr(t.linkedScriptId),
       completedAt: optDate(t.completedAt),
+      createdBy: optStr(t.createdBy),
     }), 'task');
 
     summary.importedEvents = await importOwnedRows(asRows(data.events), prisma.calendarEvent as unknown as Delegate, userIdMap, (e) => ({
@@ -208,6 +219,7 @@ export async function POST(req: Request) {
       linkedTaskId: optStr(e.linkedTaskId),
       status: str(e.status, 'planlandi'),
       checklist: jsonStr(e.checklist),
+      createdBy: optStr(e.createdBy),
     }), 'calendarEvent');
 
     summary.importedMediaItems = await importOwnedRows(asRows(data.mediaItems), prisma.mediaItem as unknown as Delegate, userIdMap, (m) => ({
@@ -243,6 +255,8 @@ export async function POST(req: Request) {
       isDebt: Boolean(t.isDebt),
       monthlyInterestRate: optNum(t.monthlyInterestRate),
       minPaymentRate: optNum(t.minPaymentRate),
+      createdBy: optStr(t.createdBy),
+      personalOf: optStr(t.personalOf),
     }), 'financeTransaction');
 
     summary.importedCategories = await importOwnedRows(asRows(data.categories), prisma.financeCategory as unknown as Delegate, userIdMap, (c) => ({
@@ -261,6 +275,7 @@ export async function POST(req: Request) {
       tags: jsonStr(k.tags),
       linkedScriptId: optStr(k.linkedScriptId),
       linkedNoteId: optStr(k.linkedNoteId),
+      createdBy: optStr(k.createdBy),
     }), 'kanbanCard');
 
     summary.importedCustomers = await importOwnedRows(asRows(data.customers), prisma.customer as unknown as Delegate, userIdMap, (c) => ({
@@ -275,7 +290,64 @@ export async function POST(req: Request) {
       endDate: str(c.endDate).slice(0, 10),
       payments: jsonStr(c.payments),
       notes: optStr(c.notes),
+      createdBy: optStr(c.createdBy),
     }), 'customer');
+
+    // PDF notes' files: checked (type, size, hash) and encrypted again with this server's key.
+    for (const f of asRows(data.storedFiles)) {
+      const userId = userIdMap.get(str(f.userId));
+      const id = str(f.id);
+      const purpose: FilePurpose = f.purpose === 'sound' ? 'sound' : 'note';
+      const found = fileTypeFor(purpose, str(f.mime));
+      if (!userId || !/^[a-f0-9]{32}$/.test(id) || !found) continue;
+      let bytes: Buffer;
+      try {
+        bytes = await unpackFile(Buffer.from(str(f.data), 'base64'), f.encoding === 'br' ? 'br' : null);
+      } catch {
+        continue; // damaged entry
+      }
+      const type = found.type;
+      if (!bytes.length || bytes.length > MAX_FILE_BYTES || !type.check(bytes)) continue;
+      const sha256 = createHash('sha256').update(bytes).digest('hex');
+      if (str(f.sha256) && str(f.sha256) !== sha256) continue;
+      const existing = await prisma.storedFile.findUnique({ where: { id }, select: { userId: true } });
+      if (existing && existing.userId !== userId) continue;
+      const packed = await packFile(bytes);
+      const row = {
+        personalOf: optStr(f.personalOf),
+        purpose,
+        name: encryptText(userId, str(f.name, 'belge.pdf').slice(0, 200)),
+        mime: found.mime,
+        size: bytes.length,
+        sha256,
+        compression: packed.compression ?? 'none',
+        data: new Uint8Array(encryptBytes(userId, packed.data)),
+      };
+      await prisma.storedFile.upsert({ where: { id }, update: row, create: { id, userId, ...row, createdAt: date(f.createdAt) } });
+      summary.importedFiles++;
+    }
+
+    // Gizli notlar: the vault and its notes stay encrypted with the user's own password.
+    for (const v of asRows(data.secretVaults)) {
+      const userId = userIdMap.get(str(v.userId));
+      if (!userId || !str(v.salt) || !/^v1\./.test(str(v.check))) continue;
+      const row = { salt: str(v.salt).slice(0, 64), check: str(v.check).slice(0, 400), iterations: Math.round(num(v.iterations, 600000)) };
+      await prisma.secretVault.upsert({ where: { userId }, update: row, create: { userId, ...row } });
+    }
+    for (const n of asRows(data.secretNotes)) {
+      const userId = userIdMap.get(str(n.userId));
+      const id = str(n.id);
+      const payload = str(n.payload);
+      if (!userId || !/^[A-Za-z0-9_-]{1,64}$/.test(id) || !/^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]+$/.test(payload) || payload.length > 1_500_000) continue;
+      const existing = await prisma.secretNote.findUnique({ where: { id }, select: { userId: true } });
+      if (existing && existing.userId !== userId) continue;
+      await prisma.secretNote.upsert({
+        where: { id },
+        update: { payload: encryptText(userId, payload) },
+        create: { id, userId, payload: encryptText(userId, payload), createdAt: date(n.createdAt) },
+      });
+      summary.importedSecretNotes++;
+    }
 
     // Student profiles are 1:1 with users, keyed by userId.
     for (const sp of asRows(data.studentProfiles)) {

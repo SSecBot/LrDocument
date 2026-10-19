@@ -93,9 +93,9 @@ function payments(v: unknown, ctx?: MutateContext): string {
 // Entity definitions. `fields` maps client data to DB columns (never userId/id).
 // ---------------------------------------------------------------------------
 type Delegate = {
-  findUnique: (args: { where: { id: string }; select: { userId: true } }) => Promise<{ userId: string } | null>;
+  findUnique: (args: { where: { id: string }; select: Record<string, true> }) => Promise<{ userId: string; personalOf?: string | null } | null>;
   upsert: (args: { where: { id: string }; update: Row; create: Row }) => Promise<Row>;
-  deleteMany: (args: { where: { id: string; userId: string } }) => Promise<unknown>;
+  deleteMany: (args: { where: Row }) => Promise<unknown>;
   count: (args: { where: { userId: string } }) => Promise<number>;
 };
 
@@ -117,15 +117,25 @@ interface EntityDef {
   createOnly?: (d: Row, ctx: MutateContext) => Row;
   /** Folder / category ids are namespaced per user in the DB. */
   namespaced?: boolean;
+  /** Kurumsal "Şahsi" space: the entity can also be a private record of one person. */
+  personal?: boolean;
 }
+
+/** Note kinds: Markdown text, a spreadsheet (JSON in `content`) or a stored PDF (`fileId`). */
+const NOTE_KINDS = ['text', 'table', 'pdf'] as const;
+/** A spreadsheet note keeps its cells as JSON, which may be larger than a text note. */
+const MAX_TABLE = 2_500_000;
 
 const ENTITIES: Record<string, EntityDef> = {
   note: {
     delegate: () => prisma.note as unknown as Delegate,
     model: 'note',
+    personal: true,
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
-      content: text(d.content, MAX_TEXT),
+      content: text(d.content, d.kind === 'table' ? MAX_TABLE : MAX_TEXT),
+      kind: oneOf(d.kind, NOTE_KINDS, 'text'),
+      fileId: ref(d.fileId),
       // '' = not in any folder (new accounts have no folders, only the Favoriler view).
       folder: text(d.folder, MAX_ID),
       tags: tags(d.tags),
@@ -189,6 +199,7 @@ const ENTITIES: Record<string, EntityDef> = {
   finance: {
     delegate: () => prisma.financeTransaction as unknown as Delegate,
     model: 'financeTransaction',
+    personal: true,
     fields: (d) => ({
       title: text(d.title, MAX_TITLE),
       amount: float(d.amount, 0),
@@ -240,6 +251,7 @@ const ENTITIES: Record<string, EntityDef> = {
   },
   folder: {
     namespaced: true,
+    personal: true,
     delegate: () => prisma.folder as unknown as Delegate,
     model: 'folder',
     fields: (d) => ({
@@ -312,9 +324,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
     }
 
-    // Kurumsal: the owner / managers may edit everything, members per module (see Kurum page).
+    // Kurumsal "Şahsi Notlar / Şahsi Finans": a private record of the person signed in, outside the
+    // shared space (and outside the team permissions). Everything else follows the permissions:
+    // the owner / managers may edit everything, members per module (see Kurum page).
     // Müşteriler exists only for corporate accounts (accessOf returns 'none' otherwise).
-    if (accessOf(session, ENTITY_MODULE[entity as string]) !== 'edit') {
+    const personal = body.personal === true;
+    if (personal && (!def.personal || session.accountType !== 'CORPORATE')) {
+      return NextResponse.json({ error: 'Şahsi kayıt yalnızca kurumsal hesapta kullanılabilir.' }, { status: 400 });
+    }
+    const personalOf = personal ? (session.memberId ?? 'owner') : null;
+    if (!personal && accessOf(session, ENTITY_MODULE[entity as string]) !== 'edit') {
       return NextResponse.json({ error: 'Bu bölümde değişiklik yapma yetkiniz yok.' }, { status: 403 });
     }
 
@@ -328,18 +347,25 @@ export async function POST(req: Request) {
     // Push the change to the account's other open tabs and devices (kurumsal: the whole team).
     const origin = (req.headers.get('x-client-id') ?? '').slice(0, 64);
     const broadcast = (payload?: Record<string, unknown>) => {
-      publish(userId, { entity: entity as string, action, id: rawId, data: payload, by: session.name, origin });
+      publish(userId, { entity: entity as string, action, id: rawId, data: payload, by: session.name, origin, ...(personalOf ? { personalOf } : {}) });
     };
+    // Shared records and each person's private ones are separate: neither can reach the other.
+    const scope = def.personal ? { personalOf } : {};
 
     if (action === 'delete') {
-      await delegate.deleteMany({ where: { id: dbId, userId } });
+      const note = entity === 'note' ? await prisma.note.findFirst({ where: { id: dbId, userId, ...scope }, select: { fileId: true } }) : null;
+      await delegate.deleteMany({ where: { id: dbId, userId, ...scope } });
+      // A PDF note's file goes with it (unless another note still shows it).
+      if (note?.fileId && (await prisma.note.count({ where: { userId, fileId: note.fileId } })) === 0) {
+        await prisma.storedFile.deleteMany({ where: { id: note.fileId, userId } });
+      }
       broadcast();
       return NextResponse.json({ success: true });
     }
 
-    // Ownership check: an id that belongs to another user must never be updated.
-    const existing = await delegate.findUnique({ where: { id: dbId }, select: { userId: true } });
-    if (existing && existing.userId !== userId) {
+    // Ownership check: an id that belongs to another user (or to another space) must never be updated.
+    const existing = await delegate.findUnique({ where: { id: dbId }, select: def.personal ? { userId: true, personalOf: true } : { userId: true } });
+    if (existing && (existing.userId !== userId || (def.personal && (existing.personalOf ?? null) !== personalOf))) {
       return NextResponse.json({ error: 'Bu kayda erişim yetkiniz yok.' }, { status: 403 });
     }
 
@@ -362,11 +388,11 @@ export async function POST(req: Request) {
     await delegate.upsert({
       where: { id: dbId },
       update: fields,
-      create: { id: dbId, userId, ...fields, ...created },
+      create: { id: dbId, userId, ...fields, ...created, ...scope },
     });
 
     // Kurumsal: teammates' phones and computers get a notification, even with the app closed.
-    if (session.accountType === 'CORPORATE') {
+    if (session.accountType === 'CORPORATE' && !personal) {
       const push = activityPush(entity as string, plain, existing ? ctx : null, session.name);
       if (push) {
         const entityModule = ENTITY_MODULE[entity as string];

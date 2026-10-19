@@ -182,6 +182,14 @@ export async function sendPush(subs: Sub[], payload: PushPayload): Promise<numbe
   return sent;
 }
 
+/** Devices of one person of an account ("owner" or a member id), for their private ("Şahsi") records. */
+export async function personDevices(ownerId: string, who: string): Promise<Sub[]> {
+  return prisma.pushSubscription.findMany({
+    where: { userId: ownerId, memberId: who === 'owner' ? null : who },
+    select: { id: true, endpoint: true, p256dh: true, auth: true },
+  });
+}
+
 /**
  * Devices of an account that may see a module: the owner's devices, plus (kurumsal) the devices of
  * members whose permissions allow it. `exclude` skips the person who made the change.

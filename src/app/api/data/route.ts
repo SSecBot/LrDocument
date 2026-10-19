@@ -43,13 +43,15 @@ export async function GET() {
     const may = (m: CorpModule) => canView(session, m);
     const none = Promise.resolve([] as never[]);
     if (!may('finance')) categories = [];
+    // Shared space only; the "Şahsi" records of each person are loaded separately below.
+    const shared = { userId, personalOf: null };
     const [folders, dbNotes, dbTasks, dbKanban, dbEvents, dbTransactions, dbCustomers] = await Promise.all([
-      may('notes') ? prisma.folder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }) : none,
-      may('notes') ? prisma.note.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }) : none,
+      may('notes') ? prisma.folder.findMany({ where: shared, orderBy: { createdAt: 'asc' } }) : none,
+      may('notes') ? prisma.note.findMany({ where: shared, orderBy: { updatedAt: 'desc' } }) : none,
       may('work') ? prisma.task.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }) : none,
       may('work') ? prisma.kanbanCard.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } }) : none,
       may('calendar') ? prisma.calendarEvent.findMany({ where: { userId }, orderBy: { date: 'asc' } }) : none,
-      may('finance') ? prisma.financeTransaction.findMany({ where: { userId }, orderBy: { date: 'desc' } }) : none,
+      may('finance') ? prisma.financeTransaction.findMany({ where: shared, orderBy: { date: 'desc' } }) : none,
       may('customers') ? prisma.customer.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }) : none,
     ]);
 
@@ -63,15 +65,17 @@ export async function GET() {
       };
     });
 
-    const notes = dbNotes.map((raw) => {
+    const noteOut = (raw: (typeof dbNotes)[number]) => {
       const n = decryptRow('note', userId, raw);
       return {
         ...n,
         tags: safeJsonParse<string[]>(n.tags, []),
+        fileId: n.fileId ?? undefined,
         createdAt: n.createdAt.toISOString(),
         updatedAt: n.updatedAt.toISOString(),
       };
-    });
+    };
+    const notes = dbNotes.map(noteOut);
 
     const tasks = dbTasks.map((raw) => {
       const t = decryptRow('task', userId, raw);
@@ -97,12 +101,13 @@ export async function GET() {
       return { ...e, checklist: safeJsonParse(e.checklist, []), createdAt: e.createdAt.toISOString() };
     });
 
-    const transactions = dbTransactions.map((raw) => {
+    const txOut = (raw: (typeof dbTransactions)[number]) => {
       const tx = decryptRow('financeTransaction', userId, raw);
       return { ...tx, currency: tx.currency || 'TRY', createdAt: tx.createdAt.toISOString() };
-    });
+    };
+    const transactions = dbTransactions.map(txOut);
 
-    const formattedFolders = folders.map((raw) => {
+    const folderOut = (raw: (typeof folders)[number]) => {
       const f = decryptRow('folder', userId, raw);
       return {
         id: stripUserPrefix(f.id, userId),
@@ -111,7 +116,20 @@ export async function GET() {
         iconName: f.iconName || undefined,
         isSystem: f.isSystem,
       };
-    });
+    };
+    const formattedFolders = folders.map(folderOut);
+
+    // Kurumsal "Şahsi Notlar / Şahsi Finans": this person's private records (owner or member).
+    let personal = null;
+    if (session.accountType === 'CORPORATE') {
+      const mine = { userId, personalOf: session.memberId ?? 'owner' };
+      const [pf, pn, pt] = await Promise.all([
+        prisma.folder.findMany({ where: mine, orderBy: { createdAt: 'asc' } }),
+        prisma.note.findMany({ where: mine, orderBy: { updatedAt: 'desc' } }),
+        prisma.financeTransaction.findMany({ where: mine, orderBy: { date: 'desc' } }),
+      ]);
+      personal = { folders: pf.map(folderOut), notes: pn.map(noteOut), transactions: pt.map(txOut) };
+    }
 
     const formattedCategories = categories.map((raw) => {
       const c = decryptRow('financeCategory', userId, raw);
@@ -138,6 +156,7 @@ export async function GET() {
           customers,
           financeCategories: formattedCategories,
           folders: formattedFolders,
+          personal,
           preferences: parsePreferences(preferences),
         },
       },

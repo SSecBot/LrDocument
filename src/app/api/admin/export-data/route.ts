@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { handleRouteError } from '@/lib/apiUtils';
-import { decryptRow, type EncryptedModel } from '@/lib/dataCrypto';
+import { decryptBytes, decryptRow, decryptText, type EncryptedModel } from '@/lib/dataCrypto';
+import { packFile } from '@/lib/storedFiles';
 
 /** Backups hold plain values so they can be restored on a server with a different key. */
 const plain = <T extends { userId: string }>(model: EncryptedModel, rows: T[]) => rows.map((r) => decryptRow(model, r.userId, r));
@@ -65,6 +66,27 @@ export async function GET() {
       prisma.customer.findMany({ orderBy: { createdAt: 'asc' } }),
       prisma.universityCalendar.findMany(),
     ]);
+    // PDF notes' files and Gizli notlar (still encrypted with the user's own vault password).
+    const [files, secretVaults, secretNotes] = await Promise.all([
+      prisma.storedFile.findMany({ orderBy: { createdAt: 'asc' } }),
+      prisma.secretVault.findMany(),
+      prisma.secretNote.findMany({ orderBy: { createdAt: 'asc' } }),
+    ]);
+    // Files go into the backup Brotli-compressed ("encoding": "br"), so PDFs take less space there too.
+    const storedFiles = [];
+    for (const f of files) {
+      let stored: Buffer;
+      try {
+        stored = decryptBytes(f.userId, Buffer.from(f.data));
+      } catch {
+        continue; // unreadable with this key: nothing to back up
+      }
+      const packed = f.compression === 'br' ? { data: stored, compression: 'br' as const } : await packFile(stored);
+      const { data: _data, compression: _c, ...meta } = f;
+      void _data;
+      void _c;
+      storedFiles.push({ ...meta, name: decryptText(f.userId, f.name), encoding: packed.compression, data: packed.data.toString('base64') });
+    }
 
     const backupPayload = {
       version: '2.0.0',
@@ -99,6 +121,9 @@ export async function GET() {
         customers: plain('customer', customers),
         // Akademik takvimler published for universities (not personal data).
         universityCalendars,
+        storedFiles,
+        secretVaults,
+        secretNotes: secretNotes.map((n) => ({ ...n, payload: decryptText(n.userId, n.payload) })),
       },
     };
 

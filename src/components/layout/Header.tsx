@@ -67,7 +67,11 @@ export const Header: React.FC = () => {
       case 'calendar':
         return { title: 'Takvim' };
       case 'finance':
-        return { title: 'Gelir ve Gider' };
+        return { title: 'Finans' };
+      case 'personalNotes':
+        return { title: 'Şahsi Notlar' };
+      case 'personalFinance':
+        return { title: 'Şahsi Finans' };
       case 'academic':
         return { title: 'Ders Takibi' };
       case 'settings':

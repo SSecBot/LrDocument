@@ -83,6 +83,23 @@ export function encryptText(userId: string, plain: string): string {
   return PREFIX + Buffer.concat([iv, cipher.getAuthTag(), body]).toString('base64');
 }
 
+/** Files: [12-byte IV | 16-byte tag | ciphertext], bound to the account like text values. */
+export function encryptBytes(userId: string, plain: Buffer): Buffer {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', keyFor(userId), iv);
+  cipher.setAAD(Buffer.from(`file:${userId}`, 'utf8'));
+  const body = Buffer.concat([cipher.update(plain), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), body]);
+}
+
+/** Throws when the key is wrong or the stored bytes were changed. */
+export function decryptBytes(userId: string, raw: Buffer): Buffer {
+  const decipher = createDecipheriv('aes-256-gcm', keyFor(userId), raw.subarray(0, 12));
+  decipher.setAAD(Buffer.from(`file:${userId}`, 'utf8'));
+  decipher.setAuthTag(raw.subarray(12, 28));
+  return Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]);
+}
+
 export function decryptText(userId: string, value: string): string {
   if (!isEncrypted(value)) return value;
   try {

@@ -103,9 +103,15 @@ if command -v sqlite3 >/dev/null 2>&1; then
 else
   cp "$DB_PATH" "$BACKUP"
 fi
-echo "Yedek: $BACKUP"
-# Son 20 yedeği tut
-ls -1t "$DATA_DIR"/backups/lrdocument-*.db 2>/dev/null | tail -n +21 | xargs -r rm -f
+# Yedek sıkıştırılır (PDF notları ve diğer veriler daha az yer kaplar). Geri dönmek için:
+#   gunzip -c lrdocument-TARIH.db.gz > /var/lib/lrdocument/prod.db
+if command -v gzip >/dev/null 2>&1; then
+  gzip -6 -f "$BACKUP" && BACKUP="$BACKUP.gz"
+fi
+chmod 600 "$BACKUP" 2>/dev/null || true
+echo "Yedek: $BACKUP ($(du -h "$BACKUP" | cut -f1))"
+# Son 20 yedeği tut (eski sıkıştırılmamış .db yedekleri dahil)
+ls -1t "$DATA_DIR"/backups/lrdocument-*.db "$DATA_DIR"/backups/lrdocument-*.db.gz 2>/dev/null | tail -n +21 | xargs -r rm -f
 
 # ---------------------------------------------------------------------------
 step "2/6 Veritabanı konumu kontrol ediliyor"

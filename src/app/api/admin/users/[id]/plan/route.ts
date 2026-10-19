@@ -12,9 +12,9 @@ export async function PATCH(
     const { id } = await params;
     const { subscriptionPlan } = await readJsonObject(req);
 
-    if (subscriptionPlan !== 'Aylık' && subscriptionPlan !== 'Tek Seferlik') {
+    if (subscriptionPlan !== 'Aylık' && subscriptionPlan !== 'Tek Seferlik' && subscriptionPlan !== 'VIP') {
       return NextResponse.json(
-        { error: 'Geçersiz abonelik planı. "Aylık" veya "Tek Seferlik" olmalıdır.' },
+        { error: 'Geçersiz abonelik planı. "Aylık", "Tek Seferlik" veya "VIP" olmalıdır.' },
         { status: 400 }
       );
     }
@@ -29,7 +29,13 @@ export async function PATCH(
       data: {
         subscriptionPlan,
         // Keep the enum-style column in sync with the display plan.
-        subscriptionType: subscriptionPlan === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK',
+        subscriptionType: subscriptionPlan === 'VIP' ? 'VIP' : subscriptionPlan === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK',
+        // VIP: the admin waives payment for good; leaving VIP brings back the normal payment state.
+        ...(subscriptionPlan === 'VIP'
+          ? { paymentStatus: 'WAIVED' }
+          : user.paymentStatus === 'WAIVED'
+            ? { paymentStatus: user.status === 'APPROVED' ? 'MANUAL_APPROVED' : 'PENDING' }
+            : {}),
       },
       select: {
         id: true,
@@ -39,12 +45,16 @@ export async function PATCH(
         status: true,
         subscriptionPlan: true,
         subscriptionType: true,
+        paymentStatus: true,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `${updatedUser.name} kullanıcısının abonelik planı "${subscriptionPlan}" olarak güncellendi.`,
+      message:
+        subscriptionPlan === 'VIP'
+          ? `${updatedUser.name} VIP oldu: ömür boyu ücretsiz, ödeme istenmeyecek.`
+          : `${updatedUser.name} kullanıcısının abonelik planı "${subscriptionPlan}" olarak güncellendi.`,
       user: updatedUser,
     });
   } catch (error) {

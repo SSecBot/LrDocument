@@ -71,6 +71,15 @@ export async function DELETE(_req: Request, { params }: Params) {
     const { id } = await params;
     const { count } = await prisma.orgMember.deleteMany({ where: { id, ownerId: session.userId } });
     if (!count) return NextResponse.json({ error: 'Kişi bulunamadı.' }, { status: 404 });
+    // The person's private ("Şahsi") records and devices leave with them; nobody else could open them.
+    const mine = { userId: session.userId, personalOf: id };
+    await prisma.$transaction([
+      prisma.note.deleteMany({ where: mine }),
+      prisma.folder.deleteMany({ where: mine }),
+      prisma.financeTransaction.deleteMany({ where: mine }),
+      prisma.storedFile.deleteMany({ where: mine }),
+      prisma.pushSubscription.deleteMany({ where: { userId: session.userId, memberId: id } }),
+    ]);
     const seats = await syncSeats(session.userId);
     return NextResponse.json({ success: true, seats });
   } catch (error) {

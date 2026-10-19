@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import {
   Note,
   Task,
@@ -24,6 +24,7 @@ import { INITIAL_FINANCE_CATEGORIES } from '@/data/initialData';
 import { DEFAULT_PREFERENCES, parsePreferences, type UserPreferences } from '@/lib/preferences';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { formatCurrencyTRY, generateId, toLocalDateString } from '@/lib/utils';
+import { playNotificationSound, resetNotificationSound } from '@/lib/notificationSound';
 import { CORP_MODULE_LABEL, ENTITY_MODULE, canEdit, isCorporate, type CorpModule } from '@/lib/corporate';
 import {
   DEFAULT_EXCHANGE_RATES,
@@ -87,8 +88,8 @@ interface AppState {
   activeFolder: string;
   setActiveFolder: (folder: string) => void;
   folders: FolderItem[];
-  addFolder: (name: string, description?: string) => string;
-  updateFolder: (id: string, name: string, description?: string) => void;
+  addFolder: (name: string, description?: string, iconName?: string) => string;
+  updateFolder: (id: string, name: string, description?: string, iconName?: string) => void;
   /** Removes a folder; its notes move to "Tüm notlar", or are deleted too with `withNotes`. */
   deleteFolder: (id: string, options?: { withNotes?: boolean }) => void;
   addNote: (partial?: Partial<Note>) => string;
@@ -171,7 +172,32 @@ type GlobalState = {
   remoteEdits: Record<string, { by: string; at: number }>;
   /** Kurumsal: what teammates added while this tab is open (newest first). */
   activity: AppNotification[];
+  /** Kurumsal "Şahsi Notlar / Şahsi Finans": the signed-in person's private records. */
+  personal: SpaceBucket;
 };
+
+/** Records and selection of one space (the shared workspace or the person's private one). */
+type SpaceBucket = {
+  notes: Note[];
+  folders: FolderItem[];
+  transactions: FinanceTransaction[];
+  activeNoteId: string | null;
+  activeFolder: string;
+};
+
+/**
+ * Kurumsal accounts have a shared workspace and, per person, a private one ("Şahsi"). Components
+ * rendered inside <SpaceContext.Provider value="personal"> (Şahsi Notlar, Şahsi Finans) get the
+ * private notes, folders and transactions — and actions that write there — from useAppStore().
+ */
+export type Space = 'shared' | 'personal';
+export const SpaceContext = createContext<Space>('shared');
+
+const emptyBucket = (): SpaceBucket => ({ notes: [], folders: [], transactions: [], activeNoteId: null, activeFolder: 'all' });
+
+function bucket(space: Space): SpaceBucket {
+  return space === 'personal' ? globalState.personal : (globalState as unknown as SpaceBucket);
+}
 
 const globalState: GlobalState = {
   currentUser: null,
@@ -199,6 +225,7 @@ const globalState: GlobalState = {
   customers: [],
   remoteEdits: {},
   activity: [],
+  personal: emptyBucket(),
 };
 
 const listeners = new Set<() => void>();
@@ -219,8 +246,9 @@ type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder
  * Kurumsal: a member without edit permission for a module gets a notice instead of a local change
  * that the server would reject anyway.
  */
-function guardEdit(module: CorpModule): boolean {
-  if (canEdit(globalState.currentUser, module)) return true;
+function guardEdit(module: CorpModule, space: Space = 'shared'): boolean {
+  // The private space is the person's own, outside the team permissions.
+  if (space === 'personal' || canEdit(globalState.currentUser, module)) return true;
   pushToast({ type: 'warning', title: 'Yetkiniz yok', message: `${CORP_MODULE_LABEL[module]} bölümünü yalnızca görüntüleyebilirsiniz.` });
   return false;
 }
@@ -246,11 +274,12 @@ async function sendMutation(
   action: 'create' | 'upsert' | 'delete',
   id?: string,
   data?: unknown,
-  keepalive = false
+  keepalive = false,
+  space: Space = 'shared'
 ) {
   inFlightMutations++;
   try {
-    const body = JSON.stringify({ entity, action, id, data });
+    const body = JSON.stringify({ entity, action, id, data, ...(space === 'personal' ? { personal: true } : {}) });
     const res = await fetch('/api/data/mutate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Client-Id': CLIENT_ID },
@@ -273,10 +302,10 @@ async function sendMutation(
   }
 }
 
-function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete', id?: string, data?: unknown) {
+function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete', id?: string, data?: unknown, space: Space = 'shared') {
   // Side effects into a module the member may not edit (e.g. a task's calendar entry) stay local.
-  if (!canEdit(globalState.currentUser, ENTITY_MODULE[entity])) return;
-  const key = `${entity}:${id}`;
+  if (space === 'shared' && !canEdit(globalState.currentUser, ENTITY_MODULE[entity])) return;
+  const key = `${space}:${entity}:${id}`;
   const pending = pendingUpserts.get(key);
   if (pending) {
     clearTimeout(pending.timer);
@@ -284,7 +313,7 @@ function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete'
   }
 
   if (action === 'upsert' && id) {
-    const send = (keepalive?: boolean) => sendMutation(entity, action, id, data, keepalive);
+    const send = (keepalive?: boolean) => sendMutation(entity, action, id, data, keepalive, space);
     const timer = setTimeout(() => {
       pendingUpserts.delete(key);
       send();
@@ -294,11 +323,11 @@ function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete'
   }
 
   // Creates and deletes go out immediately; a pending upsert for a deleted record is simply dropped.
-  sendMutation(entity, action, id, data);
+  sendMutation(entity, action, id, data, false, space);
 }
 
-/** Sends all debounced writes immediately (used before leaving the page). */
-function flushPendingMutations() {
+/** Sends all debounced writes immediately (before leaving the page; Ctrl+S in the editor). */
+export function flushPendingMutations() {
   pendingUpserts.forEach(({ timer, send }) => {
     clearTimeout(timer);
     send(true);
@@ -413,7 +442,9 @@ export function getComputedNotifications(): AppNotification[] {
     }
   });
 
-  globalState.transactions.forEach((trans) => {
+  // Shared transactions and (kurumsal) the person's own "Şahsi Finans" records.
+  const ownTx = globalState.personal.transactions.map((t) => [t, 'personalFinance'] as const);
+  [...globalState.transactions.map((t) => [t, 'finance'] as const), ...ownTx].forEach(([trans, tab]) => {
     if (!trans.isConfirmed && isTransactionOverdue(trans)) {
       notifs.push({
         id: `notif-trans-${trans.id}`,
@@ -422,7 +453,7 @@ export function getComputedNotifications(): AppNotification[] {
         type: 'finance_overdue',
         priority: 'yuksek',
         isRead: globalState.preferences.readNotificationIds.includes(`notif-trans-${trans.id}`),
-        targetTab: 'finance',
+        targetTab: tab,
         targetId: trans.id,
         actionType: 'confirm_finance',
         createdAt: trans.date || new Date().toISOString(),
@@ -500,7 +531,8 @@ function loadSystemSettings(): Promise<void> {
 let pendingPrefs: Partial<UserPreferences> = {};
 let prefsTimer: ReturnType<typeof setTimeout> | null = null;
 
-function flushPreferences(keepalive = false) {
+/** Sends pending preference changes now (instead of after the short debounce). */
+export function flushPreferences(keepalive = false) {
   if (prefsTimer) clearTimeout(prefsTimer);
   prefsTimer = null;
   if (!globalState.isAuthenticated || Object.keys(pendingPrefs).length === 0) return;
@@ -576,6 +608,13 @@ const loadUserData = async (silent = false) => {
         globalState.transactions = json.data.transactions || [];
         globalState.customers = json.data.customers || [];
         globalState.folders = json.data.folders || [];
+        const own = json.data.personal;
+        globalState.personal = {
+          ...globalState.personal,
+          notes: own?.notes || [],
+          folders: own?.folders || [],
+          transactions: own?.transactions || [],
+        };
         globalState.preferences = parsePreferences(json.data.preferences);
         if (!silent) syncPushSubscription();
         if (globalState.preferences.exchangeMarkupTRY !== null) {
@@ -629,6 +668,8 @@ function leaveTo(path: string) {
   globalState.transactions = [];
   globalState.customers = [];
   globalState.folders = [];
+  globalState.personal = emptyBucket();
+  resetNotificationSound();
   globalState.preferences = DEFAULT_PREFERENCES;
   notify();
   // Navigate once the device is unsubscribed (at most 1.5 s).
@@ -683,6 +724,8 @@ type RealtimeEvent = {
   data?: Record<string, unknown>;
   by: string;
   origin: string;
+  /** Present for the person's own private ("Şahsi") records */
+  personalOf?: string;
 };
 
 const ENTITY_STATE: Record<MutationEntity, keyof GlobalState> = {
@@ -747,24 +790,29 @@ function applyRealtimeEvent(evt: RealtimeEvent) {
   if (evt.origin === CLIENT_ID) return;
   const key = ENTITY_STATE[evt.entity];
   if (!key || typeof evt.id !== 'string') return;
-  const list = globalState[key] as unknown as { id: string }[];
-  const activity = activityFor(evt, list.find((r) => r.id === evt.id) as Record<string, unknown> | undefined);
+  const space: Space = evt.personalOf ? 'personal' : 'shared';
+  // Private records live in their own bucket (notes, folders and transactions only).
+  const target = (space === 'personal' ? globalState.personal : globalState) as unknown as Record<string, unknown>;
+  if (space === 'personal' && !(key in globalState.personal)) return;
+  const list = target[key] as { id: string }[];
+  const activity = space === 'personal' ? null : activityFor(evt, list.find((r) => r.id === evt.id) as Record<string, unknown> | undefined);
   if (activity) {
     globalState.activity = [activity, ...globalState.activity].slice(0, 30);
     pushToast({ type: 'info', title: activity.title, message: activity.message });
   }
   if (evt.action === 'delete') {
-    globalState[key] = list.filter((r) => r.id !== evt.id) as never;
-    if (evt.entity === 'note' && globalState.activeNoteId === evt.id) globalState.activeNoteId = null;
+    target[key] = list.filter((r) => r.id !== evt.id);
+    const b = bucket(space);
+    if (evt.entity === 'note' && b.activeNoteId === evt.id) b.activeNoteId = null;
   } else {
-    if (pendingUpserts.has(`${evt.entity}:${evt.id}`) || !evt.data) return;
+    if (pendingUpserts.has(`${space}:${evt.entity}:${evt.id}`) || !evt.data) return;
     const current = list.find((r) => r.id === evt.id);
     const merged = { ...(current ?? {}), ...evt.data, id: evt.id };
-    globalState[key] = (current
+    target[key] = current
       ? list.map((r) => (r.id === evt.id ? merged : r))
       : evt.entity === 'note'
         ? [merged, ...list]
-        : [...list, merged]) as never;
+        : [...list, merged];
   }
   globalState.remoteEdits = { ...globalState.remoteEdits, [`${evt.entity}:${evt.id}`]: { by: evt.by, at: Date.now() } };
   notify();
@@ -854,6 +902,8 @@ function checkDesktopNotifications() {
   const fresh = unread.filter((n) => !desktopSeen!.has(n.id));
   if (!fresh.length) return;
   fresh.forEach((n) => desktopSeen!.add(n.id));
+  const p = globalState.preferences;
+  void playNotificationSound(p.notificationSound, p.notificationSoundFileId, p.notificationVolume);
   if (!globalState.preferences.desktopNotifications || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   // In the foreground the bell (and the toast for teammates' changes) is enough; with Web Push the
   // server already notifies this device.
@@ -982,6 +1032,11 @@ export async function enableDesktopNotifications(on: boolean): Promise<Notificat
 // A click on a system notification shown by the service worker opens the related page.
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
+    // A push arrived while this window is shown: the system notification is silent, the chosen sound plays here.
+    if (e.data && e.data.type === 'lr-push') {
+      const p = globalState.preferences;
+      void playNotificationSound(p.notificationSound, p.notificationSoundFileId, p.notificationVolume);
+    }
     const tab = e.data && e.data.type === 'lr-open-tab' ? (e.data.tab as ActiveTab) : null;
     if (tab) setActiveTab(tab);
   });
@@ -1046,6 +1101,11 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
       });
     }
   } else if (actionType === 'confirm_finance') {
+    const own = globalState.personal.transactions.find((t) => t.id === targetId);
+    if (own) {
+      updateTransactionIn('personal', targetId, { isConfirmed: true });
+      addToast({ type: 'success', title: 'Finans Onaylandı', message: `"${own.title}" işlemi onaylandı.` });
+    }
     const transIndex = globalState.transactions.findIndex((t) => t.id === targetId);
     if (transIndex >= 0) {
       const updatedTrans = {
@@ -1068,118 +1128,118 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
   notify();
 };
 
-const addFolder = (name: string, description?: string): string => {
-  if (!guardEdit('notes')) return '';
+// ---------------------------------------------------------------------------
+// Notes, folders and transactions exist in two spaces (shared / personal); every action below takes
+// the space it works in. useAppStore() hands out the versions bound to the surrounding SpaceContext.
+// ---------------------------------------------------------------------------
+
+function addFolderIn(space: Space, name: string, description?: string, iconName = 'Folder'): string {
+  if (!guardEdit('notes', space)) return '';
+  const b = bucket(space);
   const id = generateId();
-  const newFolder: FolderItem = {
-    id,
-    name,
-    description,
-    iconName: 'Folder',
-    isSystem: false,
-  };
-  globalState.folders = [...globalState.folders, newFolder];
-  mutateDB('folder', 'create', id, newFolder);
+  const newFolder: FolderItem = { id, name, description, iconName, isSystem: false };
+  b.folders = [...b.folders, newFolder];
+  mutateDB('folder', 'create', id, newFolder, space);
   notify();
   return id;
-};
+}
 
-const updateFolder = (id: string, name: string, description?: string) => {
-  if (!guardEdit('notes')) return;
-  globalState.folders = globalState.folders.map((f) =>
-    f.id === id ? { ...f, name, description } : f
-  );
-  const updated = globalState.folders.find((f) => f.id === id);
-  if (updated) mutateDB('folder', 'upsert', id, updated);
+function updateFolderIn(space: Space, id: string, name: string, description?: string, iconName?: string) {
+  if (!guardEdit('notes', space)) return;
+  const b = bucket(space);
+  b.folders = b.folders.map((f) => (f.id === id ? { ...f, name, description, ...(iconName ? { iconName } : {}) } : f));
+  const updated = b.folders.find((f) => f.id === id);
+  if (updated) mutateDB('folder', 'upsert', id, updated, space);
   notify();
-};
+}
 
-const deleteFolder = (id: string, options?: { withNotes?: boolean }) => {
-  if (!guardEdit('notes')) return;
-  globalState.folders = globalState.folders.filter((f) => f.id !== id);
-  if (globalState.activeFolder === id) {
-    globalState.activeFolder = 'all';
-  }
+function deleteFolderIn(space: Space, id: string, options?: { withNotes?: boolean }) {
+  if (!guardEdit('notes', space)) return;
+  const b = bucket(space);
+  b.folders = b.folders.filter((f) => f.id !== id);
+  if (b.activeFolder === id) b.activeFolder = 'all';
   if (options?.withNotes) {
-    const removed = globalState.notes.filter((n) => n.folder === id);
-    globalState.notes = globalState.notes.filter((n) => n.folder !== id);
-    if (removed.some((n) => n.id === globalState.activeNoteId)) {
-      globalState.activeNoteId = globalState.notes[0]?.id || null;
-    }
-    for (const n of removed) mutateDB('note', 'delete', n.id);
+    const removed = b.notes.filter((n) => n.folder === id);
+    b.notes = b.notes.filter((n) => n.folder !== id);
+    if (removed.some((n) => n.id === b.activeNoteId)) b.activeNoteId = b.notes[0]?.id || null;
+    for (const n of removed) mutateDB('note', 'delete', n.id, undefined, space);
   } else {
     // The notes stay; they just leave the deleted folder.
-    globalState.notes = globalState.notes.map((n) => {
+    b.notes = b.notes.map((n) => {
       if (n.folder !== id) return n;
       const moved = { ...n, folder: '' };
-      mutateDB('note', 'upsert', n.id, moved);
+      mutateDB('note', 'upsert', n.id, moved, space);
       return moved;
     });
   }
-  mutateDB('folder', 'delete', id);
+  mutateDB('folder', 'delete', id, undefined, space);
   notify();
-};
+}
 
-const addNote = (partial?: Partial<Note>): string => {
-  if (!guardEdit('notes')) return '';
+function addNoteIn(space: Space, partial?: Partial<Note>): string {
+  if (!guardEdit('notes', space)) return '';
+  const b = bucket(space);
   const id = generateId();
+  const now = new Date().toISOString();
   const newNote: Note = {
     id,
-    title: partial?.title || 'Yeni Not',
+    title: partial?.title || (partial?.kind === 'table' ? 'Yeni Tablo' : 'Yeni Not'),
     content: partial?.content || '',
-    folder: partial?.folder ?? (isRealFolder(globalState.activeFolder) ? globalState.activeFolder : ''),
+    folder: partial?.folder ?? (isRealFolder(b.activeFolder) ? b.activeFolder : ''),
     tags: partial?.tags || [],
     isFavorite: partial?.isFavorite || false,
     isPinned: partial?.isPinned || false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    kind: partial?.kind ?? 'text',
+    ...(partial?.fileId ? { fileId: partial.fileId } : {}),
+    createdAt: now,
+    updatedAt: now,
   };
-  globalState.notes = [newNote, ...globalState.notes];
-  globalState.activeNoteId = id;
-  mutateDB('note', 'create', id, newNote);
+  b.notes = [newNote, ...b.notes];
+  b.activeNoteId = id;
+  mutateDB('note', 'create', id, newNote, space);
   notify();
   return id;
-};
+}
 
-const updateNote = (id: string, partial: Partial<Note>) => {
-  if (!guardEdit('notes')) return;
-  globalState.notes = globalState.notes.map((n) =>
-    n.id === id ? { ...n, ...partial, updatedAt: new Date().toISOString() } : n
-  );
-  const updated = globalState.notes.find((n) => n.id === id);
-  if (updated) mutateDB('note', 'upsert', id, updated);
+function updateNoteIn(space: Space, id: string, partial: Partial<Note>) {
+  if (!guardEdit('notes', space)) return;
+  const b = bucket(space);
+  b.notes = b.notes.map((n) => (n.id === id ? { ...n, ...partial, updatedAt: new Date().toISOString() } : n));
+  const updated = b.notes.find((n) => n.id === id);
+  if (updated) mutateDB('note', 'upsert', id, updated, space);
   notify();
-};
+}
 
-const deleteNote = (id: string) => {
-  if (!guardEdit('notes')) return;
-  globalState.notes = globalState.notes.filter((n) => n.id !== id);
-  if (globalState.activeNoteId === id) {
-    globalState.activeNoteId = globalState.notes[0]?.id || null;
-  }
-  mutateDB('note', 'delete', id);
+function deleteNoteIn(space: Space, id: string) {
+  if (!guardEdit('notes', space)) return;
+  const b = bucket(space);
+  b.notes = b.notes.filter((n) => n.id !== id);
+  if (b.activeNoteId === id) b.activeNoteId = b.notes[0]?.id || null;
+  // The server removes a PDF note's file together with the note.
+  mutateDB('note', 'delete', id, undefined, space);
   notify();
-};
+}
 
-const toggleFavoriteNote = (id: string) => {
-  if (!guardEdit('notes')) return;
-  globalState.notes = globalState.notes.map((n) =>
-    n.id === id ? { ...n, isFavorite: !n.isFavorite, updatedAt: new Date().toISOString() } : n
-  );
-  const updated = globalState.notes.find((n) => n.id === id);
-  if (updated) mutateDB('note', 'upsert', id, updated);
-  notify();
-};
+function toggleFavoriteNoteIn(space: Space, id: string) {
+  const n = bucket(space).notes.find((x) => x.id === id);
+  if (n) updateNoteIn(space, id, { isFavorite: !n.isFavorite });
+}
 
-const togglePinNote = (id: string) => {
-  if (!guardEdit('notes')) return;
-  globalState.notes = globalState.notes.map((n) =>
-    n.id === id ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() } : n
-  );
-  const updated = globalState.notes.find((n) => n.id === id);
-  if (updated) mutateDB('note', 'upsert', id, updated);
+function togglePinNoteIn(space: Space, id: string) {
+  const n = bucket(space).notes.find((x) => x.id === id);
+  if (n) updateNoteIn(space, id, { isPinned: !n.isPinned });
+}
+
+function setActiveNoteIdIn(space: Space, id: string | null) {
+  bucket(space).activeNoteId = id;
   notify();
-};
+}
+
+function setActiveFolderIn(space: Space, folder: string) {
+  bucket(space).activeFolder = folder;
+  notify();
+}
+
 
 const addTask = (task: Omit<Task, 'id' | 'createdAt'>): string => {
   if (!guardEdit('work')) return '';
@@ -1350,19 +1410,16 @@ const setExchangeRateMarkup = (markup: number) => {
   setPreference('exchangeMarkupTRY', markup);
 };
 
-const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string => {
-  if (!guardEdit('finance')) return '';
+function addTransactionIn(space: Space, transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>): string {
+  if (!guardEdit('finance', space)) return '';
+  const b = bucket(space);
   const id = generateId();
   const currency = transaction.currency || 'TRY';
   let amountInTRY = transaction.amount;
   let convertedInfo = undefined;
 
   if (currency !== 'TRY') {
-    convertedInfo = convertCurrencyToTRY(
-      transaction.originalAmount || transaction.amount,
-      currency,
-      globalState.exchangeRates
-    );
+    convertedInfo = convertCurrencyToTRY(transaction.originalAmount || transaction.amount, currency, globalState.exchangeRates);
     amountInTRY = convertedInfo.baseAmountTRY;
   }
 
@@ -1378,56 +1435,42 @@ const addTransaction = (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'
     createdBy: authorName(),
     createdAt: new Date().toISOString(),
   };
-  globalState.transactions = [newTransaction, ...globalState.transactions];
-  mutateDB('finance', 'create', id, newTransaction);
+  b.transactions = [newTransaction, ...b.transactions];
+  mutateDB('finance', 'create', id, newTransaction, space);
   notify();
   return id;
-};
+}
 
-const updateTransaction = (id: string, partial: Partial<FinanceTransaction>) => {
-  if (!guardEdit('finance')) return;
-  globalState.transactions = globalState.transactions.map((t) => {
+function updateTransactionIn(space: Space, id: string, partial: Partial<FinanceTransaction>) {
+  if (!guardEdit('finance', space)) return;
+  const b = bucket(space);
+  b.transactions = b.transactions.map((t) => {
     if (t.id !== id) return t;
     const currency = partial.currency || t.currency || 'TRY';
     let amountInTRY = partial.amount !== undefined ? partial.amount : t.amount;
-
     if (currency !== 'TRY' && partial.originalAmount !== undefined) {
-      const conv = convertCurrencyToTRY(
-        partial.originalAmount,
-        currency,
-        globalState.exchangeRates
-      );
-      amountInTRY = conv.baseAmountTRY;
+      amountInTRY = convertCurrencyToTRY(partial.originalAmount, currency, globalState.exchangeRates).baseAmountTRY;
     }
-
-    return {
-      ...t,
-      ...partial,
-      amount: amountInTRY,
-      currency,
-    };
+    return { ...t, ...partial, amount: amountInTRY, currency };
   });
-  const updated = globalState.transactions.find((t) => t.id === id);
-  if (updated) mutateDB('finance', 'upsert', id, updated);
+  const updated = b.transactions.find((t) => t.id === id);
+  if (updated) mutateDB('finance', 'upsert', id, updated, space);
   notify();
-};
+}
 
-const deleteTransaction = (id: string) => {
-  if (!guardEdit('finance')) return;
-  globalState.transactions = globalState.transactions.filter((t) => t.id !== id);
-  mutateDB('finance', 'delete', id);
+function deleteTransactionIn(space: Space, id: string) {
+  if (!guardEdit('finance', space)) return;
+  const b = bucket(space);
+  b.transactions = b.transactions.filter((t) => t.id !== id);
+  mutateDB('finance', 'delete', id, undefined, space);
   notify();
-};
+}
 
-const toggleTransactionConfirmation = (id: string) => {
-  if (!guardEdit('finance')) return;
-  globalState.transactions = globalState.transactions.map((t) =>
-    t.id === id ? { ...t, isConfirmed: !t.isConfirmed } : t
-  );
-  const updated = globalState.transactions.find((t) => t.id === id);
-  if (updated) mutateDB('finance', 'upsert', id, updated);
-  notify();
-};
+function toggleTransactionConfirmationIn(space: Space, id: string) {
+  const t = bucket(space).transactions.find((x) => x.id === id);
+  if (t) updateTransactionIn(space, id, { isConfirmed: !t.isConfirmed });
+}
+
 
 const addCustomer = (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): string => {
   if (!guardEdit('customers')) return '';
@@ -1515,19 +1558,37 @@ const setIsNotificationPanelOpen = (open: boolean) => {
   notify();
 };
 
-const setActiveNoteId = (id: string | null) => {
-  globalState.activeNoteId = id;
-  notify();
-};
+function spaceApi(space: Space) {
+  return {
+    setActiveNoteId: (id: string | null) => setActiveNoteIdIn(space, id),
+    setActiveFolder: (folder: string) => setActiveFolderIn(space, folder),
+    addFolder: (name: string, description?: string, iconName?: string) => addFolderIn(space, name, description, iconName),
+    updateFolder: (id: string, name: string, description?: string, iconName?: string) => updateFolderIn(space, id, name, description, iconName),
+    deleteFolder: (id: string, options?: { withNotes?: boolean }) => deleteFolderIn(space, id, options),
+    addNote: (partial?: Partial<Note>) => addNoteIn(space, partial),
+    updateNote: (id: string, partial: Partial<Note>) => updateNoteIn(space, id, partial),
+    deleteNote: (id: string) => deleteNoteIn(space, id),
+    toggleFavoriteNote: (id: string) => toggleFavoriteNoteIn(space, id),
+    togglePinNote: (id: string) => togglePinNoteIn(space, id),
+    addTransaction: (t: Omit<FinanceTransaction, 'id' | 'createdAt'>) => addTransactionIn(space, t),
+    updateTransaction: (id: string, partial: Partial<FinanceTransaction>) => updateTransactionIn(space, id, partial),
+    deleteTransaction: (id: string) => deleteTransactionIn(space, id),
+    toggleTransactionConfirmation: (id: string) => toggleTransactionConfirmationIn(space, id),
+  };
+}
+const SPACE_API = { shared: spaceApi('shared'), personal: spaceApi('personal') };
 
-const setActiveFolder = (folder: string) => {
-  globalState.activeFolder = folder;
-  notify();
-};
-
+/** Full edit rights inside the person's private space (team permissions do not apply there). */
+function personalUser(user: UserProfile | null): UserProfile | null {
+  if (!user) return user;
+  return { ...user, permissions: { notes: 'edit', customers: 'none', work: 'none', calendar: 'none', finance: 'edit' } };
+}
 
 export function useAppStore(): AppState {
   const [, setTick] = useState(0);
+  const space = useContext(SpaceContext);
+  const b = bucket(space);
+  const api = SPACE_API[space];
 
   useEffect(() => {
     const listener = () => setTick((t) => t + 1);
@@ -1552,7 +1613,7 @@ export function useAppStore(): AppState {
     preferences: globalState.preferences,
     setPreference,
 
-    currentUser: globalState.currentUser,
+    currentUser: space === 'personal' ? personalUser(globalState.currentUser) : globalState.currentUser,
     isAuthenticated: globalState.isAuthenticated,
     isLoadingAuth: globalState.isLoadingAuth,
     isLoadingData: globalState.isLoadingData,
@@ -1583,20 +1644,11 @@ export function useAppStore(): AppState {
     deleteNotification,
     resolveNotificationAction,
 
-    notes: globalState.notes,
-    activeNoteId: globalState.activeNoteId,
-    setActiveNoteId,
-    activeFolder: globalState.activeFolder,
-    setActiveFolder,
-    folders: globalState.folders,
-    addFolder,
-    updateFolder,
-    deleteFolder,
-    addNote,
-    updateNote,
-    deleteNote,
-    toggleFavoriteNote,
-    togglePinNote,
+    notes: b.notes,
+    activeNoteId: b.activeNoteId,
+    activeFolder: b.activeFolder,
+    folders: b.folders,
+    ...api,
 
 
     tasks: globalState.tasks,
@@ -1618,15 +1670,11 @@ export function useAppStore(): AppState {
     updateEventStatus,
     rescheduleEvent,
 
-    transactions: globalState.transactions,
+    transactions: b.transactions,
     financeCategories: globalState.financeCategories,
     exchangeRates: globalState.exchangeRates,
     fetchExchangeRates,
     setExchangeRateMarkup,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    toggleTransactionConfirmation,
     addFinanceCategory,
     updateFinanceCategory,
     deleteFinanceCategory,

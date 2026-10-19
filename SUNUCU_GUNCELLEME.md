@@ -29,7 +29,55 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu güncellemede gelenler (gizli notlar, iPhone/iPad bildirimleri, açılır pencereler)
+## Bu güncellemede gelenler (PDF okuyucu, bildirim sesi, sıkıştırma)
+
+`update.sh` StoredFile tablosuna iki boş alan ekler; mevcut veriye dokunulmaz.
+
+- **PDF okuyucu:** bilgisayarda %50, telefonda %75 açılır; %10'a kadar küçültülür; en son bırakılan büyüklük (telefon ve
+  bilgisayar için ayrı) hesapta saklanır.
+- **Bildirim sesi:** Ayarlar › Tercihler › Bildirimler › *Bildirim sesi*: Kapalı / Varsayılan (zil) / Kendi sesim (MP3, WAV,
+  OGG, M4A, en fazla 1 MB; sunucuda şifreli saklanır, içeriği kontrol edilir). Uygulama açıkken çalar; uygulama kapalıyken
+  telefon/bilgisayar kendi sistem sesini kullanır (tarayıcılar buna izin vermez).
+- **Sıkıştırma:** PDF'ler (ve sesler) şifrelenmeden önce Brotli ile sıkıştırılır; eski PDF'ler arka planda (5'er 5'er)
+  sıkıştırılır. `update.sh` veritabanı yedeklerini artık **gzip** ile sıkıştırır (`lrdocument-TARIH.db.gz`); yönetici JSON
+  yedeğindeki dosyalar da sıkıştırılmış yazılır. Not: içi zaten sıkıştırılmış PDF'lerde kazanç küçük olur.
+  **Yedekten dönüş:** `gunzip -c /var/lib/lrdocument/backups/lrdocument-TARIH.db.gz > /var/lib/lrdocument/prod.db`
+- **Düzeltmeler:** kurumsalda aynı tablo notunu iki kişi düzenleyince birinin değişikliğinin silinmesi düzeltildi
+  (tablo artık dışarıdan gelen değişikliği alır); uygulama açıkken gelen push bildirimi sessiz gösterilir, seçilen ses çalar.
+
+---
+
+## Önceki güncellemede gelenler (Big Update 2)
+
+`update.sh` veritabanına yeni tablo ve boş alanlar ekler (StoredFile, not türü, şahsi kayıt alanı); mevcut veriye dokunulmaz.
+Yeni npm paketleri (`docx`, `jspdf`, `html2canvas-pro`, `xlsx`) `npm ci` ile kurulur; ek ayar gerekmez.
+
+- **Not türleri:** Notlar › Yeni › *Not* veya *Tablo*. Tablo notu Excel gibi çalışır (sayfalar, formüller — TOPLA/SUM,
+  EĞER/IF, DÜŞEYARA/VLOOKUP…, biçimlendirme, sıralama, kopyala-yapıştır). İçe aktar önce *Not / Tablo* sorar; Excel/CSV
+  dosyası her zaman tablo notu olur. Not listesinde tarihin yanında tür yazar.
+- **PDF notları:** PDF yüklenince metne çevrilmez; uygulamadaki PDF okuyucuda açılır. Dosya **sunucuda, kullanıcıya özel
+  anahtarla şifrelenmiş** (AES-256-GCM) olarak veritabanında tutulur, her açılışta SHA-256 ile doğrulanır; tarayıcıda kopya
+  tutulmaz. PDF başına en fazla 25 MB, hesap başına toplam 1 GB. "Metne dönüştür" ile (el yazısı seçeneği dahil) ayrı bir
+  metin notu oluşturulur. **Not:** PDF'ler veritabanında durduğu için `backups/` altındaki yedekler büyüyebilir; disk alanını
+  ara sıra kontrol edin.
+- **Notu indir:** metin notu → Markdown / PDF / Word; tablo → Excel / CSV / PDF; PDF notu → orijinal dosya.
+- **Kurumsal "Şahsi Notlar" ve "Şahsi Finans":** her kişinin yalnızca kendisinin gördüğü notlar ve gelir-gider sayfası
+  (kurum sahibi de diğer üyelerin şahsi kayıtlarını göremez). Kurumdan çıkarılan kişinin şahsi kayıtları silinir.
+- **Adlar:** "Gelir ve Gider" → **Finans**, "Görevler ve Kanban" → **Görevler**.
+- **Genel bakış:** yeni bölümler — Aylık takvim, Döviz kurları, Akademik durum, Finans analizi, Sabitlenmiş notlar.
+- **Klasör simgesi** seçilebilir; **klavye ve dokunmatik kısayollar** (listeyi "?" açar; Ayarlar › Tercihler › Kısayollar).
+- **Ders hatırlatması:** Ayarlar › Tercihler › Bildirimler'den dersten kaç dakika önce / sonra geleceği seçilir.
+- **Kullanım kılavuzu:** ilk girişte açılan karşılama penceresi ve Ayarlar › Destek'te `kullanim-kilavuzu.pdf`.
+  Kaynak: `docs/kullanim-kilavuzu/` (yeniden üretmek için `node docs/kullanim-kilavuzu/build.mjs`, Playwright gerekir).
+- **VIP paket:** Yönetici Paneli'nde kullanıcının paketinden **VIP — ömür boyu ücretsiz** seçilir; ödeme durumu "muaf"
+  olur ve hiç ödeme istenmez. Başka pakete alınırsa normal ödeme durumuna döner.
+- **Güvenlik / hata düzeltmeleri:** yedek geri yüklemede şahsi kayıtların ortak alana düşmesi engellendi (yedeğe PDF
+  dosyaları ve gizli notlar da eklendi); 10 MB'tan büyük istek gövdelerinin sessizce kesilmesi düzeltildi (eksik gelen
+  yüklemeler reddedilir); dosya yanıtlarına `sandbox` CSP; tablo notlarında hızlı yazarken karakter kaybı düzeltildi.
+
+---
+
+## Önceki güncellemede gelenler (gizli notlar, iPhone/iPad bildirimleri, açılır pencereler)
 
 `update.sh` veritabanına iki yeni tablo ekler (SecretVault, SecretNote); mevcut veriye dokunulmaz.
 
@@ -230,7 +278,7 @@ Yöneticinin açık oturumları kapanır. E-posta çalışıyorsa giriş sayfas�
 | Derleme bellek hatası veriyor | `LRION_KURULUM_REHBERI.md` içindeki swap adımını uygulayın. |
 | Uygulama açılmıyor | `pm2 logs PM2_ADI --lines 100`. Üretimde `JWT_SECRET` 32 karakterden kısaysa uygulama bilerek başlamaz. |
 | Güncelleme yarıda kaldı | Veriler yedektedir. `pm2 restart PM2_ADI` ile önceki derlemeyle devam edip sorunu giderdikten sonra betiği tekrar çalıştırın. |
-| Yedekten geri dönmek | `pm2 stop PM2_ADI && cp /var/lib/lrdocument/backups/lrdocument-TARIH.db /var/lib/lrdocument/prod.db && pm2 start PM2_ADI` |
+| Yedekten geri dönmek | `pm2 stop PM2_ADI && gunzip -c /var/lib/lrdocument/backups/lrdocument-TARIH.db.gz > /var/lib/lrdocument/prod.db && pm2 start PM2_ADI` (eski `.db` yedekleri için `gunzip -c` yerine `cp`) |
 | Giriş denemeleri engellendi | Güvenlik için aynı e-postaya 15 dakikada 8, aynı IP'den 20 hatalı deneme sınırı var (kurumsal kod: IP başına 10); süre dolunca açılır veya `pm2 restart PM2_ADI` ile sıfırlanır. |
 | Doğrulama e-postası gelmiyor | Yönetici Paneli › Varsayılanlar › E-posta gönderimi'nde son hatayı görün. Port 25 kapalıysa sunucu firmanızdan açtırın veya `SMTP_URL` tanımlayın; bu sırada girişte e-posta doğrulamasını kapatabilirsiniz. |
 | Kullanıcı telefonunu kaybetti (iki adımlı doğrulama) | Kurtarma kodlarından biriyle girebilir. Kodları da yoksa Yönetici Paneli › Kullanıcılar › **2 adımlı › Sıfırla**. |

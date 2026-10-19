@@ -2,10 +2,12 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppStore } from '@/store/useAppStore';
+import { SpaceContext, useAppStore } from '@/store/useAppStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { Shortcuts } from '@/components/layout/Shortcuts';
+import { WelcomeGuide } from '@/components/layout/WelcomeGuide';
 import { ToastContainer } from '@/components/ui/Toast';
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
 import { NotesWorkspace } from '@/components/notes/NotesWorkspace';
@@ -22,7 +24,7 @@ import { accessOf, CORP_MODULE_LABEL, type CorpModule } from '@/lib/corporate';
 import { Eye, ShieldCheck } from 'lucide-react';
 import type { ActiveTab } from '@/types';
 
-const OPENABLE_TABS = new Set(['dashboard', 'notes', 'tasks', 'calendar', 'finance', 'customers', 'academic', 'settings', 'admin']);
+const OPENABLE_TABS = new Set(['dashboard', 'notes', 'personalNotes', 'tasks', 'calendar', 'finance', 'personalFinance', 'customers', 'team', 'academic', 'settings', 'admin']);
 
 const TAB_MODULE: Partial<Record<string, CorpModule>> = {
   notes: 'notes',
@@ -74,11 +76,14 @@ export default function DashboardPage() {
 
   // Kurumsal: modules hidden from this member fall back to the overview; read-only ones get a notice.
   const tabModule = TAB_MODULE[activeTab];
+  const corporate = currentUser?.accountType === 'CORPORATE';
   const access = tabModule ? accessOf(currentUser, tabModule) : 'edit';
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-app text-fg safe-top">
       <CommandPalette />
+      <Shortcuts />
+      <WelcomeGuide />
       <ToastContainer />
       <Sidebar />
 
@@ -99,6 +104,17 @@ export default function DashboardPage() {
           {activeTab === 'tasks' && access !== 'none' && <WorkWorkspace />}
           {activeTab === 'calendar' && access !== 'none' && <CalendarWorkspace />}
           {activeTab === 'finance' && access !== 'none' && <FinanceWorkspace />}
+          {/* Kurumsal "Şahsi" spaces: the same pages with the person's private records. */}
+          {activeTab === 'personalNotes' && corporate && (
+            <SpaceContext.Provider value="personal">
+              <NotesWorkspace />
+            </SpaceContext.Provider>
+          )}
+          {activeTab === 'personalFinance' && corporate && (
+            <SpaceContext.Provider value="personal">
+              <FinanceWorkspace />
+            </SpaceContext.Provider>
+          )}
           {activeTab === 'team' && (currentUser?.orgRole === 'OWNER' || currentUser?.orgRole === 'MANAGER') && <TeamWorkspace />}
           {activeTab === 'academic' && hasStudentAccess(currentUser) && <AcademicWorkspace />}
           {activeTab === 'settings' && <SettingsView />}

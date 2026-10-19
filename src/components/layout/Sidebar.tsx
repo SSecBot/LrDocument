@@ -20,10 +20,13 @@ import {
   GraduationCap,
   Users,
   Building2,
+  NotebookPen,
+  PiggyBank,
 } from 'lucide-react';
 import { hasStudentAccess } from '@/lib/access';
 import { canView, isCorporate } from '@/lib/corporate';
 import { AccountSwitcher } from './AccountSwitcher';
+import { useSwipe } from '@/lib/shortcuts';
 
 interface NavItem {
   id: ActiveTab;
@@ -48,6 +51,8 @@ export const Sidebar: React.FC = () => {
     setPreference,
   } = useAppStore();
   const collapsed = preferences.sidebarCollapsed;
+  // Swiping the open menu to the left closes it.
+  const drawerSwipe = useSwipe<HTMLDivElement>({ onLeft: () => setIsMobileSidebarOpen(false), enabled: preferences.touchGestures });
   const corporate = isCorporate(currentUser);
   const [accountMenuOpen, setAccountMenuOpen] = React.useState(false);
   const openWork = tasks.filter((t) => !t.completed).length + kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length;
@@ -57,13 +62,16 @@ export const Sidebar: React.FC = () => {
       title: corporate ? currentUser?.organization || 'Kurum' : 'Çalışma alanı',
       items: [
         { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
+        // Kurumsal: everyone also has private notes and finances, outside the shared workspace.
+        ...(corporate ? [{ id: 'personalNotes' as ActiveTab, label: 'Şahsi Notlar', icon: NotebookPen }] : []),
         // In a corporate workspace the notes are shared by the whole team.
         ...(canView(currentUser, 'notes') ? [{ id: 'notes' as ActiveTab, label: corporate ? 'Ortak Notlar' : 'Notlar', icon: FileText, badge: notes.length }] : []),
         ...(canView(currentUser, 'customers') ? [{ id: 'customers' as ActiveTab, label: 'Müşteriler', icon: Building2, badge: customers.length }] : []),
-        ...(canView(currentUser, 'work') ? [{ id: 'tasks' as ActiveTab, label: 'Görevler ve Kanban', icon: CheckSquare, badge: openWork }] : []),
+        ...(canView(currentUser, 'work') ? [{ id: 'tasks' as ActiveTab, label: 'Görevler', icon: CheckSquare, badge: openWork }] : []),
         ...(canView(currentUser, 'calendar') ? [{ id: 'calendar' as ActiveTab, label: 'Takvim', icon: Calendar }] : []),
         ...(hasStudentAccess(currentUser) ? [{ id: 'academic' as ActiveTab, label: 'Ders Takibi', icon: GraduationCap }] : []),
-        ...(canView(currentUser, 'finance') ? [{ id: 'finance' as ActiveTab, label: 'Gelir ve Gider', icon: Wallet }] : []),
+        ...(canView(currentUser, 'finance') ? [{ id: 'finance' as ActiveTab, label: 'Finans', icon: Wallet }] : []),
+        ...(corporate ? [{ id: 'personalFinance' as ActiveTab, label: 'Şahsi Finans', icon: PiggyBank }] : []),
       ],
     },
   ];
@@ -242,7 +250,7 @@ export const Sidebar: React.FC = () => {
       </aside>
 
       {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex animate-fade-in">
+        <div ref={drawerSwipe} className="fixed inset-0 z-50 md:hidden flex animate-fade-in">
           <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileSidebarOpen(false)} />
           <div className="relative w-4/5 max-w-[288px] h-full z-10 border-r border-line bg-surface safe-top">
             {renderSidebarContent(true)}

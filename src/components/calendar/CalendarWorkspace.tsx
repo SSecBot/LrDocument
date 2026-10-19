@@ -35,6 +35,7 @@ import { buildCalendarFeed, CALENDAR_LAYERS, CALENDAR_LAYER_LABEL, type Calendar
 import { useAcademicSnapshot } from '@/components/academic/useAcademicSnapshot';
 import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
 import { isTransactionActiveOnDate } from '@/lib/recurringFinance';
+import { useNewItemRequest, useSwipe } from '@/lib/shortcuts';
 
 const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -181,6 +182,10 @@ export const CalendarWorkspace: React.FC = () => {
     setEditingEvent(null);
     setIsEventModalOpen(true);
   };
+
+  useNewItemRequest('event', openNewEvent);
+  // Touch: swipe left / right for the next / previous month.
+  const monthSwipe = useSwipe<HTMLDivElement>({ onLeft: () => shiftMonths(1), onRight: () => shiftMonths(-1), enabled: preferences.touchGestures });
 
   const openEvent = (ev: CalendarEvent, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -423,7 +428,7 @@ export const CalendarWorkspace: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 flex h-full bg-app overflow-hidden select-none">
+    <div ref={monthSwipe} className="flex-1 flex h-full bg-app overflow-hidden select-none">
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".ics,text/calendar" className="sr-only" tabIndex={-1} aria-hidden="true" />
 
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">

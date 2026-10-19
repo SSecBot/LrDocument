@@ -32,7 +32,7 @@ export function importKindOf(file: File): ImportKind | null {
 
 const titleOf = (file: File) => file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 200) || 'İçe aktarılan not';
 
-export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) => void): Promise<ImportedNote> {
+export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) => void, options: { handwriting?: boolean } = {}): Promise<ImportedNote> {
   const kind = importKindOf(file);
   if (!kind) throw new ImportError('Desteklenmeyen dosya türü. PDF, Word (.docx), Markdown (.md) veya metin (.txt) seçin.');
   if (file.size > MAX_IMPORT_BYTES) throw new ImportError('Dosya en fazla 20 MB olabilir.');
@@ -44,11 +44,7 @@ export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) =
   } else if (kind === 'docx') {
     content = await docxToMarkdown(await file.arrayBuffer());
   } else {
-    const pdfjs = await loadPdfJs<PdfJsRenderLike>();
-    const result = await readCalendarRows(pdfjs, new Uint8Array(await file.arrayBuffer()), onProgress ?? (() => {}), MAX_PDF_PAGES);
-    if (result.usedOcr) notes.push('Taranmış sayfalar metin tanıma (OCR) ile okundu; metni kontrol edin.');
-    if (result.pages > MAX_PDF_PAGES) notes.push(`PDF ${result.pages} sayfa; ilk ${MAX_PDF_PAGES} sayfa alındı.`);
-    content = rowsToParagraphs(result.rows);
+    content = await pdfToText(new Uint8Array(await file.arrayBuffer()), notes, onProgress, options.handwriting);
   }
 
   content = content.replace(/\r\n?/g, '\n').replace(/\u0000/g, '').trim();
@@ -61,6 +57,20 @@ export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) =
 }
 
 export class ImportError extends Error {}
+
+/**
+ * Text of a PDF: the text layer, or OCR for scanned pages. `handwriting` prepares the page images for
+ * handwritten notes (clear handwriting reads best; the result should be checked).
+ */
+export async function pdfToText(data: Uint8Array, notes: string[], onProgress?: (p: OcrProgress) => void, handwriting = false): Promise<string> {
+  const pdfjs = await loadPdfJs<PdfJsRenderLike>();
+  const result = await readCalendarRows(pdfjs, data, onProgress ?? (() => {}), MAX_PDF_PAGES, { handwriting });
+  if (result.usedOcr) {
+    notes.push(handwriting ? 'El yazısı metin tanıma ile okundu; okunamayan kelimeleri kontrol edin.' : 'Taranmış sayfalar metin tanıma (OCR) ile okundu; metni kontrol edin.');
+  }
+  if (result.pages > MAX_PDF_PAGES) notes.push(`PDF ${result.pages} sayfa; ilk ${MAX_PDF_PAGES} sayfa alındı.`);
+  return rowsToParagraphs(result.rows);
+}
 
 /** PDF lines → paragraphs: a line ending a sentence or followed by an empty row closes a paragraph. */
 function rowsToParagraphs(rows: string[]): string {

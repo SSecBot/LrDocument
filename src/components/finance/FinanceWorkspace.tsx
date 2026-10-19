@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAppStore, isTransactionOverdue, getEffectiveTransactionPriority } from '@/store/useAppStore';
+import React, { useContext, useState } from 'react';
+import { useNewItemRequest } from '@/lib/shortcuts';
+import { SpaceContext, useAppStore, isTransactionOverdue, getEffectiveTransactionPriority } from '@/store/useAppStore';
 import { FinanceTransaction, FinanceTransactionType, TaskPriority, CurrencyCode } from '@/types';
 import { TransactionModal } from './TransactionModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
@@ -33,6 +34,7 @@ import { formatCurrencyWithCode } from '@/lib/exchangeRates';
 import { getTransactionsForMonth, calculateMRRSummary } from '@/lib/recurringFinance';
 
 export const FinanceWorkspace: React.FC = () => {
+  const personalSpace = useContext(SpaceContext) === 'personal';
   const {
     transactions,
     deleteTransaction,
@@ -54,6 +56,10 @@ export const FinanceWorkspace: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null);
+  useNewItemRequest('transaction', () => {
+    setEditingTransaction(null);
+    setIsModalOpen(true);
+  });
   const [isRefreshingRates, setIsRefreshingRates] = useState(false);
 
   // Dynamic reference months
@@ -228,8 +234,9 @@ export const FinanceWorkspace: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                Gelir ve Gider Yönetimi
+                {personalSpace ? 'Şahsi Finans' : 'Finans'}
               </h1>
+              {personalSpace && <p className="text-[11px] text-amber-300">Yalnızca siz görürsünüz; kurumun ortak finansına karışmaz.</p>}
               <p className="text-[11px] sm:text-xs text-muted hidden sm:block">
                 Çoklu para birimi (TRY, USD, EUR), düzenli gelir/gider otomasyonu ve canlı kur
                 {exchangeRates.markupTRY > 0 ? ` (+${exchangeRates.markupTRY.toFixed(2)} TL marj)` : ''}

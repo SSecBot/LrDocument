@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const viewer = { accountType: session.accountType, permissions: session.permissions };
+      const viewer = { accountType: session.accountType, permissions: session.permissions, who: session.memberId ?? 'owner' };
       let closed = false;
       const send = (chunk: string) => {
         if (!closed) controller.enqueue(encoder.encode(chunk));

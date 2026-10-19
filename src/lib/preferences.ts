@@ -23,8 +23,28 @@ const fields = {
   noteSort: z.enum(['updated', 'created', 'title', 'manual']),
   noteOrder: z.array(z.string().max(200)).max(1000),
   /** Genel bakış widgets in display order; empty = default layout. */
+  /**
+   * Öğrenci: when the class reminder comes, in minutes before the start (0 = at the start,
+   * negative = after it started). null = no class reminders.
+   */
+  classReminderMinutes: z.number().int().min(-30).max(120).nullable(),
+  /** Single-key shortcuts (N, T, G+…) and swipe gestures (see src/components/layout/Shortcuts.tsx). */
+  keyboardShortcuts: z.boolean(),
+  touchGestures: z.boolean(),
+  /**
+   * PDF okuyucu: the last zoom the person left (share of the reader's width; 0.1 = %10), kept
+   * separately for phones and larger screens. null = the default (%75 on phones, %50 otherwise).
+   */
+  pdfZoomMobile: z.number().min(0.1).max(4).nullable(),
+  pdfZoomDesktop: z.number().min(0.1).max(4).nullable(),
+  /** Bildirim sesi: off, the built-in chime, or the person's own uploaded sound (a stored file id). */
+  notificationSound: z.enum(['off', 'default', 'custom']),
+  notificationSoundFileId: z.string().regex(/^[a-f0-9]{32}$/).nullable(),
+  notificationVolume: z.number().min(0).max(1),
+  /** The welcome screen with the user guide was shown once. */
+  guideSeen: z.boolean(),
   dashboardWidgets: z
-    .array(z.object({ id: z.enum(['student', 'stats', 'notes', 'events', 'tasks', 'payments']), visible: z.boolean() }).strict())
+    .array(z.object({ id: z.enum(['student', 'stats', 'notes', 'events', 'tasks', 'payments', 'month', 'exchange', 'academic', 'financeSummary', 'pinned']), visible: z.boolean() }).strict())
     .max(20),
 };
 
@@ -44,6 +64,15 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   folderOrder: [],
   noteSort: 'updated',
   noteOrder: [],
+  classReminderMinutes: 15,
+  keyboardShortcuts: true,
+  touchGestures: true,
+  guideSeen: false,
+  pdfZoomMobile: null,
+  notificationSound: 'default',
+  notificationSoundFileId: null,
+  notificationVolume: 0.7,
+  pdfZoomDesktop: null,
   dashboardWidgets: [],
 };
 

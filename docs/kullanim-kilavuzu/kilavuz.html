@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>LrDocument Kullanım Kılavuzu</title>
+<!--
+  Kaynak dosya. PDF'e dönüştürmek için: node docs/kullanim-kilavuzu/build.mjs  (Playwright gerekir)
+  Çıktı: public/kullanim-kilavuzu.pdf — görseller: docs/kullanim-kilavuzu/gorseller/
+-->
+<style>
+  @page { size: A4; margin: 16mm 15mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1f2937; font-size: 11.5pt; line-height: 1.55; margin: 0; }
+  h1, h2, h3 { color: #111827; line-height: 1.25; }
+  h2 { font-size: 20pt; margin: 0 0 6pt; padding-bottom: 6pt; border-bottom: 3px solid #c2560c; page-break-before: always; display: flex; align-items: center; gap: 10pt; }
+  h2 .no { background: #c2560c; color: #fff; border-radius: 8pt; font-size: 13pt; min-width: 26pt; height: 26pt; display: inline-flex; align-items: center; justify-content: center; }
+  h3 { font-size: 13.5pt; margin: 16pt 0 4pt; color: #9a3d06; }
+  p { margin: 5pt 0; }
+  ul, ol { margin: 4pt 0 6pt; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  .lead { font-size: 12.5pt; color: #374151; }
+  figure { margin: 10pt 0 12pt; page-break-inside: avoid; }
+  figure img { width: 100%; border-radius: 6pt; border: 1px solid #d1d5db; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  figure.half img { width: 62%; display: block; margin: 0 auto; }
+  figure.phone { display: flex; gap: 14pt; justify-content: center; }
+  figure.phone img { width: 36%; }
+  figcaption { font-size: 9.5pt; color: #6b7280; text-align: center; margin-top: 4pt; }
+  .box { border-radius: 8pt; padding: 8pt 11pt; margin: 9pt 0; page-break-inside: avoid; }
+  .tip { background: #ecfbf3; border: 1px solid #a6eac6; }
+  .tip::before { content: "💡 İpucu: "; font-weight: 700; color: #156b46; }
+  .warn { background: #fbf6e9; border: 1px solid #ecd497; }
+  .warn::before { content: "⚠️ Dikkat: "; font-weight: 700; color: #7c5a1d; }
+  .story { background: #eef5ff; border: 1px solid #b5d2ff; }
+  .story::before { content: "🧸 Şöyle düşün: "; font-weight: 700; color: #254f9c; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 26pt; margin: 5pt 0; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 18pt; height: 18pt; border-radius: 50%; background: #c2560c; color: #fff; font-size: 9.5pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  kbd { font-family: Consolas, monospace; font-size: 9.5pt; background: #f3f4f6; border: 1px solid #d1d5db; border-bottom-width: 2px; border-radius: 4pt; padding: 0 4pt; white-space: nowrap; }
+  code { font-family: Consolas, monospace; background: #f3f4f6; border-radius: 3pt; padding: 0 3pt; font-size: 10pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 10.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #d1d5db; padding: 4pt 7pt; text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 8mm; }
+  .cover .logo { width: 64pt; height: 64pt; border-radius: 14pt; background: #c2560c; color: #fff; font-size: 38pt; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 18pt; }
+  .cover h1 { font-size: 34pt; margin: 0; }
+  .cover .sub { font-size: 15pt; color: #4b5563; margin-top: 8pt; }
+  .cover .who { margin-top: 26pt; font-size: 11pt; color: #6b7280; }
+  .toc { columns: 2; column-gap: 20pt; font-size: 11pt; padding-left: 0; list-style: none; }
+  .toc li { margin: 3pt 0; break-inside: avoid; }
+  .toc b { color: #c2560c; display: inline-block; width: 18pt; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; padding: 1pt 6pt; border-radius: 10pt; background: #f5e9c8; color: #7c5a1d; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="logo">Σ</div>
+  <h1>LrDocument<br>Kullanım Kılavuzu</h1>
+  <div class="sub">Adım adım, resimlerle, herkesin anlayacağı dille.<br>Notlar, görevler, takvim, finans ve ders takibi tek yerde.</div>
+  <div class="who">Bu kılavuzu yavaş yavaş, sırayla okuyabilir ya da merak ettiğin bölüme doğrudan atlayabilirsin.<br>Kılavuzu istediğin zaman Ayarlar › Destek › “Kılavuzu aç” ile yeniden açabilirsin.</div>
+</section>
+
+<h2 style="page-break-before: always"><span class="no">★</span> İçindekiler</h2>
+<ol class="toc">
+  <li><b>1</b> Merhaba! LrDocument nedir?</li>
+  <li><b>2</b> İlk adımlar: kayıt ve giriş</li>
+  <li><b>3</b> Ekranı tanıyalım</li>
+  <li><b>4</b> Genel Bakış ve bölümler (widget)</li>
+  <li><b>5</b> Notlar</li>
+  <li><b>6</b> Tablo notları (Excel gibi)</li>
+  <li><b>7</b> Dosya içe aktarma</li>
+  <li><b>8</b> PDF notları ve el yazısı</li>
+  <li><b>9</b> Gizli Notlar</li>
+  <li><b>10</b> Notu indirme</li>
+  <li><b>11</b> Görevler ve Pano</li>
+  <li><b>12</b> Takvim</li>
+  <li><b>13</b> Finans</li>
+  <li><b>14</b> Ders Takibi (öğrenciler)</li>
+  <li><b>15</b> Kurumsal hesaplar</li>
+  <li><b>16</b> Arama</li>
+  <li><b>17</b> Bildirimler</li>
+  <li><b>18</b> Kısayollar</li>
+  <li><b>19</b> Ayarlar, tek tek</li>
+  <li><b>20</b> Uygulama olarak yükleme</li>
+  <li><b>21</b> Güvenlik ipuçları</li>
+  <li><b>22</b> Sık sorulan sorular</li>
+</ol>
+
+<!-- 1 -->
+<h2><span class="no">1</span> Merhaba! LrDocument nedir?</h2>
+<p class="lead">LrDocument, okul ya da iş hayatındaki her şeyi tek bir yerde toplayan dijital bir çantadır.</p>
+<div class="box story">Sırt çantanda bir defter, bir ajanda, bir hesap makinesi ve bir cüzdan olduğunu düşün. LrDocument bunların hepsini tek bir uygulamada birleştirir: not defterin <b>Notlar</b>, ajandan <b>Takvim</b> ve <b>Görevler</b>, cüzdanın <b>Finans</b>, okul karnen ise <b>Ders Takibi</b> olur.</div>
+<p>Bu uygulamayla şunları yapabilirsin:</p>
+<ul>
+  <li>Ders ya da iş notları yazmak, içine matematik formülleri eklemek.</li>
+  <li>Excel gibi hesap tabloları hazırlamak.</li>
+  <li>PDF belgelerini saklayıp uygulamanın içinde okumak.</li>
+  <li>Yapılacak işleri listelemek, son tarihleri unutmamak.</li>
+  <li>Etkinliklerini takvimde görmek.</li>
+  <li>Gelirini ve giderini takip etmek.</li>
+  <li>Öğrenciysen ders programını, devamsızlığını ve notlarını izlemek.</li>
+  <li>Telefonuna ve bilgisayarına hatırlatma bildirimleri almak.</li>
+</ul>
+<div class="box tip">Yazdığın her şey sunucuda sana özel bir anahtarla şifrelenerek saklanır. Başka biri senin notlarını okuyamaz.</div>
+
+<!-- 2 -->
+<h2><span class="no">2</span> İlk adımlar: kayıt ve giriş</h2>
+<h3>Hesap türleri</h3>
+<table>
+  <tr><th>Tür</th><th>Kimin için?</th><th>Neler var?</th></tr>
+  <tr><td><b>Bireysel</b></td><td>Kendi işlerini düzenlemek isteyen herkes</td><td>Notlar, Görevler, Takvim, Finans</td></tr>
+  <tr><td><b>Öğrenci</b></td><td>Üniversite öğrencileri</td><td>Bireysel olanların hepsi + <b>Ders Takibi</b></td></tr>
+  <tr><td><b>Kurumsal</b></td><td>Şirketler ve ekipler</td><td>Ortak notlar, müşteriler, ekip üyeleri, kişiye özel <b>Şahsi Notlar / Şahsi Finans</b></td></tr>
+</table>
+<h3>Kayıt olmak</h3>
+<ol class="steps">
+  <li>Ana sayfada <b>Kayıt ol</b>’a bas.</li>
+  <li>Adını, e-postanı ve bir şifre yaz. Hesap türünü ve paketini seç.</li>
+  <li>E-postana 6 haneli bir kod gelir. Bu kodu yazarak e-postanın gerçekten senin olduğunu göster.</li>
+  <li>Yönetici hesabını onaylayınca sana “Hesabınız onaylandı” e-postası gelir. Artık giriş yapabilirsin.</li>
+</ol>
+<h3>Giriş yapmak</h3>
+<p>E-postanı ve şifreni yazıp <b>Giriş yap</b>’a bas. Öğrenciysen ve öğrenci e-postanı doğruladıysan onunla da girebilirsin. İki adımlı doğrulamayı açtıysan telefonundaki uygulamadan 6 haneli kodu da yazarsın.</p>
+<div class="box tip">Şifreni unutursan giriş ekranında <b>Şifremi unuttum</b>’a bas. E-postana bir kod gelir; o kodla yeni şifre belirlersin.</div>
+<h3>Hoş geldin penceresi</h3>
+<p>İlk girişte küçük bir hoş geldin penceresi açılır. Buradan bu kılavuzu açabilir ya da kısayolları görebilirsin. <b>Daha sonra</b>’ya basarsan bir daha çıkmaz.</p>
+<figure class="half"><img src="gorseller/welcome.jpg"><figcaption>İlk girişte açılan hoş geldin penceresi</figcaption></figure>
+
+<!-- 3 -->
+<h2><span class="no">3</span> Ekranı tanıyalım</h2>
+<figure><img src="gorseller/overview.jpg"><figcaption>Ana ekran: solda menü, üstte araç çubuğu, ortada seçtiğin bölüm</figcaption></figure>
+<h3>Sol menü</h3>
+<p>Uygulamanın bölümleri buradadır: <b>Genel Bakış, Notlar, Görevler, Takvim, Ders Takibi</b> (öğrenciler), <b>Finans</b>, en altta da <b>Ayarlar</b>. Bir bölüme geçmek için adına dokunman yeterli. Menünün üstündeki küçük düğmeyle menüyü daraltıp ekranı genişletebilirsin.</p>
+<h3>Üst çubuk (soldan sağa)</h3>
+<ul>
+  <li><b>Bölümün adı</b>: Şu an nerede olduğunu gösterir.</li>
+  <li><b>Döviz kuru</b> ($ ve €): Güncel dolar ve euro kurunu gösterir. Dokunursan ayrıntıları açılır.</li>
+  <li><b>Büyüteç</b>: Arama. Her yerde arama yapar (Bölüm 16).</li>
+  <li><b>Zil</b>: Bildirimlerin. Geciken işler ve hatırlatmalar burada (Bölüm 17).</li>
+  <li><b>+ Yeni</b>: Hızlıca yeni not, görev, etkinlik ya da işlem ekler.</li>
+  <li><b>Profil harfi</b>: Hesabın, ayarlar, hesap değiştirme ve çıkış.</li>
+</ul>
+<h3>Telefonda</h3>
+<p>Telefonda sol menü gizlidir. Sol üstteki <b>üç çizgi</b> düğmesine bas ya da ekranın <b>sol kenarından sağa doğru kaydır</b>; menü açılır. Kapatmak için menüyü sola kaydır.</p>
+<figure class="phone"><img src="gorseller/phone-overview.jpg"><img src="gorseller/phone-menu.jpg"></figure>
+<figcaption style="text-align:center;font-size:9.5pt;color:#6b7280">Telefonda Genel Bakış ve açılan menü</figcaption>
+
+<!-- 4 -->
+<h2><span class="no">4</span> Genel Bakış ve bölümler (widget)</h2>
+<p class="lead">Genel Bakış, gününün özetidir. Bugün ne var, ne yaklaşıyor, ne kadar para harcadın? Hepsini tek ekranda görürsün.</p>
+<div class="box story">Buzdolabının kapağını düşün. Üstüne en önemli notları, takvimi ve listeleri yapıştırırsın. Genel Bakış da senin buzdolabı kapağındır. Hangi kâğıdın nerede duracağını sen seçersin.</div>
+<h3>Hangi bölümler var?</h3>
+<table>
+  <tr><th>Bölüm</th><th>Ne gösterir?</th></tr>
+  <tr><td>Ders Takibi</td><td>Bugünkü dersler ve yaklaşan sınavlar (öğrenciler)</td></tr>
+  <tr><td>Özet kartları</td><td>Not, görev, takvim sayıları ve net bakiye</td></tr>
+  <tr><td>Son notlar</td><td>En son değiştirdiğin notlar</td></tr>
+  <tr><td>Yaklaşan etkinlikler</td><td>Takvimdeki sıradaki etkinlikler</td></tr>
+  <tr><td>Yaklaşan görevler</td><td>Son günü yaklaşan ya da geçen görevler</td></tr>
+  <tr><td>Yaklaşan ödemeler</td><td>30 gün içindeki ödeme ve tahsilatlar</td></tr>
+  <tr><td>Aylık takvim</td><td>Ayın küçük bir takvimi. Renkli noktalar o günde bir şey olduğunu gösterir.</td></tr>
+  <tr><td>Finans analizi</td><td>Bu ayın geliri, gideri, birikim oranı ve en çok harcadığın kategoriler</td></tr>
+  <tr><td>Döviz kurları</td><td>Dolar ve euro kuru, ayrıca hızlı çevirici: “100 dolar kaç TL?”</td></tr>
+  <tr><td>Akademik durum</td><td>Not ortalaman, devamsızlık uyarıları ve sıradaki sınav (öğrenciler)</td></tr>
+  <tr><td>Sabitlenmiş notlar</td><td>İğneyle sabitlediğin notlara tek dokunuşla ulaşırsın</td></tr>
+</table>
+<h3>Bölümleri düzenlemek</h3>
+<ol class="steps">
+  <li>Genel Bakış’ta sağ üstteki <b>Düzenle</b> düğmesine bas.</li>
+  <li>Bir bölümün yanındaki <b>göz</b> simgesine basarak onu göster ya da gizle.</li>
+  <li><b>Yukarı</b> ve <b>aşağı</b> oklarıyla bölümlerin sırasını değiştir.</li>
+  <li><b>Tamam</b>’a bas. Bu düzen hesabına kaydedilir; telefonunda da aynı görünür.</li>
+</ol>
+<figure class="half"><img src="gorseller/widgets.jpg"><figcaption>“Genel bakışı düzenle” penceresi</figcaption></figure>
+<div class="box tip">Her şeyi karıştırdıysan <b>Varsayılana dön</b>’e bas. İlk düzen geri gelir.</div>
+
+<!-- 5 -->
+<h2><span class="no">5</span> Notlar</h2>
+<p class="lead">Notlar, dijital defterindir. İstediğin kadar not yazabilir, klasörlere koyabilir, formül ekleyebilirsin.</p>
+<figure><img src="gorseller/notes.jpg"><figcaption>Solda klasörler ve not listesi, sağda yazma alanı ve önizleme</figcaption></figure>
+<h3>Yeni not açmak</h3>
+<ol class="steps">
+  <li>Notlar sayfasında <b>Yeni</b>’ye bas.</li>
+  <li>Açılan küçük menüden <b>Not</b>’u seç. Hesap tablosu istiyorsan <b>Tablo</b>’yu seç (Bölüm 6).</li>
+  <li>Üstteki başlık alanına notunun adını yaz.</li>
+  <li>Aşağıdaki büyük alana notunu yaz. Her şey <b>kendiliğinden kaydedilir</b>; “Kaydet” düğmesi aramana gerek yok.</li>
+</ol>
+<figure class="half"><img src="gorseller/notes-new.jpg"><figcaption>Yeni: Not ya da Tablo</figcaption></figure>
+<h3>Yazıyı süslemek</h3>
+<table>
+  <tr><th>Yazdığın</th><th>Görünen</th></tr>
+  <tr><td><code># Başlık</code></td><td>Büyük başlık</td></tr>
+  <tr><td><code>**kalın**</code> veya <kbd>Ctrl</kbd>+<kbd>B</kbd></td><td><b>kalın</b></td></tr>
+  <tr><td><code>*eğik*</code> veya <kbd>Ctrl</kbd>+<kbd>I</kbd></td><td><i>eğik</i></td></tr>
+  <tr><td><code>- madde</code></td><td>• madde</td></tr>
+  <tr><td><code>1. madde</code></td><td>Numaralı liste</td></tr>
+  <tr><td><code>&gt; alıntı</code></td><td>Kenarı çizgili alıntı</td></tr>
+  <tr><td><code>$a^2+b^2=c^2$</code></td><td>Satır içinde formül</td></tr>
+  <tr><td><code>$$\frac{1}{2}$$</code></td><td>Ortada büyük formül</td></tr>
+</table>
+<h3>Formüller ve semboller</h3>
+<p>Matematik, fizik ya da kimya formülü yazmak için <b>Semboller</b> düğmesine bas. Bir çekmece açılır. İçinde kesir, kök, integral, Yunan harfleri gibi semboller vardır. Birine dokunduğunda yazdığın yere eklenir.</p>
+<figure><img src="gorseller/notes-symbols.jpg"><figcaption>Sembol çekmecesi açıkken</figcaption></figure>
+<h3>Görünüm düğmeleri</h3>
+<ul>
+  <li><b>Editör</b>: Sadece yazma alanı.</li>
+  <li><b>Bölünmüş</b>: Solda yazarsın, sağda nasıl göründüğünü anında görürsün (bilgisayarda).</li>
+  <li><b>Önizleme</b>: Sadece bitmiş hâli. Formüller güzelce çizilir.</li>
+</ul>
+<h3>Klasörler</h3>
+<div class="box story">Klasörler, çekmecelerin gibidir. Okul notlarını bir çekmeceye, kişisel notlarını başka bir çekmeceye koyarsın.</div>
+<ol class="steps">
+  <li>Klasörler başlığının yanındaki <b>+ Klasör</b>’e bas.</li>
+  <li>Klasöre bir ad ver. İstersen kısa bir açıklama ekle.</li>
+  <li>Klasörün <b>simgesini</b> seç: kitap, okul şapkası, kalp, para, uçak… 20 simge var.</li>
+  <li><b>Oluştur</b>’a bas.</li>
+</ol>
+<figure class="half"><img src="gorseller/folder.jpg"><figcaption>Klasör oluştururken simge seçimi</figcaption></figure>
+<ul>
+  <li><b>Klasörü düzenlemek</b> (ad, açıklama, simge): Klasörün üzerine gelince çıkan <b>kalem</b> simgesine bas. Telefonda kalem simgesi hep görünür.</li>
+  <li><b>Klasörü silmek</b>: Çöp kutusu simgesine bas. İçindeki notları da silmek isteyip istemediğin sorulur. Silmezsen notlar “Tüm Notlar”a taşınır.</li>
+  <li><b>Klasörleri sıralamak</b>: <b>Sırala</b>’ya bas. Ardından klasörleri oklarla yukarı-aşağı taşı ya da bilgisayarda sürükleyip bırak. Bitince <b>Bitti</b>’ye bas.</li>
+  <li><b>Notu klasöre koymak</b>: Notun üstündeki klasör kutusundan klasörü seç.</li>
+</ul>
+<h3>Notları sıralamak</h3>
+<p>Not listesinin üstündeki <b>Sırala</b> kutusundan seç: son düzenlenen, oluşturma tarihi, başlık (A–Z) ya da <b>Elle</b>. Elle seçersen her notun yanında oklar çıkar; istediğin sıraya dizebilirsin. İğneyle sabitlenen notlar hep en üstte durur.</p>
+<h3>Etiketler, iğne ve yıldız</h3>
+<ul>
+  <li><b>Etiket</b>: Notun altındaki “+ Etiket ekle” kutusuna bir kelime yazıp <kbd>Enter</kbd>’a bas (ör. <i>vize</i>). Sonra etikete dokunarak sadece o etiketli notları görürsün.</li>
+  <li><b>İğne</b>: Notu listenin en üstüne sabitler. Genel Bakış’taki “Sabitlenmiş notlar” bölümünde de görünür.</li>
+  <li><b>Yıldız</b>: Notu <b>Favoriler</b>’e ekler.</li>
+  <li><b>Görev Oluştur</b>: Bu not için yapılacak bir görev açar.</li>
+</ul>
+
+<!-- 6 -->
+<h2><span class="no">6</span> Tablo notları (Excel gibi)</h2>
+<p class="lead">Tablo notu, kutucuklardan oluşan bir hesap tablosudur. Alışveriş listesi, harcama hesabı, not ortalaması… Hepsini burada kolayca hesaplarsın.</p>
+<figure><img src="gorseller/table.jpg"><figcaption>Bir tablo notu: üstte araç çubuğu ve formül satırı, altta sayfa sekmeleri</figcaption></figure>
+<h3>Temel kullanım</h3>
+<ol class="steps">
+  <li><b>Yeni › Tablo</b> ile yeni bir tablo aç.</li>
+  <li>Bir kutucuğa (hücreye) dokun ve yazmaya başla. <kbd>Enter</kbd> aşağı, <kbd>Tab</kbd> sağa geçer.</li>
+  <li>Hücreyi düzeltmek için çift tıkla ya da <kbd>F2</kbd>’ye bas. İstersen üstteki <b>fx</b> satırına da yazabilirsin.</li>
+  <li>Hücreleri seçmek için fareyle sürükle ya da <kbd>Shift</kbd> + ok tuşlarını kullan. Silmek için <kbd>Delete</kbd>’e bas.</li>
+</ol>
+<h3>Formüller: hesabı tablo yapsın</h3>
+<div class="box story">Hesap makinesine her seferinde sayıları tek tek yazmak yerine tabloya “bu iki kutuyu topla” dersin. Sayılar değişince sonuç da kendiliğinden değişir.</div>
+<p>Formüller <b>=</b> işaretiyle başlar. Hücreler adlarıyla anılır: <b>A1</b>, A sütunu 1. satırdır.</p>
+<table>
+  <tr><th>Formül</th><th>Ne yapar?</th></tr>
+  <tr><td><code>=A1+A2</code></td><td>İki hücreyi toplar (<code>-</code> <code>*</code> <code>/</code> <code>^</code> de olur)</td></tr>
+  <tr><td><code>=TOPLA(A1:A10)</code> / <code>=SUM(…)</code></td><td>A1’den A10’a kadar toplar</td></tr>
+  <tr><td><code>=ORTALAMA(B2:B9)</code></td><td>Ortalama</td></tr>
+  <tr><td><code>=MİN(…)</code>, <code>=MAK(…)</code></td><td>En küçük, en büyük</td></tr>
+  <tr><td><code>=EĞER(C2&gt;=50;"Geçti";"Kaldı")</code></td><td>Koşula göre yazı</td></tr>
+  <tr><td><code>=ETOPLA(A2:A20;"&gt;100")</code></td><td>Koşula uyanları toplar</td></tr>
+  <tr><td><code>=EĞERSAY(A2:A20;"elma")</code></td><td>Koşula uyanları sayar</td></tr>
+  <tr><td><code>=DÜŞEYARA(…)</code></td><td>Tabloda arama yapar</td></tr>
+  <tr><td><code>=YUVARLA(A1;2)</code></td><td>2 basamağa yuvarlar</td></tr>
+  <tr><td><code>=BUGÜN()</code></td><td>Bugünün tarihi</td></tr>
+  <tr><td><code>=Sayfa2!B3</code></td><td>Başka bir sayfadaki hücre</td></tr>
+</table>
+<div class="box tip">Formülleri ezberlemene gerek yok. Araç çubuğundaki <b>Σ</b> düğmesine bas ve listeden seç. Önce birkaç hücre seçersen formül, seçtiğin hücreleri kendisi kullanır.</div>
+<h3>Araç çubuğu</h3>
+<ul>
+  <li><b>Geri al / Yinele</b>: Yanlışlıkla yaptığını geri alır (<kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd>).</li>
+  <li><b>K, İ, A</b>: Kalın, italik, altı çizili yazı.</li>
+  <li><b>Hizalama</b>: Yazıyı sola, ortaya ya da sağa yaslar.</li>
+  <li><b>Sayı biçimi</b>: Genel, sayı (0,00), tam sayı, para (₺), yüzde (%), tarih, metin.</li>
+  <li><b>Yazı rengi</b> ve <b>dolgu rengi</b>; yanındaki <b>X</b> renkleri temizler.</li>
+  <li><b>Satır / sütun ekle-sil</b>: Formüller bozulmadan kendini ayarlar.</li>
+  <li><b>A→Z / Z→A</b>: Seçili sütuna göre sıralar. İlk satır başlık olarak yerinde kalır.</li>
+  <li><b>Σ</b>: Formül ekler.</li>
+</ul>
+<h3>Daha fazlası</h3>
+<ul>
+  <li><b>Sayfalar</b>: Alttaki <b>+</b> ile yeni sayfa eklenir. Adını değiştirmek için sayfa adına çift tıkla.</li>
+  <li><b>Kopyala-yapıştır</b>: Excel’den ya da Google E-Tablolar’dan kopyalayıp doğrudan yapıştırabilirsin.</li>
+  <li><b>Aşağı doldur</b>: Seçili alanda <kbd>Ctrl</kbd>+<kbd>D</kbd> ilk satırı aşağı kopyalar.</li>
+  <li><b>Sütun genişliği</b>: Sütun harfinin sağ kenarını sürükle.</li>
+  <li>Birden fazla sayı seçtiğinde alt çubukta <b>toplam, ortalama ve sayı</b> görünür.</li>
+</ul>
+
+<!-- 7 -->
+<h2><span class="no">7</span> Dosya içe aktarma</h2>
+<p class="lead">Bilgisayarındaki ya da telefonundaki dosyaları LrDocument’e getirebilirsin.</p>
+<ol class="steps">
+  <li>Notlar sayfasında <b>İçe aktar</b>’a bas.</li>
+  <li>Önce ne tür bir not istediğini seç:
+    <ul>
+      <li><b>Not</b>: PDF, Word (.docx), Markdown (.md) ya da metin (.txt).</li>
+      <li><b>Tablo</b>: Excel (.xlsx, .xls), LibreOffice (.ods) ya da CSV.</li>
+    </ul></li>
+  <li><b>… dosyası seç</b>’e bas. Dosya seçme penceresinde yalnızca o türün dosyaları seçilebilir.</li>
+</ol>
+<figure class="half"><img src="gorseller/import.jpg"><figcaption>İçe aktar: önce tür seçilir</figcaption></figure>
+<ul>
+  <li><b>Word, Markdown ve metin</b> dosyaları düzenlenebilir bir not olur.</li>
+  <li><b>Excel ve CSV</b> dosyaları tablo notu olur. Tüm sayfalar ve formüller gelir.</li>
+  <li><b>PDF</b> dosyaları olduğu gibi saklanır ve uygulamanın içinde açılır (Bölüm 8). PDF’i düzenlenebilir yazıya çevirmek istersen <b>“PDF’leri düzenlenebilir metne çevir”</b> kutusunu işaretle.</li>
+</ul>
+<div class="box tip">Tablo seçeneğinde Excel dosyası yüklersen tablo notu açılır. Not seçeneğinde yanlışlıkla Excel dosyası seçsen bile uygulama bunu anlar ve yine tablo açar.</div>
+
+<!-- 8 -->
+<h2><span class="no">8</span> PDF notları ve el yazısı</h2>
+<p class="lead">PDF yüklediğinde dosya bozulmaz, değiştirilmez. Uygulamanın içindeki PDF okuyucuyla açılır.</p>
+<figure><img src="gorseller/pdf-note.jpg"><figcaption>Uygulamanın içindeki PDF okuyucu</figcaption></figure>
+<ul>
+  <li>PDF bilgisayarda <b>%50</b>, telefonda <b>%75</b> büyüklükte açılır. <b>− / +</b> düğmeleriyle <b>%10</b>’a kadar küçültüp büyütebilirsin. En son bıraktığın büyüklük hatırlanır; bir dahaki sefere PDF o büyüklükte açılır (telefon ve bilgisayar için ayrı ayrı). Yüzdeye basınca sayfa genişliğine (%100) döner.</li>
+  <li>Aşağı kaydırdıkça sayfalar yüklenir. Üstte “Sayfa 3 / 12” gibi nerede olduğunu görürsün.</li>
+  <li><b>İndir</b> düğmesi PDF’in kendisini indirir.</li>
+</ul>
+<h3>Metne dönüştür (el yazısı dahil)</h3>
+<ol class="steps">
+  <li>PDF notunda <b>Metne dönüştür</b>’e bas.</li>
+  <li><b>Basılı yazı</b> ya da <b>El yazısı</b>’nı seç.</li>
+  <li>Uygulama sayfaları okur ve yazıyı <b>yeni bir metin notuna</b> koyar. PDF olduğu gibi kalır.</li>
+</ol>
+<div class="box warn">El yazısı tanıma, okunaklı ve düz satırlara yazılmış notlarda en iyi sonucu verir. Bilgisayar her kelimeyi doğru okuyamayabilir; çıkan metni mutlaka kontrol et.</div>
+<div class="box tip">Okuma işlemi senin cihazında yapılır; PDF’in içeriği bunun için başka bir yere gönderilmez. PDF’in kendisi ise sunucuda sana özel anahtarla şifrelenmiş olarak saklanır ve her açılışta bozulmadığı kontrol edilir.</div>
+
+<!-- 9 -->
+<h2><span class="no">9</span> Gizli Notlar</h2>
+<p class="lead">Gizli Notlar, kilitli bir günlük gibidir. Anahtarı sadece sende olur.</p>
+<div class="box story">Bir sandığa kilit taktığını düşün. Anahtarı yalnızca sen biliyorsun. Sandığı başkası alsa bile içini açamaz. LrDocument’in yöneticisi bile açamaz!</div>
+<ol class="steps">
+  <li>Notlar’da klasör listesinden <b>Gizli Notlar</b>’a bas.</li>
+  <li>İlk seferde bir <b>gizli notlar şifresi</b> belirle. Hesap şifrenden farklı olsun.</li>
+  <li><b>Yeni gizli not</b> ile yazmaya başla. Notlar cihazında şifrelenip öyle kaydedilir.</li>
+  <li>İşin bitince <b>Kilitle</b>’ye bas.</li>
+</ol>
+<figure class="half"><img src="gorseller/secret.jpg"><figcaption>Gizli Notlar: ilk açılışta şifre belirlenir</figcaption></figure>
+<ul>
+  <li>Gizli notlar kendiliğinden kilitlenir: sayfadan çıkınca, 5 dakika hiçbir şeye dokunmayınca ya da uygulama 1 dakikadan uzun arka planda kalınca.</li>
+  <li>Şifreyi değiştirmek için içerideyken <b>Şifre</b> düğmesine bas.</li>
+  <li>Kurumsal hesaplarda Gizli Notlar, kurum sahibinin <b>Şahsi Notlar</b> sayfasındadır.</li>
+</ul>
+<div class="box warn">Gizli notlar şifreni unutursan notlar <b>kurtarılamaz</b>. Şifre hiçbir yerde saklanmaz. “Şifremi unuttum” seçeneği tüm gizli notları siler ve baştan başlamana izin verir.</div>
+
+<!-- 10 -->
+<h2><span class="no">10</span> Notu indirme</h2>
+<p>Notun üstündeki <b>indir</b> (aşağı ok) düğmesine bas. Notun türüne göre seçenekler çıkar:</p>
+<table>
+  <tr><th>Not türü</th><th>İndirme seçenekleri</th></tr>
+  <tr><td>Metin notu</td><td><b>Markdown (.md)</b> · <b>PDF (.pdf)</b> formüllerle birlikte · <b>Word (.docx)</b></td></tr>
+  <tr><td>Tablo notu</td><td><b>Excel (.xlsx)</b> tüm sayfalar ve formüller · <b>CSV</b> · <b>PDF</b></td></tr>
+  <tr><td>PDF notu</td><td>PDF’in kendisi</td></tr>
+</table>
+<figure class="half"><img src="gorseller/notes-download.jpg"><figcaption>“Hangi biçimde indirilsin?” menüsü</figcaption></figure>
+
+<!-- 11 -->
+<h2><span class="no">11</span> Görevler ve Pano</h2>
+<p class="lead">Görevler, yapılacaklar listendir. Bitirdiğin işi işaretlemek çok keyiflidir!</p>
+<figure><img src="gorseller/tasks.jpg"><figcaption>Görevler: liste görünümü</figcaption></figure>
+<h3>Liste</h3>
+<ol class="steps">
+  <li>Üstteki “Yeni bir görev ekleyin…” kutusuna görevi yaz.</li>
+  <li>Önceliğini seç: <b>Yüksek, Orta, Düşük</b>.</li>
+  <li>Son tarihini seç. Görev birkaç gün sürecekse <b>Aralık</b>’ı açıp başlangıç ve bitiş günlerini seç.</li>
+  <li><kbd>Enter</kbd>’a bas ya da <b>Ekle</b>’ye dokun.</li>
+  <li>İş bitince görevin yanındaki kutucuğa dokun. ✔</li>
+</ol>
+<p>Üstteki filtrelerle sadece bugünkü, yüksek öncelikli ya da bekleyen görevleri görebilirsin. Son günü geçen görevler kırmızı görünür ve zilde de uyarı çıkar.</p>
+<h3>Pano (Kanban)</h3>
+<div class="box story">Panoyu, üzerinde sütunlar olan bir mantar pano gibi düşün: <i>Fikir → Yapılacak → Devam ediyor → İnceleme → Tamamlandı</i>. Kartları soldan sağa ilerletirsin.</div>
+<p>Üstteki <b>Pano</b> sekmesine geç. <b>Kart Ekle</b> ile kart oluştur. Kartı başka bir sütuna sürükleyerek durumunu değiştir. Karta dokunursan ayrıntılarını düzenleyebilirsin.</p>
+<figure><img src="gorseller/kanban.jpg"><figcaption>Pano görünümü</figcaption></figure>
+
+<!-- 12 -->
+<h2><span class="no">12</span> Takvim</h2>
+<figure><img src="gorseller/calendar.jpg"><figcaption>Aylık takvim ve gün paneli</figcaption></figure>
+<ul>
+  <li><b>Etkinlik ekle</b>: <b>Etkinlik</b> düğmesine bas. Ad, tarih, saat ve türü yaz. İstersen yapılacaklar listesi (kontrol listesi) ekle.</li>
+  <li><b>Bir güne bak</b>: Güne dokun. Sağdaki gün panelinde o günün her şeyi listelenir.</li>
+  <li><b>Ay değiştir</b>: Oklara bas. Telefonda takvimi sağa ya da sola kaydır. <b>Bugün</b> düğmesi bugüne döndürür.</li>
+  <li><b>Katmanlar</b>: Takvimde görevlerin, ödeme günlerin, derslerin, sınavların, okul takviminin ve resmi tatillerin de görünür. <b>Katmanlar</b> düğmesinden istemediklerini gizleyebilirsin.</li>
+  <li><b>Dışa aktar / eşitle</b>: Etkinliklerini .ics dosyası olarak indirip Google Takvim ya da Outlook’a aktarabilirsin. Başka bir takvimden .ics dosyasını da içeri alabilirsin.</li>
+</ul>
+
+<!-- 13 -->
+<h2><span class="no">13</span> Finans</h2>
+<p class="lead">Finans, dijital cüzdanındır. Paranın nereden gelip nereye gittiğini görürsün.</p>
+<figure><img src="gorseller/finance.jpg"><figcaption>Finans sayfası</figcaption></figure>
+<h3>İşlem eklemek</h3>
+<ol class="steps">
+  <li><b>İşlem Ekle</b>’ye bas.</li>
+  <li><b>Gelir</b> mi (gelen para) <b>Gider</b> mi (giden para) seç.</li>
+  <li>Başlığı ve tutarı yaz. Para birimini seç: TL, dolar ya da euro. Dolar ve euro güncel kurla TL’ye çevrilir.</li>
+  <li>Kategoriyi ve tarihi seç.</li>
+  <li>Para gerçekten geldiyse ya da ödendiyse <b>Onayla</b> anahtarını aç. Daha gelmediyse kapalı bırak; tarihi geçince zil seni uyarır.</li>
+</ol>
+<figure class="half"><img src="gorseller/finance-add.jpg"><figcaption>Yeni gelir / gider kaydı</figcaption></figure>
+<ul>
+  <li><b>Tekrarlayan işlem</b>: Kira, maaş, abonelik gibi her ay olan işler için “Düzenli / Tekrarlayan” kutusunu işaretle.</li>
+  <li><b>Kredi / borç</b>: Gider eklerken “Kredi / borç”u seç. Kalan borcu, faizi ve asgari ödemeyi uygulama hesaplar. “Asgariyi öde” ile ödemeni tek dokunuşla kaydedersin.</li>
+  <li><b>Kategoriler</b>: Kendi kategorilerini (Market, Ulaşım…) oluşturabilirsin.</li>
+  <li><b>CSV</b>: Kayıtlarını Excel’de açılacak bir dosya olarak indirir.</li>
+</ul>
+
+<!-- 14 -->
+<h2><span class="no">14</span> Ders Takibi <span class="badge">Öğrenciler</span></h2>
+<p class="lead">Ders Takibi, okul hayatının kontrol panelidir: ders programı, sınavlar, devamsızlık ve notlar.</p>
+<figure><img src="gorseller/academic-program.jpg"><figcaption>Ders Takibi › Program</figcaption></figure>
+<table>
+  <tr><th>Sekme</th><th>Ne işe yarar?</th></tr>
+  <tr><td><b>Özet</b></td><td>Bugünkü dersler, yaklaşan sınavlar ve kısa uyarılar.</td></tr>
+  <tr><td><b>Program</b></td><td>Haftalık ders programın. <b>Ders ekle</b> ile dersleri gir. Okulunun ders programı PDF’ini <b>PDF’ten içe aktar</b> ile otomatik doldurabilirsin.</td></tr>
+  <tr><td><b>Sınavlar</b></td><td>Sınav tarihlerini gir. Kaç gün kaldığını görürsün; sınav günü sabah bildirim gelir.</td></tr>
+  <tr><td><b>Devamsızlık</b></td><td>Gitmediğin dersleri işaretle. Sınıra yaklaşınca sarı, aşınca kırmızı uyarı çıkar.</td></tr>
+  <tr><td><b>Notlar</b></td><td>Vize, final, ödev notlarını gir. Harf notunu ve ortalamanı hesaplar. Hocan çan eğrisi uyguluyorsa onu da hesaplar.</td></tr>
+  <tr><td><b>Akademik durum</b></td><td>Dönem ve genel not ortalaman. Hedef ortalamana ulaşmak için ne kadar not alman gerektiğini söyler.</td></tr>
+</table>
+<figure><img src="gorseller/academic-status.jpg"><figcaption>Akademik durum</figcaption></figure>
+<div class="box tip">Ayarlar › Öğrenci bilgileri’nden üniversiteni seçtiysen ve okulunun akademik takvimi yayımlandıysa dönemin başlangıç-bitiş tarihleri, sınav haftaları ve tatiller kendiliğinden gelir. Sen sadece ders programını girersin.</div>
+<div class="box tip">Ders saatin yaklaşınca telefonuna bildirim gelir. Kaç dakika önce geleceğini Ayarlar › Tercihler › Bildirimler › <b>Ders hatırlatması</b>’ndan seçebilirsin.</div>
+
+<!-- 15 -->
+<h2><span class="no">15</span> Kurumsal hesaplar <span class="badge">Kurumsal</span></h2>
+<p class="lead">Kurumsal hesap, ekibin ortak çalışma odasıdır. Herkes aynı notları, görevleri ve müşterileri görür. Ama herkesin bir de kendine ait <b>şahsi</b> çekmecesi vardır.</p>
+<figure><img src="gorseller/team.jpg"><figcaption>Kurum ve Ekip</figcaption></figure>
+<h3>Kurum ve Ekip (sahip ve yöneticiler)</h3>
+<ul>
+  <li><b>Kişi ekle</b>: Yeni üyenin adını yaz. Ona özel bir <b>kurumsal kod</b> oluşur. Üye giriş ekranında “Kurumsal kod ile giriş”e bu kodu yazarak girer.</li>
+  <li><b>İzinler</b>: Her üye için her bölümde <i>Yok / Görüntüle / Düzenle</i> seçebilirsin. Örneğin bir üye finansı hiç görmesin, notları sadece okusun.</li>
+  <li><b>Yönetici</b>: Yöneticiler her şeyi düzenler ve üyelerin izinlerini ayarlar.</li>
+  <li><b>Yeni kod</b>: Kodunu kaybeden üyeye yeni kod verirsin; eskisi çalışmaz olur.</li>
+</ul>
+<h3>Müşteriler</h3>
+<p>Müşterilerini, aylık ücretlerini ve ödemelerini takip edersin. Ödemesi geciken müşteri kırmızı görünür.</p>
+<figure><img src="gorseller/customers.jpg"><figcaption>Müşteriler</figcaption></figure>
+<h3>Şahsi Notlar ve Şahsi Finans</h3>
+<div class="box story">Ofiste herkesin kullandığı büyük bir masa var: bu, <b>Ortak Notlar</b> ve <b>Finans</b>. Bir de herkesin kendi kilitli çekmecesi var: bu da <b>Şahsi Notlar</b> ve <b>Şahsi Finans</b>.</div>
+<ul>
+  <li>Sol menüde <b>Şahsi Notlar</b>, Ortak Notlar’ın üstündedir; <b>Şahsi Finans</b> ise Finans’ın altındadır.</li>
+  <li>Buraya yazdıklarını <b>sadece sen</b> görürsün. Kurum sahibi ve diğer üyeler göremez.</li>
+  <li>Sayfalar ortak sayfalarla aynı şekilde çalışır: klasörler, tablolar, PDF’ler, tekrarlayan ödemeler…</li>
+  <li>Şahsi ödemelerinin hatırlatmaları sadece senin cihazına gelir.</li>
+</ul>
+<figure><img src="gorseller/personal-notes.jpg"><figcaption>Şahsi Notlar</figcaption></figure>
+<div class="box tip">Ekipten biri bir şey eklediğinde ekranında anında görünür. Kimin eklediği de yazar (“Ekleyen: Mert”).</div>
+
+<!-- 16 -->
+<h2><span class="no">16</span> Arama</h2>
+<p>Üstteki büyüteçe bas ya da klavyede <kbd>Ctrl</kbd>+<kbd>K</kbd> (Mac’te <kbd>⌘</kbd>+<kbd>K</kbd>) ya da <kbd>/</kbd> tuşuna bas. Bir kelime yaz; notlar, görevler, etkinlikler ve sayfalar arasında hemen bulur. Sonuca dokunursan oraya gidersin.</p>
+<figure><img src="gorseller/search.jpg"><figcaption>Arama penceresi</figcaption></figure>
+
+<!-- 17 -->
+<h2><span class="no">17</span> Bildirimler</h2>
+<h3>Zil</h3>
+<p>Üstteki <b>zil</b>, uygulama açıkken bildirimlerini gösterir: süresi geçen görevler, onay bekleyen ödemeler, bugünkü ve yarınki etkinlikler. Kurumsalda ekip arkadaşlarının eklediği kayıtlar da buraya düşer.</p>
+<figure class="half"><img src="gorseller/bell.jpg"><figcaption>Bildirim merkezi</figcaption></figure>
+<h3>Telefon ve bilgisayar bildirimleri</h3>
+<p>Uygulama kapalıyken bile telefonuna, tabletine ya da bilgisayarına bildirim gelebilir:</p>
+<ul>
+  <li>Görevin <b>son günü geldiğinde</b> ve <b>süresi geçtiğinde</b>.</li>
+  <li><b>Ödeme günü geldiğinde</b> ve <b>geçtiğinde</b> (tekrarlayan ve kredi ödemeleri dahil).</li>
+  <li>Günün <b>etkinlikleri</b>.</li>
+  <li>Öğrencilerde <b>ders saati</b> (dersten kaç dakika önce olacağını sen seçersin) ve <b>sınav günü</b>.</li>
+  <li>Kurumsalda ekibin eklediği görev, ödeme ve notlar.</li>
+</ul>
+<ol class="steps">
+  <li>Ayarlar › <b>Tercihler</b> › Bildirimler bölümüne git.</li>
+  <li><b>Telefon ve bilgisayar bildirimleri</b>’ni aç. Tarayıcı izin isterse <b>İzin ver</b>’e bas.</li>
+  <li>Öğrenciysen <b>Ders hatırlatması</b>’ndan zamanı seç: 1 saat, 30, 15, 10, 5 dakika önce, ders başlarken ya da başladıktan sonra.</li>
+</ol>
+<h3>Bildirim sesi</h3>
+<p>Ayarlar › Tercihler › Bildirimler’deki <b>Bildirim sesi</b> kutusundan seç: <b>Kapalı</b>, <b>Varsayılan (zil)</b> ya da <b>Kendi sesim</b>. <b>Ses yükle</b> ile bilgisayarından ya da telefonundan bir ses dosyası seçebilirsin (MP3, WAV, OGG veya M4A, en fazla 1 MB). <b>Dene</b> düğmesi sesi çalar; kaydırma çubuğu ses düzeyini ayarlar.</p>
+<div class="box tip">Seçtiğin ses, uygulama açıkken (arka planda bile) gelen bildirimlerde çalar. Uygulama tamamen kapalıyken telefonun ya da bilgisayarın kendi bildirim sesi çalar; tarayıcılar bu sesin değiştirilmesine izin vermez.</div>
+<div class="box warn">iPhone ve iPad’de bildirim için önce uygulamayı ana ekrana eklemelisin (Bölüm 20). Sonra ana ekrandaki simgeden açıp bildirimi aç. Bildirimi her cihazda ayrı açman gerekir.</div>
+<div class="box tip">Hatırlatmalar 08:00–22:00 arasında gelir ve her biri sadece bir kez gönderilir. Ders hatırlatmaları ise ders saatine göre gelir.</div>
+
+<!-- 18 -->
+<h2><span class="no">18</span> Kısayollar</h2>
+<p>Kısayollar işleri hızlandırır. Listeyi görmek için klavyede <kbd>?</kbd> tuşuna bas.</p>
+<figure><img src="gorseller/shortcuts.jpg"><figcaption>Kısayol listesi</figcaption></figure>
+<table>
+  <tr><th>Klavye</th><th>Ne yapar?</th></tr>
+  <tr><td><kbd>N</kbd></td><td>Yeni not</td></tr>
+  <tr><td><kbd>T</kbd></td><td>Yeni görev</td></tr>
+  <tr><td><kbd>E</kbd></td><td>Yeni takvim etkinliği</td></tr>
+  <tr><td><kbd>I</kbd></td><td>Yeni gelir / gider</td></tr>
+  <tr><td><kbd>G</kbd> sonra <kbd>D</kbd>, <kbd>N</kbd>, <kbd>G</kbd>, <kbd>T</kbd>, <kbd>F</kbd>…</td><td>Genel Bakış, Notlar, Görevler, Takvim, Finans… sayfasına gider</td></tr>
+  <tr><td><kbd>[</kbd></td><td>Sol menüyü daraltır ya da genişletir</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Notu hemen kaydeder</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Not: düzenleme ve önizleme arasında geçiş</td></tr>
+</table>
+<table>
+  <tr><th>Dokunmatik (telefon / tablet)</th><th>Ne yapar?</th></tr>
+  <tr><td>Ekranın sol kenarından sağa kaydır</td><td>Menüyü açar</td></tr>
+  <tr><td>Açık menüde sola kaydır</td><td>Menüyü kapatır</td></tr>
+  <tr><td>Not açıkken sol kenardan sağa kaydır</td><td>Not listesine döner</td></tr>
+  <tr><td>Takvimde sağa / sola kaydır</td><td>Önceki / sonraki ay</td></tr>
+</table>
+<div class="box tip">Yazı yazarken tek harfli kısayollar çalışmaz; yani yazdığın harfler kaybolmaz. İstemezsen kısayolları Ayarlar › Tercihler › Kısayollar’dan kapatabilirsin.</div>
+
+<!-- 19 -->
+<h2><span class="no">19</span> Ayarlar, tek tek</h2>
+<p>Ayarlar’a sol menünün en altından ya da sağ üstteki profil harfinden ulaşırsın. Üstte sekmeler vardır.</p>
+<h3>Hesap</h3>
+<figure><img src="gorseller/settings-account.jpg"><figcaption>Ayarlar › Hesap</figcaption></figure>
+<ul>
+  <li>Adın, e-postan, rolün, hesap türün ve <b>paketin</b> (Aylık, Ömür boyu ya da VIP) burada görünür.</li>
+  <li>Öğrenciler buradan <b>bireysel hesaba geçiş</b> isteyebilir. Yönetici onaylayınca hesabın bireysel olur.</li>
+</ul>
+<h3>Güvenlik</h3>
+<figure><img src="gorseller/settings-security.jpg"><figcaption>Ayarlar › Güvenlik</figcaption></figure>
+<ul>
+  <li><b>E-posta doğrulaması</b>: E-postana gelen kodla adresini doğrularsın.</li>
+  <li><b>E-posta adresi</b>: E-postanı değiştirebilirsin. Yeni adrese kod gider.</li>
+  <li><b>Öğrenci e-postası</b> (öğrenciler): Okul e-postanı doğrularsan onunla da giriş yapabilirsin. Öğrenciliğin de doğrulanmış olur.</li>
+  <li><b>Şifre</b>: Eski şifreni ve yeni şifreni yazarak değiştirirsin.</li>
+  <li><b>İki adımlı doğrulama</b>: En güçlü koruma! Açınca girişte şifrenin yanında telefonundaki uygulamanın (Google Authenticator, Microsoft Authenticator…) ürettiği kod da sorulur. Kurtarma kodlarını güvenli bir yere yaz.</li>
+</ul>
+<h3>Öğrenci bilgileri <span class="badge">Öğrenciler</span></h3>
+<figure><img src="gorseller/settings-student.jpg"><figcaption>Ayarlar › Öğrenci bilgileri</figcaption></figure>
+<p>Üniversiteni listeden seç; bölümünü, sınıfını ve öğrenci numaranı yaz. <b>Öğrencilik doğrulaması</b> için okul e-postana gelen kodu ya da öğrenci belgeni kullanabilirsin.</p>
+<h3>Ders takibi <span class="badge">Öğrenciler</span></h3>
+<figure><img src="gorseller/settings-academic.jpg"><figcaption>Ayarlar › Ders takibi</figcaption></figure>
+<p>Okulunun not sistemi (harf notları, geçme notu, devam zorunluluğu) ve akademik takvim burada ayarlanır. Okulunun takvimi yayımlandıysa kendiliğinden gelir. Gelmediyse takvim PDF’ini yükleyebilirsin.</p>
+<h3>Tercihler</h3>
+<figure><img src="gorseller/settings-prefs.jpg"><figcaption>Ayarlar › Tercihler</figcaption></figure>
+<ul>
+  <li><b>Görünüm</b>: Sol menü daraltılmış başlasın mı, not listesi gizli mi olsun, sembol çekmecesi açık mı başlasın, takvimde gün paneli görünsün mü, Görevler pano ile mi açılsın?</li>
+  <li><b>Döviz</b>: Dolar ve euro çevirilerine sabit bir <b>marj</b> eklemek istersen buradan açarsın (normalde 0 TL).</li>
+  <li><b>Bildirimler</b>: Telefon ve bilgisayar bildirimlerini açıp kapatırsın; <b>bildirim sesini</b> seçer ya da kendi sesini yüklersin; öğrenciler ders hatırlatma zamanını seçer.</li>
+  <li><b>Kısayollar</b>: Klavye kısayollarını ve dokunmatik hareketleri açıp kapatırsın; kısayol listesini görürsün.</li>
+  <li><b>Uygulama</b>: LrDocument’i bilgisayarına ya da telefonuna uygulama olarak yüklersin.</li>
+  <li><b>Gizlilik</b>: Verilerinin nasıl korunduğunu anlatır.</li>
+</ul>
+<h3>Destek</h3>
+<figure><img src="gorseller/settings-support.jpg"><figcaption>Ayarlar › Destek</figcaption></figure>
+<ul>
+  <li><b>Kullanım kılavuzu</b>: Bu kılavuzu açar.</li>
+  <li><b>İstek, öneri ve hata bildirimi</b>: Uygulamanın gelişmesine sen de yardım edebilirsin! Tür seç (istek, öneri, hata), konuyu ve açıklamayı yaz, <b>Gönder</b>’e bas. Yöneticinin yanıtı aşağıda ve e-postanda görünür.</li>
+</ul>
+
+<!-- 20 -->
+<h2><span class="no">20</span> Uygulama olarak yükleme</h2>
+<p>LrDocument’i bir uygulama gibi yükleyebilirsin. Masaüstünde ya da ana ekranında kendi simgesi olur ve kendi penceresinde açılır.</p>
+<table>
+  <tr><th>Cihaz</th><th>Nasıl yüklenir?</th></tr>
+  <tr><td><b>Windows / Mac</b> (Edge, Chrome)</td><td>Adres çubuğundaki <b>“Uygulamayı yükle”</b> simgesine bas ya da Ayarlar › Tercihler › Uygulama › <b>Yükle</b>.</td></tr>
+  <tr><td><b>Android</b> (Chrome)</td><td>Menü (⋮) › <b>Ana ekrana ekle / Uygulamayı yükle</b>.</td></tr>
+  <tr><td><b>iPhone / iPad</b> (Safari)</td><td>Paylaş düğmesi (□↑) › <b>Ana Ekrana Ekle</b> › <b>Ekle</b>. Sonra ana ekrandaki LrDocument simgesinden aç.</td></tr>
+</table>
+<div class="box tip">iPhone ve iPad’de bildirimler sadece ana ekrana eklenmiş uygulamada çalışır (iOS 16.4 ve üstü).</div>
+
+<!-- 21 -->
+<h2><span class="no">21</span> Güvenlik ipuçları</h2>
+<ul>
+  <li><b>Güçlü bir şifre seç</b>: Uzun olsun; harf, rakam ve işaret karışık olsun. Başka sitelerde kullandığın şifreyi kullanma.</li>
+  <li><b>İki adımlı doğrulamayı aç</b>: Biri şifreni öğrense bile telefonun olmadan giremez.</li>
+  <li><b>Ortak bilgisayarda</b> işin bitince profil menüsünden <b>Çıkış yap</b>.</li>
+  <li><b>Gizli Notlar</b> şifreni kimseyle paylaşma ve unutmayacağın bir yere not et.</li>
+  <li>LrDocument sana asla e-postayla <b>şifreni sormaz</b>. Böyle bir e-posta gelirse cevap verme.</li>
+  <li>Notların, dosyaların ve ayarların sunucuda sana özel bir anahtarla şifrelenir. Tarayıcında çerez ya da yerel depolama ile kişisel veri tutulmaz.</li>
+</ul>
+
+<!-- 22 -->
+<h2><span class="no">22</span> Sık sorulan sorular</h2>
+<h3>Notum kaydedildi mi?</h3>
+<p>Evet. Yazdığın her şey birkaç saniye içinde kendiliğinden kaydedilir. İstersen <kbd>Ctrl</kbd>+<kbd>S</kbd> ile hemen kaydedebilirsin.</p>
+<h3>Telefonda yazdığımı bilgisayarda görebilir miyim?</h3>
+<p>Evet. Aynı hesapla girdiğin her cihazda her şey aynıdır ve değişiklikler anında gelir.</p>
+<h3>İnternet yokken çalışır mı?</h3>
+<p>Bağlantı yoksa bir uyarı sayfası görürsün. Bağlantı gelince kaldığın yerden devam edersin.</p>
+<h3>Bir notu yanlışlıkla sildim, geri gelir mi?</h3>
+<p>Silinen notlar geri gelmez. Önemli notlarını indirerek (Bölüm 10) yedekleyebilirsin.</p>
+<h3>Bildirim gelmiyor, ne yapmalıyım?</h3>
+<ul>
+  <li>Ayarlar › Tercihler’de bildirimin açık olduğundan emin ol.</li>
+  <li>Cihazının ayarlarında tarayıcıya ya da uygulamaya bildirim izni verdiğini kontrol et.</li>
+  <li>“Rahatsız Etmeyin”, odak modu ya da pil tasarrufu bildirimleri geciktirebilir.</li>
+  <li>iPhone’da uygulamayı ana ekrana ekleyip oradan açtığından emin ol.</li>
+</ul>
+<h3>El yazımı neden tam okuyamadı?</h3>
+<p>El yazısı herkeste farklıdır. Okunaklı, düz ve koyu kalemle yazılmış sayfalarda sonuç daha iyi olur. Çıkan metni kontrol edip düzeltmen gerekebilir.</p>
+<h3>Bir fikrim ya da sorunum var</h3>
+<p>Ayarlar › Destek’ten bize yaz. Her öneri uygulamayı daha iyi yapmamıza yardım eder. Teşekkürler! 🧡</p>
+
+</body>
+</html>

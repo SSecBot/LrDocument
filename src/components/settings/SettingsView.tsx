@@ -13,7 +13,7 @@ import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
 import { EmailSection, EmailVerificationPanel, TwoFactorSection } from './SecuritySections';
 import { StudentEmailSection } from './StudentEmailSection';
 import { AccountSwitchSection, SupportSection } from './SupportSections';
-import { CurrencyPanel, InstallAppPanel, NotificationsPanel } from './PreferenceExtras';
+import { CurrencyPanel, InstallAppPanel, NotificationsPanel, ShortcutsPanel } from './PreferenceExtras';
 
 export function SettingsView() {
   const { currentUser, settingsSection, setSettingsSection } = useAppStore();
@@ -122,7 +122,9 @@ function AccountSection() {
       : []),
     [
       'Paket',
-      `${lifetime ? 'Ömür boyu' : 'Aylık'} — ${formatPlanPrice(lifetime ? 'Tek Seferlik' : 'Aylık', type, systemSettings.pricing, currentUser?.seats ?? undefined)}${lifetime ? '' : ' / ay'}`,
+      currentUser?.subscriptionPlan === 'VIP'
+        ? 'VIP — ömür boyu ücretsiz'
+        : `${lifetime ? 'Ömür boyu' : 'Aylık'} — ${formatPlanPrice(lifetime ? 'Tek Seferlik' : 'Aylık', type, systemSettings.pricing, currentUser?.seats ?? undefined)}${lifetime ? '' : ' / ay'}`,
     ],
   ];
   return (
@@ -242,13 +244,16 @@ function PreferencesSection() {
       </Panel>
       <CurrencyPanel />
       <NotificationsPanel />
+      <ShortcutsPanel />
       <InstallAppPanel />
       <Panel title="Gizlilik">
         <ul className="space-y-2 text-xs text-subtle leading-relaxed list-disc pl-4">
           <li>Tarayıcınızda çerez, önbellek veya yerel depolama ile hiçbir kişisel veri tutulmaz; yalnızca oturumunuzu tanıyan, JavaScript’in okuyamadığı tek bir oturum çerezi vardır.</li>
           <li>Notlarınız, görevleriniz, takvim ve finans kayıtlarınız, ders bilgileriniz ve bu tercihler sunucuda size özel bir anahtarla şifrelenmiş (AES-256) olarak saklanır.</li>
           <li>Şifreniz geri döndürülemez biçimde (bcrypt) saklanır; kimse göremez.</li>
-          <li>Yüklediğiniz PDF ve Word dosyaları cihazınızda okunur; dosyanın kendisi sunucuya gönderilmez.</li>
+          <li>Metne çevrilen PDF, Word ve Excel dosyaları cihazınızda okunur; dosyanın kendisi sunucuya gönderilmez.</li>
+          <li>PDF olarak eklediğiniz notlar sunucuda size özel anahtarla şifrelenip saklanır, her açılışta bütünlüğü (SHA-256) kontrol edilir; tarayıcıda kopyası tutulmaz.</li>
+          <li>Gizli notlar cihazınızda, yalnızca sizin bildiğiniz şifreyle şifrelenir; sunucu ve yönetici içeriğini göremez.</li>
         </ul>
       </Panel>
     </>

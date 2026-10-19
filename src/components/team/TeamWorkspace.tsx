@@ -155,7 +155,9 @@ export function TeamWorkspace() {
         <div className="grid sm:grid-cols-3 gap-3">
           <Info label="Kişi sayısı" value={`${data.seats}`} hint={`Sahip + ${data.members.length} kişi · en fazla ${data.maxMembers + 1}`} />
           <Info label="Yönetici" value={`${managers} / ${data.maxManagers}`} hint="Yöneticiler tüm bölümleri düzenler ve üyelerin izinlerini ayarlar." />
-          {isOwner ? (
+          {isOwner && (data.subscriptionPlan as string) === 'VIP' ? (
+            <Info label="Ücret" value="VIP · ücretsiz" hint="Yönetici ödemeyi kalıcı olarak kaldırdı; kişi ekleseniz de ücret istenmez." />
+          ) : isOwner ? (
             <Info
               label={plan === 'Tek Seferlik' ? 'Ömür boyu ücret' : 'Aylık ücret'}
               value={formatTL(perSeat * data.seats)}

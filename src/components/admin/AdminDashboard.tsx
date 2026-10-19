@@ -883,6 +883,7 @@ export function AdminDashboard() {
                         >
                           <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
                           <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
+                          <option value="VIP">VIP — ömür boyu ücretsiz</option>
                         </select>
                       </div>
                     </div>
@@ -1058,13 +1059,16 @@ export function AdminDashboard() {
                               disabled={actionLoadingId === user.id}
                               onChange={(e) => handleUpdatePlan(user, e.target.value as SubscriptionPlan)}
                               className={`text-[11px] font-semibold rounded-lg px-2 py-1 border transition-colors cursor-pointer focus:outline-none ${
-                                user.subscriptionPlan === 'Tek Seferlik'
+                                user.subscriptionPlan === 'VIP'
+                                  ? 'bg-amber-950/60 text-amber-300 border-amber-700/60'
+                                  : user.subscriptionPlan === 'Tek Seferlik'
                                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
                                   : 'bg-surface-2 text-neutral-300 border-line-strong'
                               }`}
                             >
                               <option value="Aylık">{planLabel('Aylık', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
                               <option value="Tek Seferlik">{planLabel('Tek Seferlik', user.accountType ?? 'STANDARD', systemSettings.pricing, user.seats ?? undefined)}</option>
+                              <option value="VIP">VIP — ömür boyu ücretsiz</option>
                             </select>
                           </td>
 
@@ -1222,8 +1226,9 @@ export function AdminDashboard() {
                     onChange={(e) => setNewUserPlan(e.target.value as SubscriptionPlan)}
                     className="w-full bg-app border border-line rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="Aylık">Aylık (100 TL)</option>
-                    <option value="Tek Seferlik">Tek Seferlik (1999 TL)</option>
+                    <option value="Aylık">{planLabel('Aylık', 'STANDARD', systemSettings.pricing)}</option>
+                    <option value="Tek Seferlik">{planLabel('Tek Seferlik', 'STANDARD', systemSettings.pricing)}</option>
+                    <option value="VIP">VIP — ömür boyu ücretsiz</option>
                   </select>
                 </div>
               </div>

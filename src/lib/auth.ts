@@ -14,9 +14,9 @@ export interface UserJWTPayload {
   name: string;
   role: 'ADMIN' | 'USER';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  subscriptionPlan?: 'Aylık' | 'Tek Seferlik';
-  subscriptionType?: 'AYLIK' | 'TEK_SEFERLIK';
-  paymentStatus?: 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL';
+  subscriptionPlan?: 'Aylık' | 'Tek Seferlik' | 'VIP';
+  subscriptionType?: 'AYLIK' | 'TEK_SEFERLIK' | 'VIP';
+  paymentStatus?: 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL' | 'WAIVED';
   accountType?: 'STANDARD' | 'STUDENT' | 'CORPORATE';
   organization?: string | null;
   seats?: number | null;
@@ -245,9 +245,9 @@ export async function sessionFromToken(token: string | undefined): Promise<UserJ
       name: user.name,
       role: user.role === 'ADMIN' ? 'ADMIN' : 'USER',
       status: 'APPROVED',
-      subscriptionPlan: (user.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
-      subscriptionType: (user.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
-      paymentStatus: (user.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
+      subscriptionPlan: (user.subscriptionPlan as 'Aylık' | 'Tek Seferlik' | 'VIP') || 'Aylık',
+      subscriptionType: (user.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK' | 'VIP') || 'AYLIK',
+      paymentStatus: (user.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL' | 'WAIVED') || 'PENDING',
       accountType: user.accountType === 'STUDENT' || user.accountType === 'CORPORATE' ? user.accountType : 'STANDARD',
       organization: user.organization,
       seats: user.seats,
@@ -294,9 +294,9 @@ async function memberSession(payload: UserJWTPayload): Promise<UserJWTPayload | 
     name: decryptText(member.ownerId, member.name),
     role: 'USER',
     status: 'APPROVED',
-    subscriptionPlan: (member.owner.subscriptionPlan as 'Aylık' | 'Tek Seferlik') || 'Aylık',
+    subscriptionPlan: (member.owner.subscriptionPlan as 'Aylık' | 'Tek Seferlik' | 'VIP') || 'Aylık',
     subscriptionType: (member.owner.subscriptionType as 'AYLIK' | 'TEK_SEFERLIK') || 'AYLIK',
-    paymentStatus: (member.owner.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL') || 'PENDING',
+    paymentStatus: (member.owner.paymentStatus as 'PENDING' | 'MANUAL_APPROVED' | 'SUCCESSFUL' | 'WAIVED') || 'PENDING',
     accountType: 'CORPORATE',
     organization: member.owner.organization,
     seats: member.owner.seats,

@@ -18,9 +18,9 @@ export const MAX_MANAGERS = 2;
 export const CORP_MODULE_LABEL: Record<CorpModule, string> = {
   notes: 'Ortak Notlar',
   customers: 'Müşteriler',
-  work: 'Görevler ve Kanban',
+  work: 'Görevler',
   calendar: 'Takvim',
-  finance: 'Gelir ve Gider',
+  finance: 'Finans',
 };
 
 export const CORP_ACCESS_LABEL: Record<CorpAccess, string> = {
