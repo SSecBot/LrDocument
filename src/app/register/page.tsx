@@ -405,10 +405,14 @@ function RegisterForm() {
                   Kayıt talebi göndererek{' '}
                   <Link href="/kullanim-sartlari" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
                     Kullanım Şartları
-                  </Link>{' '}
-                  ile{' '}
+                  </Link>
+                  ,{' '}
                   <Link href="/mesafeli-satis" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    Mesafeli Satış Sözleşmesi ve İade Koşulları
+                    Mesafeli Satış Sözleşmesi
+                  </Link>{' '}
+                  ve{' '}
+                  <Link href="/teslimat-ve-iade" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
+                    Teslimat ve İade Şartları
                   </Link>
                   ’nı kabul etmiş olursunuz; kişisel verilerinizin{' '}
                   <Link href="/kvkk" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">

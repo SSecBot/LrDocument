@@ -1,6 +1,9 @@
 import { FinanceTransaction, ExchangeRates } from '@/types';
 import { convertCurrencyToTRY } from './exchangeRates';
 import { toLocalDateString } from '@/lib/utils';
+import type { RecurringFrequency } from '@/types';
+
+export const FREQ_LABEL: Record<RecurringFrequency, string> = { gunluk: 'Günlük', haftalik: 'Haftalık', aylik: 'Aylık', yillik: 'Yıllık' };
 
 /**
  * Calculates the projected date for a monthly recurring transaction for a given target year and month.
@@ -71,6 +74,11 @@ export function isTransactionActiveOnDate(
     case 'gunluk': {
       return true;
     }
+    case 'yillik': {
+      // Same day every year (29 Şubat → 28 Şubat in other years).
+      if (dateStr.slice(5, 7) !== trans.date.slice(5, 7)) return false;
+      return getProjectedDateForMonth(trans.date, targetYear, targetMonth) === dateStr;
+    }
     default:
       return trans.date === dateStr;
   }
@@ -126,6 +134,18 @@ export function getTransactionsForMonth(
         result.push({
           ...trans,
           id: trans.date.startsWith(targetPeriodKey) ? trans.id : `${trans.id}-proj-${targetPeriodKey}`,
+          sourceId: trans.id,
+          date: projectedDate,
+        });
+      }
+    } else if (freq === 'yillik') {
+      if (trans.date.slice(5, 7) !== targetPeriodKey.slice(5, 7)) continue;
+      const projectedDate = getProjectedDateForMonth(trans.date, targetYear, targetMonth);
+      if (!trans.endDate || projectedDate <= trans.endDate) {
+        result.push({
+          ...trans,
+          id: trans.date.startsWith(targetPeriodKey) ? trans.id : `${trans.id}-proj-${targetPeriodKey}`,
+          sourceId: trans.id,
           date: projectedDate,
         });
       }
@@ -136,6 +156,7 @@ export function getTransactionsForMonth(
           result.push({
             ...trans,
             id: `${trans.id}-proj-${dateStr}`,
+            sourceId: trans.id,
             date: dateStr,
           });
         }
@@ -147,6 +168,7 @@ export function getTransactionsForMonth(
           result.push({
             ...trans,
             id: `${trans.id}-proj-${dateStr}`,
+            sourceId: trans.id,
             date: dateStr,
           });
         }
@@ -193,8 +215,8 @@ export function calculateMRRSummary(
     }
 
     const amountTRY =
-      t.currency && t.currency !== 'TRY' && t.originalAmount !== undefined
-        ? convertCurrencyToTRY(t.originalAmount, t.currency, rates, t.markupTRY).baseAmountTRY
+      t.currency && t.currency !== 'TRY' && t.originalAmount != null
+        ? convertCurrencyToTRY(t.originalAmount, t.currency, rates, t.markupTRY ?? undefined).baseAmountTRY
         : t.amount;
 
     const freq = t.recurringFrequency || 'aylik';
@@ -204,6 +226,8 @@ export function calculateMRRSummary(
       monthlyAmount = Math.round(amountTRY * 4.33);
     } else if (freq === 'gunluk') {
       monthlyAmount = Math.round(amountTRY * 30);
+    } else if (freq === 'yillik') {
+      monthlyAmount = Math.round(amountTRY / 12);
     }
 
     if (t.type === 'gelir') {

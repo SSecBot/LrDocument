@@ -14,6 +14,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface CategoryManagerModalProps {
   isOpen: boolean;
@@ -180,7 +181,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => deleteFinanceCategory(cat.id)}
+                        onClick={async () => (await confirmDelete(`"${cat.name}" kategorisi`)) && deleteFinanceCategory(cat.id)}
                         className="p-1.5 hover:bg-rose-950/50 text-muted hover:text-rose-400 rounded-lg transition-colors"
                         title="Sil"
                       >

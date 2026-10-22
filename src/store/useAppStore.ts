@@ -363,6 +363,7 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
         ...globalState.events[existingEventIndex],
         title: `Görev Teslimi: ${task.title}`,
         date: task.dueDate,
+        ...(task.dueTime ? { time: task.dueTime } : {}),
         status: (task.completed ? 'yayinlandi' : 'planlandi') as EventStatus,
         linkedNoteId: task.linkedNoteId,
       };
@@ -374,7 +375,7 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
         title: `Görev Teslimi: ${task.title}`,
         description: task.description || 'Görevler modülünden otomatik senkronize edildi.',
         date: task.dueDate,
-        time: '12:00',
+        time: task.dueTime ?? '12:00',
         durationMinutes: 45,
         eventType: 'gorev',
         linkedTaskId: task.id,
@@ -394,10 +395,9 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
 
 export function isTaskOverdue(task: Task): boolean {
   if (task.completed || !task.dueDate) return false;
-  const now = new Date();
-  const due = new Date(task.dueDate);
-  due.setHours(23, 59, 59, 999);
-  return due.getTime() < now.getTime();
+  // Local time: the due day (and the saat, when one is set) as seen on this device.
+  const due = new Date(`${task.dueDate}T${task.dueTime ?? '23:59'}:59`);
+  return !isNaN(due.getTime()) && due.getTime() < Date.now();
 }
 
 export function getEffectiveTaskPriority(task: Task): TaskPriority {
@@ -616,7 +616,11 @@ const loadUserData = async (silent = false) => {
           transactions: own?.transactions || [],
         };
         globalState.preferences = parsePreferences(json.data.preferences);
-        if (!silent) syncPushSubscription();
+        if (!silent) {
+          syncPushSubscription();
+          globalState.activeFolder = startFolderFor('shared');
+          globalState.personal = { ...globalState.personal, activeFolder: startFolderFor('personal') };
+        }
         if (globalState.preferences.exchangeMarkupTRY !== null) {
           globalState.exchangeRates = { ...globalState.exchangeRates, markupTRY: globalState.preferences.exchangeMarkupTRY };
         }
@@ -676,6 +680,11 @@ function leaveTo(path: string) {
   Promise.race([unsubscribed, new Promise((resolve) => setTimeout(resolve, 1500))]).finally(() => {
     window.location.href = path;
   });
+}
+
+/** After Hesabı sil: drops everything in memory and goes on (another remembered account or login). */
+export function leaveDeletedAccount(switched: boolean) {
+  leaveTo(switched ? '/dashboard' : '/login?silindi=1');
 }
 
 /** Signs out of the active account; another remembered account (if any) becomes active. */
@@ -1237,7 +1246,23 @@ function setActiveNoteIdIn(space: Space, id: string | null) {
 
 function setActiveFolderIn(space: Space, folder: string) {
   bucket(space).activeFolder = folder;
+  // Remembered for "Son bıraktığım klasör" (never the hidden notes view).
+  const key = space === 'personal' ? 'notesLastFolderPersonal' : 'notesLastFolder';
+  const keep = folder === 'secret' ? null : folder;
+  if (globalState.preferences[key] !== keep) setPreference(key, keep);
   notify();
+}
+
+/** Notlar opens in "Tüm Notlar", the folder left last time, or the folder chosen in Ayarlar. */
+function startFolderFor(space: Space): string {
+  const p = globalState.preferences;
+  const wanted =
+    p.notesStartFolder === 'last'
+      ? space === 'personal' ? p.notesLastFolderPersonal : p.notesLastFolder
+      : p.notesStartFolder === 'custom' ? p.notesStartFolderId : null;
+  if (!wanted || wanted === 'secret') return 'all';
+  if (wanted === 'all' || wanted === 'favorites') return wanted;
+  return bucket(space).folders.some((f) => f.id === wanted) ? wanted : 'all';
 }
 
 
@@ -1418,8 +1443,9 @@ function addTransactionIn(space: Space, transaction: Omit<FinanceTransaction, 'i
   let amountInTRY = transaction.amount;
   let convertedInfo = undefined;
 
-  if (currency !== 'TRY') {
-    convertedInfo = convertCurrencyToTRY(transaction.originalAmount || transaction.amount, currency, globalState.exchangeRates);
+  // The form already converted with the rate and marj the person saw; only fill in what is missing.
+  if (currency !== 'TRY' && transaction.effectiveRate === undefined) {
+    convertedInfo = convertCurrencyToTRY(transaction.originalAmount || transaction.amount, currency, globalState.exchangeRates, transaction.markupTRY);
     amountInTRY = convertedInfo.baseAmountTRY;
   }
 
@@ -1429,9 +1455,9 @@ function addTransactionIn(space: Space, transaction: Omit<FinanceTransaction, 'i
     amount: amountInTRY,
     currency,
     originalAmount: transaction.originalAmount || (currency !== 'TRY' ? transaction.amount : undefined),
-    effectiveRate: convertedInfo?.effectiveRate,
-    exchangeRate: convertedInfo?.liveRate,
-    markupTRY: convertedInfo?.markup,
+    effectiveRate: convertedInfo?.effectiveRate ?? transaction.effectiveRate,
+    exchangeRate: convertedInfo?.liveRate ?? transaction.exchangeRate,
+    markupTRY: convertedInfo?.markup ?? transaction.markupTRY,
     createdBy: authorName(),
     createdAt: new Date().toISOString(),
   };
@@ -1448,7 +1474,7 @@ function updateTransactionIn(space: Space, id: string, partial: Partial<FinanceT
     if (t.id !== id) return t;
     const currency = partial.currency || t.currency || 'TRY';
     let amountInTRY = partial.amount !== undefined ? partial.amount : t.amount;
-    if (currency !== 'TRY' && partial.originalAmount !== undefined) {
+    if (currency !== 'TRY' && partial.originalAmount !== undefined && partial.effectiveRate === undefined) {
       amountInTRY = convertCurrencyToTRY(partial.originalAmount, currency, globalState.exchangeRates).baseAmountTRY;
     }
     return { ...t, ...partial, amount: amountInTRY, currency };

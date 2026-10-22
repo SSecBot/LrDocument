@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ExternalLink, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { LANDING_ICONS, type LandingContent, type LandingIcon } from '@/lib/landingContent';
+import { askConfirm, confirmDelete } from '@/components/ui/ConfirmDialog';
 
 const inputCls = 'w-full h-9 bg-app border border-line rounded-md px-2.5 text-sm text-fg focus:outline-none focus:border-line-strong';
 const areaCls = 'w-full bg-app border border-line rounded-md px-2.5 py-2 text-sm text-fg focus:outline-none focus:border-line-strong resize-y';
@@ -79,7 +80,7 @@ export function LandingEditorPanel() {
           </a>
           {defaults && (
             <button
-              onClick={() => confirm('Tüm metinler varsayılana dönsün mü? (Kaydetmeden yayına girmez.)') && setDraft(defaults)}
+              onClick={async () => (await askConfirm({ title: 'Tüm metinler varsayılana dönsün mü?', message: 'Kaydetmeden yayına girmez.', confirmText: 'Varsayılana dön', danger: false })) && setDraft(defaults)}
               className="h-9 px-3 text-xs text-body hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-md inline-flex items-center gap-1.5"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Varsayılan metinler
@@ -195,7 +196,8 @@ export function LandingEditorPanel() {
         <Field label="Son güncelleme tarihi" value={draft.legal.updated} max={40} onChange={(v) => set('legal', { updated: v })} />
         <Field label="KVKK aydınlatma metni" multiline rows={14} value={draft.legal.kvkk} max={40000} onChange={(v) => set('legal', { kvkk: v })} />
         <Field label="Gizlilik politikası" multiline rows={14} value={draft.legal.privacy} max={40000} onChange={(v) => set('legal', { privacy: v })} />
-        <Field label="Mesafeli satış sözleşmesi ve iade koşulları" multiline rows={14} value={draft.legal.sales} max={40000} onChange={(v) => set('legal', { sales: v })} />
+        <Field label="Mesafeli satış sözleşmesi" multiline rows={14} value={draft.legal.sales} max={40000} onChange={(v) => set('legal', { sales: v })} />
+        <Field label="Teslimat ve iade şartları" multiline rows={14} value={draft.legal.delivery} max={40000} onChange={(v) => set('legal', { delivery: v })} />
         <Field label="Kullanım şartları" multiline rows={14} value={draft.legal.terms} max={40000} onChange={(v) => set('legal', { terms: v })} />
       </Section>
     </div>
@@ -300,7 +302,7 @@ function ListEditor<T>({
               <button type="button" className={smallBtn} disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Aşağı taşı">
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
-              <button type="button" className={smallBtn} onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Sil">
+              <button type="button" className={smallBtn} onClick={async () => (await confirmDelete('Bu öğe', 'Kaydetmeden yayına girmez.')) && onChange(items.filter((_, j) => j !== i))} aria-label="Sil">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -328,7 +330,7 @@ function StringList({ label, items, max, maxLength, onChange }: { label: string;
       {items.map((item, i) => (
         <div key={i} className="flex gap-1.5">
           <input className={inputCls} maxLength={maxLength} value={item} onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))} />
-          <button type="button" className={smallBtn} onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Sil">
+          <button type="button" className={smallBtn} onClick={async () => (await confirmDelete('Bu satır', 'Kaydetmeden yayına girmez.')) && onChange(items.filter((_, j) => j !== i))} aria-label="Sil">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

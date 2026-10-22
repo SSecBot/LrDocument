@@ -13,14 +13,16 @@ import { AttendanceTab } from './AttendanceTab';
 import { GradesTab } from './GradesTab';
 import { AnalysisTab } from './AnalysisTab';
 import { ExamsTab } from './ExamsTab';
+import { StudyTab } from './StudyTab';
 import { ScheduleImportModal } from './ScheduleImportModal';
 import { SaveIndicator, btnPrimary, btnSecondary, inputCls } from './ui';
 
-type Tab = 'ozet' | 'program' | 'sinavlar' | 'devam' | 'notlar' | 'analiz';
+type Tab = 'ozet' | 'program' | 'calisma' | 'sinavlar' | 'devam' | 'notlar' | 'analiz';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'ozet', label: 'Özet' },
   { id: 'program', label: 'Program' },
+  { id: 'calisma', label: 'Çalışma takvimi' },
   { id: 'sinavlar', label: 'Sınavlar' },
   { id: 'devam', label: 'Devamsızlık' },
   { id: 'notlar', label: 'Notlar' },
@@ -66,7 +68,12 @@ export function AcademicWorkspace() {
     }));
 
   const deleteCourse = (id: string) =>
-    update((d) => ({ ...d, courses: d.courses.filter((c) => c.id !== id), exams: (d.exams ?? []).filter((e) => e.courseId !== id) }));
+    update((d) => ({
+      ...d,
+      courses: d.courses.filter((c) => c.id !== id),
+      exams: (d.exams ?? []).filter((e) => e.courseId !== id),
+      ...(d.study ? { study: { ...d.study, sessions: d.study.sessions.filter((s) => s.courseId !== id), logs: d.study.logs.filter((l) => l.courseId !== id) } } : {}),
+    }));
 
   return (
     <div className="flex-1 overflow-y-auto bg-app">
@@ -141,6 +148,7 @@ export function AcademicWorkspace() {
         {tab === 'program' && (
           <ScheduleTab courses={courses} onAddCourse={openNew} onEditCourse={openEdit} onImport={() => setImportOpen(true)} />
         )}
+        {tab === 'calisma' && <StudyTab data={data} term={term} courses={courses} update={update} />}
         {tab === 'sinavlar' && <ExamsTab data={data} term={term} courses={courses} update={update} />}
         {tab === 'devam' && <AttendanceTab data={data} courses={courses} update={update} onEditCourse={openEdit} />}
         {tab === 'notlar' && <GradesTab data={data} term={term} courses={courses} update={update} onEditCourse={openEdit} />}

@@ -129,6 +129,8 @@ model Task {
   /// Görev süresi aralığı: optional first day; dueDate is the last day.
   startDate      String?
   dueDate        String?
+  /// Saat (HH:mm) on the due day; empty = all day.
+  dueTime        String?
   linkedNoteId   String?
   linkedScriptId String?
   /// Display name of who added it (kurumsal: owner or member).

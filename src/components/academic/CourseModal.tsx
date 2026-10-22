@@ -7,6 +7,7 @@ import type { Assessment, AssessmentType, Course, CourseSession, GradingSystem }
 import { ASSESSMENT_LABEL, DAYS, computeCourseGrade, defaultAssessments, newId, weeklyHoursFromSessions } from '@/lib/academic/grading';
 import { btnGhost, btnPrimary, btnSecondary, COURSE_COLORS, inputCls, labelCls } from './ui';
 import { useAppStore } from '@/store/useAppStore';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Props {
   isOpen: boolean;
@@ -183,7 +184,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
               </select>
               <input type="time" className={`${inputCls} w-[92px]`} value={s.start} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, start: e.target.value } : x)))} />
               <input type="time" className={`${inputCls} w-[92px]`} value={s.end} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, end: e.target.value } : x)))} />
-              <button type="button" onClick={() => setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="sm:hidden w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
+              <button type="button" onClick={async () => (await confirmDelete('Ders saati', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="sm:hidden w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
                 <Trash2 className="w-4 h-4" />
               </button>
               <select className={`${inputCls} col-span-2 sm:col-span-1`} value={s.kind} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, kind: e.target.value as CourseSession['kind'] } : x)))}>
@@ -191,7 +192,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                 <option value="uygulama">Uygulama / Lab</option>
               </select>
               <input className={`${inputCls} col-span-2 sm:col-span-1`} value={s.room ?? ''} placeholder="Derslik" onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, room: e.target.value } : x)))} />
-              <button type="button" onClick={() => setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="hidden sm:flex w-9 h-9 items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
+              <button type="button" onClick={async () => (await confirmDelete('Ders saati', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="hidden sm:flex w-9 h-9 items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -254,7 +255,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">%</span>
                 </div>
               )}
-              <button type="button" onClick={() => set('assessments', draft.assessments.filter((x) => x.id !== a.id))} className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Değerlendirmeyi sil">
+              <button type="button" onClick={async () => (await confirmDelete('Değerlendirme', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && set('assessments', draft.assessments.filter((x) => x.id !== a.id))} className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Değerlendirmeyi sil">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -331,8 +332,8 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
             <button
               type="button"
               className="h-9 px-3 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg inline-flex items-center gap-1.5"
-              onClick={() => {
-                if (confirm(`"${course.name}" dersi ve tüm devamsızlık/not kayıtları silinsin mi?`)) {
+              onClick={async () => {
+                if (await confirmDelete(`"${course.name}" dersi`, 'Dersin tüm devamsızlık, not ve çalışma kayıtları da silinir. Bu işlem geri alınamaz.')) {
                   onDelete(course.id);
                   onClose();
                 }

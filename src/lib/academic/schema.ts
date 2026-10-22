@@ -120,6 +120,24 @@ const grading = z.object({
   relativeNote: shortText(400).optional(),
 });
 
+const studySession = z
+  .object({ id, termId: id, courseId: id, day: z.number().int().min(0).max(6), start: time, end: time, since: date })
+  .refine((s) => s.end > s.start, { message: 'Çalışma bitişi başlangıçtan sonra olmalı.' });
+
+const studyLog = z.object({
+  sessionId: id.nullable(),
+  courseId: id,
+  date,
+  status: z.enum(['done', 'partial', 'missed', 'makeup']),
+  minutes: z.number().int().min(0).max(24 * 60).optional(),
+});
+
+const study = z.object({
+  sessions: z.array(studySession).max(200),
+  logs: z.array(studyLog).max(4000),
+  reminders: z.boolean().optional(),
+});
+
 export const academicDataSchema = z.object({
   version: z.literal(1),
   grading,
@@ -128,6 +146,8 @@ export const academicDataSchema = z.object({
   courses: z.array(course).max(150),
   targetGpa: z.number().min(0).max(5).nullable().optional(),
   exams: z.array(exam).max(300).optional(),
+  study: study.optional(),
 });
 
-export const MAX_ACADEMIC_JSON_BYTES = 400_000;
+/** Room for several terms of study logs (each ~90 bytes). */
+export const MAX_ACADEMIC_JSON_BYTES = 800_000;

@@ -40,6 +40,7 @@ import {
   parseDoc,
 } from '@/lib/sheet/engine';
 import { shiftAxis, sortRows, usedBounds } from '@/lib/sheet/ops';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 const ROW_H = 30;
 const HEAD_W = 46;
@@ -346,9 +347,9 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
     commit({ ...doc, sheets: [...doc.sheets, newSheet(`Sayfa${n}`)], active: doc.sheets.length });
     setSel({ r: 0, c: 0, r2: 0, c2: 0 });
   };
-  const removeSheet = (i: number) => {
+  const removeSheet = async (i: number) => {
     if (readOnly || doc.sheets.length < 2) return;
-    if (!confirm(`"${doc.sheets[i].name}" sayfası silinsin mi?`)) return;
+    if (!(await confirmDelete(`"${doc.sheets[i].name}" sayfası`, 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.'))) return;
     const sheets = doc.sheets.filter((_, j) => j !== i);
     commit({ ...doc, sheets, active: Math.min(doc.active, sheets.length - 1) });
   };
@@ -446,7 +447,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
             <Rows3 className="w-4 h-4" />
             <Plus className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={deleteRows} title="Seçili satırları sil" aria-label="Satır sil">
+          <button className={btn} onClick={async () => (await confirmDelete('Seçili satırlar', 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.')) && deleteRows()} title="Seçili satırları sil" aria-label="Satır sil">
             <Rows3 className="w-4 h-4" />
             <Trash2 className="w-3 h-3 -ml-0.5" />
           </button>
@@ -454,7 +455,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
             <Columns3 className="w-4 h-4" />
             <Plus className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={deleteCols} title="Seçili sütunları sil" aria-label="Sütun sil">
+          <button className={btn} onClick={async () => (await confirmDelete('Seçili sütunlar', 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.')) && deleteCols()} title="Seçili sütunları sil" aria-label="Sütun sil">
             <Columns3 className="w-4 h-4" />
             <Trash2 className="w-3 h-3 -ml-0.5" />
           </button>

@@ -6,6 +6,7 @@ import type { Course, Exam, ExamType } from '@/lib/academic/types';
 import { EXAM_TYPE_LABEL, newId } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
 import { btnPrimary, btnSecondary, inputCls, labelCls } from './ui';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Props {
   isOpen: boolean;
@@ -183,8 +184,8 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
             <button
               type="button"
               className="text-xs text-rose-400 hover:underline"
-              onClick={() => {
-                if (!confirm('Sınav silinsin mi?')) return;
+              onClick={async () => {
+                if (!(await confirmDelete(`"${exam.title || 'Sınav'}"`))) return;
                 onDelete(exam.id);
                 onClose();
               }}

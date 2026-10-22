@@ -18,10 +18,12 @@ import {
   X,
   Save,
   UserRound,
+  Clock,
 } from 'lucide-react';
 import { isCorporate } from '@/lib/corporate';
 import { formatTurkishDate, getRelativeTimeTurkish } from '@/lib/utils';
 import confetti from 'canvas-confetti';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface TaskItemProps {
   task: Task;
@@ -49,6 +51,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority);
   const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
   const [editStartDate, setEditStartDate] = useState(task.startDate || '');
+  const [editDueTime, setEditDueTime] = useState(task.dueTime || '');
   const rangeDays =
     task.startDate && task.dueDate
       ? Math.round((Date.parse(`${task.dueDate}T00:00:00Z`) - Date.parse(`${task.startDate}T00:00:00Z`)) / 86_400_000) + 1
@@ -83,6 +86,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
       priority: editPriority,
       startDate: editStartDate && editDueDate && editStartDate <= editDueDate ? editStartDate : undefined,
       dueDate: editDueDate || undefined,
+      dueTime: editDueDate && editDueTime ? editDueTime : undefined,
     });
 
     setIsEditing(false);
@@ -99,6 +103,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate || '');
     setEditStartDate(task.startDate || '');
+    setEditDueTime(task.dueTime || '');
     setIsEditing(false);
   };
 
@@ -168,7 +173,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <div>
                   <label className="block text-[11px] font-bold text-subtle mb-1">Öncelik</label>
                   <select
@@ -201,6 +206,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     min={editStartDate || undefined}
                     onChange={(e) => setEditDueDate(e.target.value)}
                     className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">Saat (isteğe bağlı)</label>
+                  <input
+                    type="time"
+                    value={editDueTime}
+                    disabled={!editDueDate}
+                    onChange={(e) => setEditDueTime(e.target.value)}
+                    className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px] disabled:opacity-50"
+                    title={editDueDate ? undefined : 'Önce bir tarih seçin'}
                   />
                 </div>
               </div>
@@ -295,6 +312,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     ) : (
                       <span>{getRelativeTimeTurkish(task.dueDate)} ({formatTurkishDate(task.dueDate)})</span>
                     )}
+                    {task.dueTime && (
+                      <span className="inline-flex items-center gap-0.5 ml-1 font-semibold tabular-nums">
+                        <Clock className="w-3 h-3" /> {task.dueTime}
+                      </span>
+                    )}
                     {overdue && <AlertCircle className="w-3 h-3 text-rose-400 ml-0.5" />}
                   </div>
                 )}
@@ -353,7 +375,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               </button>
 
               <button
-                onClick={() => deleteTask(task.id)}
+                onClick={async () => (await confirmDelete(`"${task.title}" görevi`)) && deleteTask(task.id)}
                 className="min-h-[44px] min-w-[44px] p-2.5 text-muted hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                 title="Görevi Sil"
                 aria-label="Sil"

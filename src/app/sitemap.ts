@@ -18,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/kvkk', 0.3, 'yearly'),
     page('/gizlilik', 0.3, 'yearly'),
     page('/mesafeli-satis', 0.3, 'yearly'),
+    page('/teslimat-ve-iade', 0.3, 'yearly'),
     page('/kullanim-sartlari', 0.3, 'yearly'),
   ];
 }

@@ -66,6 +66,7 @@ function ref(v: unknown): string | null {
 const PRIORITIES = ['yuksek', 'orta', 'dusuk'] as const;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 function date(v: unknown, fallback: string): string {
   return typeof v === 'string' && DATE_RE.test(v) ? v : fallback;
 }
@@ -158,6 +159,8 @@ const ENTITIES: Record<string, EntityDef> = {
           ? d.startDate
           : null,
       dueDate: optText(d.dueDate, 40),
+      // Saat: only together with a due day.
+      dueTime: typeof d.dueDate === 'string' && DATE_RE.test(d.dueDate) && typeof d.dueTime === 'string' && TIME_RE.test(d.dueTime) ? d.dueTime : null,
       linkedNoteId: ref(d.linkedNoteId),
       completedAt: optDate(d.completedAt),
     }),
@@ -215,7 +218,7 @@ const ENTITIES: Record<string, EntityDef> = {
       description: optText(d.description, MAX_SHORT),
       isRecurring: Boolean(d.isRecurring),
       recurringFrequency: d.recurringFrequency
-        ? oneOf(d.recurringFrequency, ['gunluk', 'haftalik', 'aylik'] as const, 'aylik')
+        ? oneOf(d.recurringFrequency, ['gunluk', 'haftalik', 'aylik', 'yillik'] as const, 'aylik')
         : null,
       isConfirmed: Boolean(d.isConfirmed),
       dueDate: optText(d.dueDate, 40),

@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicData, GradingSystem, LetterGrade } from '@/lib/academic/types';
 import { gradingForUniversity, KTU_GRADING, newId } from '@/lib/academic/grading';
 import { useAppStore } from '@/store/useAppStore';
+import { askConfirm, confirmDelete } from '@/components/ui/ConfirmDialog';
 import { Card, CardHeader, btnGhost, btnSecondary, inputCls, labelCls } from './ui';
 
 interface Props {
@@ -22,8 +23,8 @@ export function GradingSettingsTab({ data, update, university }: Props) {
   const setGrading = (patch: Partial<GradingSystem>) =>
     update((d) => ({ ...d, grading: { ...d.grading, ...patch, preset: patch.preset ?? 'ozel' } }));
 
-  const applyPreset = (preset: 'ktu' | 'genel') => {
-    if (!confirm('Not sistemi seçilen ön ayarla değiştirilecek. Devam edilsin mi?')) return;
+  const applyPreset = async (preset: 'ktu' | 'genel') => {
+    if (!(await askConfirm({ title: 'Not sistemi değiştirilsin mi?', message: 'Not sistemi seçilen ön ayarla değiştirilecek.', confirmText: 'Değiştir', danger: false }))) return;
     update((d) => ({
       ...d,
       grading: gradingForUniversity(
@@ -165,7 +166,7 @@ export function GradingSettingsTab({ data, update, university }: Props) {
                       <button
                         className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400 disabled:opacity-30"
                         disabled={g.letters.length <= 2}
-                        onClick={() => setGrading({ letters: g.letters.filter((_, i) => i !== index) })}
+                        onClick={async () => (await confirmDelete(`${l.letter} harf notu`)) && setGrading({ letters: g.letters.filter((_, i) => i !== index) })}
                         aria-label={`${l.letter} satırını sil`}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -220,7 +221,8 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
                 className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400 disabled:opacity-30"
                 disabled={count > 0 || data.terms.length <= 1}
                 title={count > 0 ? 'Önce dönemdeki dersleri silin' : 'Dönemi sil'}
-                onClick={() =>
+                onClick={async () =>
+                  (await confirmDelete(`"${t.name}" dönemi`)) &&
                   update((d) => {
                     const terms = d.terms.filter((x) => x.id !== t.id);
                     return {

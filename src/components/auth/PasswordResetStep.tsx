@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
+import { SpamHint } from './SpamHint';
 
 const inputCls =
   'w-full bg-app border border-line rounded-lg px-4 py-3 text-sm text-fg placeholder-muted focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40';
@@ -79,6 +80,7 @@ export function PasswordResetStep({ initialEmail, onDone }: { initialEmail: stri
         </form>
       ) : (
         <form onSubmit={reset} className="space-y-3">
+          <SpamHint />
           <label className="block">
             <span className="block text-xs font-medium text-subtle mb-2">E-postanıza gelen 6 haneli kod</span>
             <input

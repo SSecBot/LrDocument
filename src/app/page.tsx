@@ -29,6 +29,8 @@ import {
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import { LandingNav } from '@/components/landing/LandingNav';
 import { PricingPlans } from '@/components/landing/PricingPlans';
+import { PaymentLogos } from '@/components/landing/PaymentLogos';
+import { LEGAL_LINKS } from '@/components/landing/LegalDocument';
 import { getLandingContent, getSystemSettings } from '@/lib/systemSettingsServer';
 import { siteOrigin } from '@/lib/siteUrl';
 import type { LandingIcon } from '@/lib/landingContent';
@@ -412,17 +414,13 @@ export default async function LandingPage() {
           />
           <FooterColumn
             title="Yasal"
-            links={[
-              { href: '/kvkk', label: 'KVKK Aydınlatma Metni' },
-              { href: '/gizlilik', label: 'Gizlilik Politikası' },
-              { href: '/mesafeli-satis', label: 'Mesafeli Satış ve İade' },
-              { href: '/kullanim-sartlari', label: 'Kullanım Şartları' },
-            ]}
+            links={LEGAL_LINKS}
           />
         </div>
         <div className="border-t border-line/70">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted">
             <p>© {new Date().getFullYear()} LrDocument</p>
+            <PaymentLogos />
             <p>
               Made by{' '}
               <a href="https://digivideas.com" target="_blank" rel="noopener noreferrer" className="text-brand-light hover:text-fg underline underline-offset-4">

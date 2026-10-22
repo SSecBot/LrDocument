@@ -11,6 +11,7 @@ import { currentTermName, GENERAL_GRADING, newId } from '@/lib/academic/grading'
 import type { SchoolTerm } from '@/lib/academic/schoolCalendar';
 import type { AcademicData, Holiday } from '@/lib/academic/types';
 import { formatTurkishDate } from '@/lib/utils';
+import { askConfirm, confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Overview {
   students: Record<string, number>;
@@ -235,7 +236,7 @@ function CalendarEditor({ university, students, onClose, onSaved }: { university
   };
 
   const unpublish = async () => {
-    if (!confirm('Takvim yayından kaldırılsın mı? Öğrencilere daha önce eklenen tarihler silinmez.')) return;
+    if (!(await askConfirm({ title: 'Takvim yayından kaldırılsın mı?', message: 'Öğrencilere daha önce eklenen tarihler silinmez.', confirmText: 'Yayından kaldır' }))) return;
     setBusy(true);
     await fetch(`/api/admin/universities/${university.id}`, { method: 'DELETE' }).catch(() => null);
     setBusy(false);
@@ -307,7 +308,7 @@ function CalendarEditor({ university, students, onClose, onSaved }: { university
                   </label>
                   <button
                     type="button"
-                    onClick={() => setTerms((ts) => ts!.filter((x) => x.id !== t.id))}
+                    onClick={async () => (await confirmDelete(`"${t.name}" dönemi`, 'Kaydetmeden yayına girmez.')) && setTerms((ts) => ts!.filter((x) => x.id !== t.id))}
                     className="col-span-2 sm:col-span-1 h-9 px-2 rounded-md text-rose-300 hover:bg-rose-500/10 text-xs inline-flex items-center justify-center gap-1"
                     aria-label={`${t.name} dönemini kaldır`}
                   >
@@ -330,7 +331,7 @@ function CalendarEditor({ university, students, onClose, onSaved }: { university
                         <button
                           type="button"
                           className="w-7 h-7 flex items-center justify-center text-muted hover:text-rose-400"
-                          onClick={() => setTerm(t.id, { holidays: t.holidays.filter((x) => x.id !== h.id) })}
+                          onClick={async () => (await confirmDelete(`"${h.name}"`, 'Kaydetmeden yayına girmez.')) && setTerm(t.id, { holidays: t.holidays.filter((x) => x.id !== h.id) })}
                           aria-label={`${h.name} kaldır`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

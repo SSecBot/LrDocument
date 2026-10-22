@@ -11,6 +11,7 @@ import {
   Trash2,
   Check,
 } from 'lucide-react';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -123,8 +124,8 @@ export const EventModal: React.FC<EventModalProps> = ({
     setChecklist(checklist.filter(item => item.id !== id));
   };
 
-  const handleDelete = () => {
-    if (editEvent) {
+  const handleDelete = async () => {
+    if (editEvent && (await confirmDelete(`"${editEvent.title}" etkinliği`))) {
       deleteEvent(editEvent.id);
       onClose();
     }
@@ -302,7 +303,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleDeleteChecklist(item.id)}
+                  onClick={async () => (await confirmDelete('Kontrol maddesi', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && handleDeleteChecklist(item.id)}
                   className="text-muted hover:text-rose-400 p-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

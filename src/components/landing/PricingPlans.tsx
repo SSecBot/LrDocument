@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
+import { PaymentLogos } from './PaymentLogos';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, seatPrice, type AccountType, type PricingSettings } from '@/lib/pricing';
 
 const COMMON = ['Tüm modüller: notlar, görevler, kanban, takvim, finans', 'Telefon, tablet ve bilgisayarda çalışır', 'Verileriniz şifreli ve yalnızca hesabınızda'];
@@ -97,6 +98,17 @@ export function PricingPlans({ pricing }: { pricing: PricingSettings }) {
             ? `Kurumsal paketler ${pricing.corporateMinSeats}–${pricing.corporateMaxSeats} kişi arasıdır; kayıtta kurum adı istenir.`
             : 'Kayıt talebiniz onaylandığında ödeme ve hesap açılışı için e-posta ile iletişime geçilir.'}
       </p>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-4 text-xs text-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <Lock className="w-3.5 h-3.5" /> iyzico ile güvenli ödeme · Visa ve Mastercard
+        </span>
+        <PaymentLogos />
+        <span>
+          <Link href="/mesafeli-satis" className="hover:text-fg underline underline-offset-2">Mesafeli satış</Link>
+          {' · '}
+          <Link href="/teslimat-ve-iade" className="hover:text-fg underline underline-offset-2">Teslimat ve iade</Link>
+        </span>
+      </div>
     </div>
   );
 }

@@ -76,6 +76,8 @@ export const landingContentSchema = z.object({
     kvkk: text(40_000).min(1),
     privacy: text(40_000).min(1),
     sales: text(40_000).min(1),
+    /** Teslimat ve iade şartları (/teslimat-ve-iade). */
+    delivery: text(40_000).min(1),
     terms: text(40_000).min(1),
   }),
 });
@@ -171,7 +173,7 @@ Sözleşmenin konusu, Alıcı'nın seçtiği LrDocument paketinin (bireysel, ö�
 - Ödeme yöntemi ve ödeme bilgileri, kayıt talebinin onaylanmasının ardından Alıcı'ya iletilir.
 
 ## Hizmetin ifası
-Kayıt talepleri Satıcı tarafından incelenir. Hesap onaylandığında Alıcı'ya bildirim yapılır ve hizmet, Alıcı'nın hesabına giriş yapabilmesiyle birlikte ifa edilmeye başlanır. Hizmet internet üzerinden sunulur; fiziksel teslimat yapılmaz.
+Kayıt talepleri Satıcı tarafından incelenir. Hesap onaylandığında Alıcı'ya bildirim yapılır ve hizmet, Alıcı'nın hesabına giriş yapabilmesiyle birlikte ifa edilmeye başlanır. Hizmet internet üzerinden sunulur; fiziksel teslimat yapılmaz. Teslimat ve iadeye ilişkin ayrıntılar Teslimat ve İade Şartları'nda yer alır.
 
 ## Cayma hakkı
 Alıcı, hesabı açılmadan önce kayıt talebini herhangi bir gerekçe göstermeden ve cezai şart ödemeden geri çekebilir; bu durumda ödeme yapılmışsa tamamı iade edilir.
@@ -179,19 +181,43 @@ Alıcı, hesabı açılmadan önce kayıt talebini herhangi bir gerekçe göster
 Mesafeli Sözleşmeler Yönetmeliği'nin 15. maddesinin birinci fıkrasının (ğ) bendi uyarınca, elektronik ortamda anında ifa edilen hizmetlerde, Alıcı'nın onayıyla ifaya başlandıktan sonra cayma hakkı kullanılamaz. Alıcı, hesabının açılmasını talep ederek hizmetin ifasına başlanmasına onay vermiş olur.
 
 ## İade koşulları
-- Aylık paketler: Abonelik dilediğiniz zaman iptal edilebilir. İptal, bir sonraki dönemden itibaren geçerli olur; içinde bulunulan dönemin ücreti iade edilmez.
-- Ömür boyu paketler: Hizmet, Satıcı'dan kaynaklanan teknik bir sebeple hesabın açılmasından itibaren 14 gün içinde kullanılamazsa ücretin tamamı iade edilir.
-- Hizmetin Satıcı'dan kaynaklanan nedenlerle sürekli olarak sunulamaması hâlinde, ödenmiş ancak kullanılmamış süreye karşılık gelen tutar iade edilir.
-- Kurumsal paketlerde kişi çıkarıldığında, ücret bir sonraki dönemden itibaren yeni kişi sayısına göre hesaplanır.
-- İadeler, talebin kabulünden itibaren en geç 14 gün içinde, ödemenin yapıldığı yöntemle yapılır.
-
-İade ve iptal talepleri için {iletisim} adresine yazabilirsiniz.
+İptal ve iade koşulları, bu sözleşmenin eki olan Teslimat ve İade Şartları'nda düzenlenmiştir. İade ve iptal talepleri için {iletisim} adresine yazabilirsiniz.
 
 ## Uyuşmazlıkların çözümü
 Bu sözleşmeden doğan uyuşmazlıklarda, Ticaret Bakanlığı'nca her yıl ilan edilen parasal sınırlar dâhilinde Alıcı'nın veya Satıcı'nın yerleşim yerindeki Tüketici Hakem Heyetleri, bu sınırları aşan durumlarda Tüketici Mahkemeleri yetkilidir.
 
 ## Yürürlük
 Alıcı, kayıt talebini göndermeden önce bu sözleşmeyi okuduğunu ve kabul ettiğini beyan eder. Sözleşme, kayıt talebinin gönderilmesiyle kurulur.`;
+
+const DELIVERY_TEXT = `Bu metin, LrDocument paketlerinin Alıcı'ya nasıl teslim edildiğini ve iptal ile iade koşullarını açıklar. Mesafeli Satış Sözleşmesi'nin ayrılmaz bir parçasıdır.
+
+## Satıcı
+{saticiBilgileri}
+
+## Teslimat
+- LrDocument, internet üzerinden sunulan bir yazılım hizmetidir (dijital hizmet); fiziksel ürün gönderimi ve kargo yapılmaz, kargo ücreti alınmaz.
+- Kayıt talebi ve ödeme onaylandıktan sonra hesap en geç 2 iş günü içinde açılır ve Alıcı'ya e-posta ile bildirilir. Teslimat, Alıcı'nın hesabına giriş yapabilmesiyle tamamlanmış sayılır.
+- Hesap belirtilen süre içinde açılmazsa Alıcı, {iletisim} adresine yazarak durumu bildirebilir; hizmet sağlanamıyorsa ödemenin tamamı iade edilir.
+- Kurumsal paketlerde eklenen her kişiye, kurum sahibinin oluşturduğu giriş kodu ile erişim sağlanır.
+
+## Cayma hakkı
+- Alıcı, hesabı açılmadan önce kayıt talebini herhangi bir gerekçe göstermeden geri çekebilir; ödeme yapılmışsa tamamı iade edilir.
+- Mesafeli Sözleşmeler Yönetmeliği'nin 15. maddesinin birinci fıkrasının (ğ) bendi uyarınca, elektronik ortamda anında ifa edilen hizmetlerde, Alıcı'nın onayıyla ifaya başlandıktan sonra cayma hakkı kullanılamaz.
+
+## İptal ve iade koşulları
+- Aylık paketler: Abonelik dilediğiniz zaman iptal edilebilir. İptal, bir sonraki dönemden itibaren geçerli olur; içinde bulunulan dönemin ücreti iade edilmez.
+- Ömür boyu paketler: Hizmet, Satıcı'dan kaynaklanan teknik bir sebeple hesabın açılmasından itibaren 14 gün içinde kullanılamazsa ücretin tamamı iade edilir.
+- Hizmetin Satıcı'dan kaynaklanan nedenlerle sürekli olarak sunulamaması hâlinde, ödenmiş ancak kullanılmamış süreye karşılık gelen tutar iade edilir.
+- Kurumsal paketlerde kişi çıkarıldığında, ücret bir sonraki dönemden itibaren yeni kişi sayısına göre hesaplanır.
+- Alıcı'nın kendi isteğiyle hesabını silmesi hâlinde, içinde bulunulan dönemin ücreti iade edilmez.
+
+## İadenin yapılması
+- İade talepleri {iletisim} adresine e-posta ile iletilir; talepte hesabın e-posta adresi ve ödeme bilgisi belirtilmelidir.
+- Kabul edilen iadeler, talebin kabulünden itibaren en geç 14 gün içinde ödemenin yapıldığı yöntemle yapılır. Tutarın hesaba yansıma süresi bankaya göre değişebilir.
+- Kartla yapılan ödemelerin iadesi, ödemenin yapıldığı karta yapılır.
+
+## İletişim
+Teslimat ve iade ile ilgili sorularınız için: {iletisim}`;
 
 const TERMS_TEXT = `Bu Kullanım Şartları, LrDocument hizmetini kullanan herkes için geçerlidir. Hizmete kayıt olarak veya hizmeti kullanarak bu şartları kabul etmiş olursunuz. Hizmeti sunan: {veriSorumlusu}.
 
@@ -217,13 +243,13 @@ Hizmeti kullanırken aşağıdakileri yapmamayı kabul edersiniz:
 Hizmete girdiğiniz notlar, belgeler ve kayıtlar size (kurumsal hesaplarda kuruma) aittir. Bu içerikleri yalnızca hizmeti size sunmak için gereken ölçüde saklar ve işleriz; içerikleriniz sunucuda size özel anahtarla şifrelenir. Ayrıntılar için Gizlilik Politikası ve KVKK Aydınlatma Metni'ne bakınız.
 
 ## Ücretler
-Ücretli paketlere ilişkin bedel, ödeme, cayma ve iade koşulları Mesafeli Satış Sözleşmesi ve İade Koşulları'nda düzenlenmiştir.
+Ücretli paketlere ilişkin bedel, ödeme, cayma ve iade koşulları Mesafeli Satış Sözleşmesi ile Teslimat ve İade Şartları'nda düzenlenmiştir.
 
 ## Hizmetin sürekliliği ve sorumluluk
 Hizmeti kesintisiz ve hatasız sunmak için makul özeni gösteririz; bakım, güncelleme veya öngörülemeyen teknik sorunlar nedeniyle geçici kesintiler olabilir. Önemli verilerinizin ayrıca yedeğini almanızı öneririz. Kanunen sınırlandırılamayan haller saklı kalmak kaydıyla, dolaylı zararlardan ve kullanıcının kendi kusurundan doğan veri kayıplarından sorumluluk kabul edilmez.
 
 ## Hesabın askıya alınması ve kapatılması
-Bu şartların ihlali hâlinde hesap askıya alınabilir veya kapatılabilir. Hesabınızı kapatmak ve verilerinizin silinmesini istemek için {iletisim} adresine yazabilirsiniz.
+Bu şartların ihlali hâlinde hesap askıya alınabilir veya kapatılabilir. Hesabınızı ve tüm verilerinizi istediğiniz zaman Ayarlar › Hesap › Hesabı sil bölümünden kalıcı olarak silebilir ya da {iletisim} adresine yazabilirsiniz.
 
 ## Değişiklikler
 Bu şartlar güncellenebilir; güncel metin her zaman bu sayfada yayımlanır ve sayfanın başındaki tarih değişir. Önemli değişikliklerden sonra hizmeti kullanmaya devam etmeniz, güncel şartları kabul ettiğiniz anlamına gelir.
@@ -259,11 +285,11 @@ export const DEFAULT_LANDING: LandingContent = {
     title: 'Günlük işiniz için gereken her şey',
     text: 'Modüller birbirine bağlı çalışır: bir görevi takvime, bir notu derse, bir harcamayı projeye bağlayın.',
     items: [
-      { icon: 'GraduationCap', title: 'Ders takibi', text: 'Öğrencilere özel: ders programı, devamsızlık hakkı, vize-final, çan eğrisi, harf notu, AGNO ve sınav geri sayımı.' },
-      { icon: 'FileText', title: 'Notlar ve LaTeX', text: 'Markdown notlar, canlı KaTeX önizleme; PDF, Word ve Markdown dosyalarından içe aktarma.' },
-      { icon: 'ListChecks', title: 'Görevler ve pano', text: 'Öncelik ve son tarihli görevler, aynı sayfada sürükle-bırak Kanban panosu.' },
+      { icon: 'GraduationCap', title: 'Ders takibi', text: 'Öğrencilere özel: ders programı, ders çalışma takvimi, devamsızlık hakkı, vize-final, çan eğrisi, harf notu, AGNO ve sınav geri sayımı.' },
+      { icon: 'FileText', title: 'Notlar, tablolar ve PDF', text: 'LaTeX destekli notlar, Excel benzeri tablolar, kitap görünümlü PDF okuyucu; roman ve tez yazarken bölüm, dipnot ve kaynak kısayolları.' },
+      { icon: 'ListChecks', title: 'Görevler ve pano', text: 'Tarihli ve saatli görevler, vakti gelince telefonunuza bildirim; aynı sayfada sürükle-bırak Kanban panosu.' },
       { icon: 'CalendarDays', title: 'Takvim', text: 'Kaydırılabilir zaman çizelgesi; .ics ile içe ve dışa aktarma, telefon takviminizle eşitleme.' },
-      { icon: 'Wallet', title: 'Gelir, gider ve borç', text: 'Kategoriler, döviz çevirisi, kredi/borç takibi: aylık faiz ve asgari ödeme hesabı.' },
+      { icon: 'Wallet', title: 'Finans', text: 'Gelir ve gider, günlük–yıllık düzenli ödemeler, döviz çevirisi; kredi ve borçlar için aylık faiz ve asgari ödeme hesabı.' },
       { icon: 'Building2', title: 'Kurumsal kullanım', text: 'Ekibinize ortak çalışma alanı: kişiye özel kurumsal kodla giriş, ortak notlar, müşteri ve taahhüt ödemesi takibi, bölüm bazında izinler.' },
     ],
   },
@@ -275,6 +301,7 @@ export const DEFAULT_LANDING: LandingContent = {
     points: [
       'Devamsızlık, takvimdeki gerçek ders günlerine göre hesaplanır; bayram, arife öğleden sonrası ve sınav haftaları sayılmaz.',
       'Akşamları genel bakışta yarının ders programı görünür.',
+      'Ders çalışma takvimi: her ders için haftalık çalışma saatlerinizi seçin; başlarken ve biterken bildirim gelir, çalışmaların %40’ından fazlası kaçarsa ne kadar telafi etmeniz gerektiği söylenir.',
       'Hocanın çan eğrisini ders ders girin; harf notunuz ona göre hesaplanır.',
       'Alttan alınan derslerde nottan kalındıysa devam zorunluluğu aranmaz.',
       'Türkiye’deki 205 üniversite listede: okulunuzu seçin, yayınlanan akademik takvimi otomatik gelsin; siz yalnızca ders programınızı girin.',
@@ -327,6 +354,8 @@ export const DEFAULT_LANDING: LandingContent = {
       { q: 'Birden fazla hesabı aynı cihazda kullanabilir miyim?', a: 'Evet. Menüdeki hesap listesinden “Hesap ekle” ile ikinci bir hesapla giriş yapıp hesaplar arasında tek dokunuşla geçebilirsiniz.' },
       { q: 'Verilerim nasıl korunuyor?', a: 'Notlarınız, görevleriniz, takvim ve finans kayıtlarınız sunucuda size özel bir anahtarla şifrelenir. Tarayıcıda kişisel veri tutulmaz.' },
       { q: 'iPhone ve iPad’de çalışır mı?', a: 'Evet. Safari’de açıp “Ana Ekrana Ekle” ile uygulama gibi kullanabilirsiniz; PDF içe aktarma dahil tüm özellikler mobilde çalışır.' },
+      { q: 'Ödeme nasıl yapılır, iade var mı?', a: 'Ödemeler iyzico güvenli ödeme altyapısıyla, Visa ve Mastercard kredi / banka kartlarıyla yapılır. İptal ve iade koşulları Teslimat ve İade Şartları sayfasında açıklanmıştır.' },
+      { q: 'Hesabımı silebilir miyim?', a: 'Evet. Ayarlar › Hesap › Hesabı sil ile hesabınızı ve tüm verilerinizi kalıcı olarak silebilirsiniz. İşlem geri alınamaz; önce notlarınızı indirmenizi öneririz.' },
     ],
   },
   cta: {
@@ -344,6 +373,7 @@ export const DEFAULT_LANDING: LandingContent = {
     kvkk: KVKK_TEXT,
     privacy: PRIVACY_TEXT,
     sales: SALES_TEXT,
+    delivery: DELIVERY_TEXT,
     terms: TERMS_TEXT,
   },
 };

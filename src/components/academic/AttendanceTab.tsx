@@ -6,6 +6,7 @@ import type { AcademicData, Course, SessionKind } from '@/lib/academic/types';
 import { attendanceStatus, calendarWeeks, hasCalendar, isAttendanceExempt, newId } from '@/lib/academic/grading';
 import { formatTurkishDate, toLocalDateString } from '@/lib/utils';
 import { Card, CardHeader, EmptyState, Progress, btnGhost, btnPrimary, inputCls } from './ui';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Props {
   data: AcademicData;
@@ -161,7 +162,7 @@ function AttendanceCard({
                   </span>
                   <button
                     className="w-7 h-7 flex items-center justify-center text-muted hover:text-rose-400"
-                    onClick={() => mutate((c) => ({ ...c, absences: c.absences.filter((x) => x.id !== a.id) }))}
+                    onClick={async () => (await confirmDelete('Devamsızlık kaydı')) && mutate((c) => ({ ...c, absences: c.absences.filter((x) => x.id !== a.id) }))}
                     aria-label="Devamsızlığı sil"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

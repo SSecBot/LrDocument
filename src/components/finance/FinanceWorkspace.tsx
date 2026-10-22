@@ -31,7 +31,8 @@ import {
 import { formatTurkishDate, formatCurrencyTRY, toLocalDateString } from '@/lib/utils';
 import { isCorporate } from '@/lib/corporate';
 import { formatCurrencyWithCode } from '@/lib/exchangeRates';
-import { getTransactionsForMonth, calculateMRRSummary } from '@/lib/recurringFinance';
+import { getTransactionsForMonth, calculateMRRSummary, FREQ_LABEL } from '@/lib/recurringFinance';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 export const FinanceWorkspace: React.FC = () => {
   const personalSpace = useContext(SpaceContext) === 'personal';
@@ -56,6 +57,7 @@ export const FinanceWorkspace: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null);
+  const [modalPreset, setModalPreset] = useState<'debt' | undefined>(undefined);
   useNewItemRequest('transaction', () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -162,12 +164,12 @@ export const FinanceWorkspace: React.FC = () => {
       t.type,
       `"${t.category}"`,
       t.currency || 'TRY',
-      t.originalAmount !== undefined ? t.originalAmount : t.amount,
-      t.effectiveRate !== undefined ? t.effectiveRate : 1,
+      t.originalAmount ?? t.amount,
+      t.effectiveRate ?? 1,
       t.amount,
       t.date,
       getEffectiveTransactionPriority(t),
-      t.isRecurring ? `Evet (${t.recurringFrequency || 'aylik'})` : 'Hayir',
+      t.isRecurring ? `Evet (${FREQ_LABEL[t.recurringFrequency ?? 'aylik']})` : 'Hayir',
       t.isConfirmed ? 'Onaylandi' : 'Beklemede',
       `"${(t.description || '').replace(/"/g, '""')}"`
     ]);
@@ -437,6 +439,7 @@ export const FinanceWorkspace: React.FC = () => {
         <DebtsCard
           onAdd={() => {
             setEditingTransaction(null);
+            setModalPreset('debt');
             setIsModalOpen(true);
           }}
           onEdit={(d) => {
@@ -630,7 +633,8 @@ export const FinanceWorkspace: React.FC = () => {
                   <div
                     key={tr.id}
                     onClick={() => {
-                      setEditingTransaction(tr);
+                      // A recurring entry shown in another month edits the stored record (its start date stays).
+                      setEditingTransaction(transactions.find((x) => x.id === (tr.sourceId ?? tr.id)) ?? tr);
                       setIsModalOpen(true);
                     }}
                     className={`p-3.5 sm:p-4 hover:bg-surface-2 active:bg-surface-2 cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group ${
@@ -673,7 +677,7 @@ export const FinanceWorkspace: React.FC = () => {
                           {tr.isRecurring && (
                             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center gap-1 font-semibold">
                               <Repeat className="w-3 h-3 text-emerald-400" />
-                              <span>{tr.recurringFrequency === 'gunluk' ? 'Günlük Düzenli' : tr.recurringFrequency === 'haftalik' ? 'Haftalık Düzenli' : 'Aylık Düzenli'}</span>
+                              <span>{FREQ_LABEL[tr.recurringFrequency ?? 'aylik']} Düzenli</span>
                             </span>
                           )}
                         </div>
@@ -684,7 +688,7 @@ export const FinanceWorkspace: React.FC = () => {
                             <span>{formatTurkishDate(tr.date)}</span>
                           </span>
 
-                          {isForeignCurrency && tr.originalAmount !== undefined && (
+                          {isForeignCurrency && tr.originalAmount != null && (
                             <span className="text-[11px] font-mono text-amber-400/90 font-medium">
                               Orijinal: {formatCurrencyWithCode(tr.originalAmount, trCurrency)}
                             </span>
@@ -709,7 +713,7 @@ export const FinanceWorkspace: React.FC = () => {
                         }`}>
                           {tr.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(tr.amount)}
                         </div>
-                        {isForeignCurrency && tr.originalAmount !== undefined && (
+                        {isForeignCurrency && tr.originalAmount != null && (
                           <div className="text-[10px] text-subtle font-mono">
                             {tr.type === 'gelir' ? '+' : '-'}{formatCurrencyWithCode(tr.originalAmount, trCurrency)}
                           </div>
@@ -722,7 +726,7 @@ export const FinanceWorkspace: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleTransactionConfirmation(tr.id);
+                            toggleTransactionConfirmation(tr.sourceId ?? tr.id);
                           }}
                           className={`min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
                             tr.isConfirmed
@@ -744,9 +748,9 @@ export const FinanceWorkspace: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            deleteTransaction(tr.id);
+                            if (await confirmDelete(`"${tr.title}" işlemi`, tr.sourceId ? 'Düzenli işlemin tüm tekrarları silinir. Bu işlem geri alınamaz.' : undefined)) deleteTransaction(tr.sourceId ?? tr.id);
                           }}
                           className="min-h-[44px] min-w-[44px] p-2.5 hover:bg-rose-950/40 active:bg-rose-900/60 text-muted hover:text-rose-400 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                           title="İşlemi Sil"
@@ -767,8 +771,12 @@ export const FinanceWorkspace: React.FC = () => {
       {/* Transaction Add / Edit Modal */}
       <TransactionModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setModalPreset(undefined);
+        }}
         editTransaction={editingTransaction}
+        preset={modalPreset}
       />
 
       {/* Category Manager Modal */}

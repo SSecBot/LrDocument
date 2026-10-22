@@ -6,15 +6,17 @@ import type { CorpModule } from './corporate';
 import { isTransactionActiveOnDate } from './recurringFinance';
 import { academicDataSchema } from './academic/schema';
 import { hasCalendar, isHoliday } from './academic/grading';
+import { courseStudyStats, studyWarning } from './academic/study';
 import type { FinanceTransaction } from '@/types';
 import { DEFAULT_PREFERENCES, parsePreferences } from './preferences';
 
 // ---------------------------------------------------------------------------
 // Reminders pushed to phones, tablets and computers while the app is closed:
-//   • görev: last day is today / deadline passed
+//   • görev: last day is today / deadline passed; at its saat when one is set
 //   • ödeme / tahsilat: date is today / date passed (also recurring ones and kredi ödeme günü)
 //   • takvim: today's events
-//   • öğrenci: a class reminder at the time chosen in Ayarlar (default 15 minutes before), exams today
+//   • öğrenci: a class reminder at the time chosen in Ayarlar (default 15 minutes before), exams today,
+//     and the start / end of each slot of the ders çalışma takvimi
 // Every reminder is sent once (PushSent); several of the same kind are grouped into one notification.
 // Runs every few minutes inside the server process (src/instrumentation.ts). Day reminders go out only
 // between 08:00 and 22:00 Türkiye time; class reminders follow the timetable.
@@ -93,9 +95,9 @@ async function dayReminders(userId: string, today: string): Promise<number> {
     }),
   ]);
 
-  // Görevler: son gün bugün / süresi geçti
+  // Görevler: son gün bugün / süresi geçti (a task with a saat also gets its own reminder at that time)
   const taskRows = tasks.map((raw) => decryptRow('task', userId, raw));
-  const label = (t: { title: string }) => t.title || 'Başlıksız görev';
+  const label = (t: { title: string; dueTime?: string | null }) => `${t.dueTime ? `${t.dueTime} ` : ''}${t.title || 'Başlıksız görev'}`;
   sent += await remind(
     userId,
     'work',
@@ -173,6 +175,25 @@ async function financeReminders(userId: string, today: string, fin: FinRow[], wh
   return sent;
 }
 
+/** Görev with a saat: a reminder at that time on its due day (any hour, like class reminders). */
+async function taskTimeReminders(userId: string, now: Now): Promise<number> {
+  const tasks = await prisma.task.findMany({ where: { userId, completed: false, dueDate: now.date, dueTime: { not: null } } });
+  const due: Item[] = [];
+  for (const raw of tasks) {
+    const t = decryptRow('task', userId, raw);
+    const since = now.minutes - toMin(t.dueTime!);
+    if (since < 0 || since >= CLASS_WINDOW_MIN) continue;
+    due.push({ key: `task-time:${t.id}:${t.dueDate}:${t.dueTime}`, label: `${t.dueTime} ${t.title || 'Başlıksız görev'}` });
+  }
+  return remind(
+    userId,
+    'work',
+    due,
+    (i) => ({ title: 'Görevin saati geldi', body: i.label, tab: 'tasks', tag: 'lr-task-time' }),
+    (n, list) => ({ title: `${n} görevin saati geldi`, body: list, tab: 'tasks', tag: 'lr-task-time' })
+  );
+}
+
 /** Title from the real minutes left (the sweep runs every few minutes, so it may differ from the setting). */
 function classTitle(left: number, n: number): string {
   const what = n > 1 ? `${n} ders` : 'Ders';
@@ -235,6 +256,50 @@ async function studentReminders(userId: string, now: Now, withDay: boolean): Pro
       (i) => ({ title: classTitle(i.left ?? lead, 1), body: i.label, tab: 'academic', tag: 'lr-class' }),
       (n, list) => ({ title: classTitle(Math.min(...soon.map((x) => x.left ?? lead)), n), body: list, tab: 'academic', tag: 'lr-class' })
     );
+  }
+
+  // Ders çalışma takvimi: when a study slot starts and when it ends (any day of the term).
+  const study = data.study;
+  if (study && study.reminders !== false && (!hasCalendar(term) || (now.date >= term.start && now.date <= term.end))) {
+    const courses = new Map(data.courses.map((c) => [c.id, c]));
+    const starting: Item[] = [];
+    const ending: Item[] = [];
+    for (const s of study.sessions) {
+      const course = courses.get(s.courseId);
+      if (s.termId !== term.id || s.day !== now.weekday || !course || s.since > now.date) continue;
+      const name = `${course.code ? `${course.code} ` : ''}${course.name}`;
+      const label = `${s.start}–${s.end} ${name}`;
+      const sinceStart = now.minutes - toMin(s.start);
+      if (sinceStart >= 0 && sinceStart < CLASS_WINDOW_MIN) starting.push({ key: `study-start:${s.id}:${now.date}`, label });
+      const sinceEnd = now.minutes - toMin(s.end);
+      if (sinceEnd >= 0 && sinceEnd < CLASS_WINDOW_MIN) ending.push({ key: `study-end:${s.id}:${now.date}:${s.courseId}`, label });
+    }
+    sent += await remind(
+      userId,
+      null,
+      starting,
+      (i) => ({ title: 'Ders çalışma vakti', body: i.label, tab: 'academic', tag: 'lr-study' }),
+      (n, list) => ({ title: `${n} ders çalışması başlıyor`, body: list, tab: 'academic', tag: 'lr-study' })
+    );
+    if (ending.length) {
+      // The end notice also says when too much study time was missed (%40 rule).
+      // Today's slots are left out: the student has not had a chance to mark them yet.
+      const stats = courseStudyStats(data, term, data.courses.filter((c) => c.termId === term.id), { date: now.date, minutes: 0 });
+      const warnings = ending
+        .map((i) => stats.find((s) => s.course.id === i.key.split(':')[3]))
+        .filter((s): s is NonNullable<typeof s> => !!s && s.warn)
+        .map((s) => studyWarning(s));
+      const extra = warnings.length
+        ? `\n${[...new Set(warnings)].join('\n')}`
+        : '\nÇalıştıysanız Ders Takibi › Çalışma takviminden işaretleyin.';
+      sent += await remind(
+        userId,
+        null,
+        ending,
+        (i) => ({ title: 'Ders çalışması bitti', body: `${i.label}${extra}`, tab: 'academic', tag: 'lr-study-end' }),
+        (n, list) => ({ title: `${n} ders çalışması bitti`, body: `${list}${extra}`, tab: 'academic', tag: 'lr-study-end' })
+      );
+    }
   }
 
   if (withDay) {
@@ -315,6 +380,7 @@ export async function runReminderSweep(opts: { ignoreHours?: boolean; now?: Date
     for (const { userId } of owners) {
       try {
         if (withDay) total += await dayReminders(userId, now.date);
+        total += await taskTimeReminders(userId, now);
         total += await studentReminders(userId, now, withDay);
       } catch (err) {
         console.warn('[push] hatırlatma hatası:', (err as Error).message);

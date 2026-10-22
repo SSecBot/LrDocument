@@ -8,6 +8,7 @@ import { formatTurkishDate } from '@/lib/utils';
 import { CalendarImportModal } from './CalendarImportModal';
 import { Card, CardHeader, btnSecondary, inputCls, labelCls } from './ui';
 import type { SchoolInfo } from './useAcademicData';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Props {
   data: AcademicData;
@@ -190,7 +191,7 @@ export function AcademicCalendarCard({ data, update, school }: Props) {
                   ) : (
                     <button
                       className="w-7 h-7 flex items-center justify-center text-muted hover:text-rose-400"
-                      onClick={() => setTerm({ holidays: (term.holidays ?? []).filter((x) => x.id !== h.id) })}
+                      onClick={async () => (await confirmDelete(`"${h.name}"`)) && setTerm({ holidays: (term.holidays ?? []).filter((x) => x.id !== h.id) })}
                       aria-label="Sil"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

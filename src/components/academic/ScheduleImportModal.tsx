@@ -12,6 +12,7 @@ import { describePdfError } from '@/lib/academic/pdfErrors';
 import { emptyCourse } from './CourseModal';
 import { btnGhost, btnPrimary, btnSecondary } from './ui';
 import { useAppStore } from '@/store/useAppStore';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface Props {
   isOpen: boolean;
@@ -317,7 +318,7 @@ export function ScheduleImportModal({ isOpen, onClose, termId, courses, classYea
                           <button
                             type="button"
                             className="w-8 h-8 flex items-center justify-center text-muted hover:text-rose-400"
-                            onClick={() => removeSession(r.key, i)}
+                            onClick={async () => (await confirmDelete('Ders saati', 'İçe aktarmadan önce listeden çıkarılır.')) && removeSession(r.key, i)}
                             aria-label="Oturumu kaldır"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

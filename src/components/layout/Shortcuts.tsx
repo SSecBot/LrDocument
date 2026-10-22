@@ -44,6 +44,12 @@ export const KEYBOARD_SHORTCUTS: [string, string][] = [
   ['Not yazarken Ctrl / ⌘ + I', 'İtalik'],
   ['Not yazarken Ctrl / ⌘ + S', 'Hemen kaydet'],
   ['Not yazarken Ctrl / ⌘ + Shift + E', 'Düzenle / önizleme arasında geç'],
+  ['Not yazarken Ctrl / ⌘ + Shift + B', 'Yeni bölüm (roman)'],
+  ['Not yazarken Ctrl / ⌘ + Shift + D', 'Diyalog çizgisi (—)'],
+  ['Not yazarken Ctrl / ⌘ + Shift + H', 'Sahne ayracı (* * *)'],
+  ['Not yazarken Ctrl / ⌘ + Shift + F', 'Dipnot (tez)'],
+  ['Not yazarken Ctrl / ⌘ + Shift + Q', 'Kaynaklı alıntı (tez)'],
+  ['Kitap görünümünde ← / →', 'Sayfa çevir'],
 ];
 
 export const TOUCH_GESTURES: [string, string][] = [

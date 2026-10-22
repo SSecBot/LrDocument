@@ -176,6 +176,45 @@ export interface GradingSystem {
   relativeNote?: string;
 }
 
+/**
+ * Ders çalışma takvimi: a weekly study slot the student chose for a course (same day and time every
+ * week of the term).
+ */
+export interface StudySession {
+  id: string;
+  termId: string;
+  courseId: string;
+  /** 0 = Pazartesi … 6 = Pazar */
+  day: number;
+  /** HH:mm, end after start */
+  start: string;
+  end: string;
+  /** YYYY-MM-DD the slot was added: weeks before it are not counted. */
+  since: string;
+}
+
+/**
+ * What happened in one study slot on one day, or a telafi (makeup) study. A slot that ended without
+ * an entry counts as not studied ("işaretlenmedi").
+ */
+export interface StudyLog {
+  /** The slot; null for a telafi entry */
+  sessionId: string | null;
+  courseId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** done = all of it, partial = `minutes` of it, missed = none, makeup = extra `minutes` */
+  status: 'done' | 'partial' | 'missed' | 'makeup';
+  minutes?: number;
+}
+
+export interface StudyPlan {
+  sessions: StudySession[];
+  logs: StudyLog[];
+  /** Push notifications at the start and end of each study slot (default on) */
+  reminders?: boolean;
+}
+
 export interface AcademicData {
   version: 1;
   grading: GradingSystem;
@@ -185,4 +224,5 @@ export interface AcademicData {
   /** Optional target cumulative GPA for planning */
   targetGpa?: number | null;
   exams?: Exam[];
+  study?: StudyPlan;
 }

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { minimumPayment, monthlyInterest, payoffPlan } from '@/lib/debt';
 import { formatCurrencyTRY } from '@/lib/utils';
+import { FREQ_LABEL } from '@/lib/recurringFinance';
 import { convertCurrencyToTRY } from '@/lib/exchangeRates';
 import { transactionFormSchema } from '@/lib/validations/finance';
 import { toLocalDateString } from '@/lib/utils';
@@ -25,12 +26,15 @@ interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   editTransaction?: FinanceTransaction | null;
+  /** New record opened from "Krediler ve borçlar": starts as a kredi / borç (gider). */
+  preset?: 'debt';
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen,
   onClose,
   editTransaction,
+  preset,
 }) => {
   const {
     addTransaction,
@@ -47,7 +51,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [amount, setAmount] = useState<number | ''>('');
   const [currency, setCurrency] = useState<CurrencyCode>('TRY');
   const [markupTRY, setMarkupTRY] = useState<number>(0);
-  const [category, setCategory] = useState<string>('YouTube Geliri');
+  const [category, setCategory] = useState<string>('');
   const [date, setDate] = useState(toLocalDateString());
   const [endDate, setEndDate] = useState<string>('');
   const [priority, setPriority] = useState<TaskPriority>('orta');
@@ -62,10 +66,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [minRate, setMinRate] = useState<number | ''>(systemSettings.finance.loanMinPaymentRate);
 
   const availableCategories = financeCategories.filter(c => c.type === type);
+  // What the list shows is what gets saved: an empty choice means the first category of this type.
+  const shownCategory = category || availableCategories[0]?.name || '';
 
   // Reset the form whenever the modal is (re)opened or a different record is edited.
   // Adjusting state during render (instead of in an effect) avoids a flash of stale values.
-  const resetKey = `${isOpen}:${editTransaction?.id ?? 'new'}`;
+  const resetKey = `${isOpen}:${editTransaction?.id ?? `new-${preset ?? ''}`}`;
   const [prevResetKey, setPrevResetKey] = useState<string | null>(null);
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey);
@@ -74,8 +80,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setType(editTransaction.type);
       setTitle(editTransaction.title);
       setCurrency(editTransaction.currency || 'TRY');
-      setAmount(editTransaction.originalAmount !== undefined ? editTransaction.originalAmount : editTransaction.amount);
-      setMarkupTRY(editTransaction.markupTRY !== undefined ? editTransaction.markupTRY : (exchangeRates.markupTRY ?? 0));
+      setAmount(editTransaction.originalAmount ?? editTransaction.amount);
+      setMarkupTRY(editTransaction.markupTRY ?? exchangeRates.markupTRY ?? 0);
       setCategory(editTransaction.category);
       setDate(editTransaction.date);
       setEndDate(editTransaction.endDate || '');
@@ -83,21 +89,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setDescription(editTransaction.description || '');
       setIsRecurring(editTransaction.isRecurring || false);
       setRecurringFrequency(editTransaction.recurringFrequency || 'aylik');
-      setIsConfirmed(editTransaction.isConfirmed !== undefined ? editTransaction.isConfirmed : true);
+      setIsConfirmed(editTransaction.isConfirmed ?? true);
       setIsDebt(!!editTransaction.isDebt);
       setInterestRate(editTransaction.monthlyInterestRate ?? systemSettings.finance.loanMonthlyInterestRate);
       setMinRate(editTransaction.minPaymentRate ?? systemSettings.finance.loanMinPaymentRate);
     } else {
-      setType('gelir');
+      const startType: FinanceTransactionType = preset === 'debt' ? 'gider' : 'gelir';
+      setType(startType);
       setTitle('');
       setAmount('');
       setCurrency(systemSettings.finance.defaultCurrency);
       setMarkupTRY(exchangeRates.markupTRY ?? 0);
-      setIsDebt(false);
+      setIsDebt(preset === 'debt');
       setInterestRate(systemSettings.finance.loanMonthlyInterestRate);
       setMinRate(systemSettings.finance.loanMinPaymentRate);
-      const defaultCat = financeCategories.find(c => c.type === 'gelir')?.name || 'YouTube Geliri';
-      setCategory(defaultCat);
+      setCategory(financeCategories.find((c) => c.type === startType)?.name || '');
       setDate(toLocalDateString());
       setEndDate('');
       setPriority('orta');
@@ -140,7 +146,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       amount: numericAmount,
       currency,
       type,
-      category: debtMode ? DEBT_CATEGORY : category || (type === 'gelir' ? 'Genel gelir' : 'Genel gider'),
+      category: debtMode ? DEBT_CATEGORY : shownCategory || (type === 'gelir' ? 'Genel gelir' : 'Genel gider'),
       date,
       endDate: !debtMode && isRecurring ? (endDate.trim() || undefined) : undefined,
       isRecurring: !debtMode && isRecurring,
@@ -392,7 +398,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </button>
                 </div>
                 <select
-                  value={category}
+                  value={shownCategory}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
                 >
@@ -401,6 +407,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       {c.name}
                     </option>
                   ))}
+                  {/* A record whose category was renamed or deleted keeps it. */}
+                  {shownCategory && !availableCategories.some((c) => c.name === shownCategory) && <option value={shownCategory}>{shownCategory}</option>}
+                  {!shownCategory && <option value="">{type === 'gelir' ? 'Genel gelir' : 'Genel gider'}</option>}
                 </select>
               </div>
               )}
@@ -584,10 +593,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
             {isRecurring && (
               <div className="pt-2 border-t border-line space-y-3 animate-fade-in">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
                   <span className="text-xs text-subtle">Tekrarlama Sıklığı:</span>
-                  {(['gunluk', 'haftalik', 'aylik'] as const).map((freq) => (
-                    <label key={freq} className="flex items-center gap-1.5 text-xs text-white cursor-pointer">
+                  {(['gunluk', 'haftalik', 'aylik', 'yillik'] as const).map((freq) => (
+                    <label key={freq} className="flex items-center gap-1.5 text-xs text-white cursor-pointer min-h-[32px]">
                       <input
                         type="radio"
                         name="recurringFrequency"
@@ -596,7 +605,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         onChange={() => setRecurringFrequency(freq)}
                         className="text-emerald-500 bg-surface-2 border-line-strong"
                       />
-                      <span>{freq === 'gunluk' ? 'Günlük' : freq === 'haftalik' ? 'Haftalık' : 'Aylık'}</span>
+                      <span>{FREQ_LABEL[freq]}</span>
                     </label>
                   ))}
                 </div>
@@ -607,19 +616,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     <label className="text-xs font-semibold text-white flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Bitiş Tarihi (Vade Sonu)</span>
-                      {type === 'gelir' ? (
-                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40">
-                          Zorunlu
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted font-normal">(Opsiyonel)</span>
-                      )}
+                      <span className="text-[10px] text-muted font-normal">(isteğe bağlı)</span>
                     </label>
                   </div>
 
                   <input
                     type="date"
-                    required={type === 'gelir'}
                     value={endDate}
                     min={date}
                     onChange={(e) => {
@@ -642,11 +644,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <AlertCircle className="w-3 h-3 shrink-0" />
                       <span>{formErrors.endDate}</span>
                     </p>
-                  ) : type === 'gelir' ? (
-                    <p className="text-[10px] text-subtle mt-1">
-                      * Düzenli gelir akışlarının aylık MRR ve projeksiyonlara doğru yansıtılması için bitiş tarihi zorunludur.
-                    </p>
-                  ) : null}
+                  ) : (
+                    <p className="text-[10px] text-subtle mt-1">Boş bırakılırsa süresiz tekrarlar (ör. maaş, kira).</p>
+                  )}
                 </div>
               </div>
             )}

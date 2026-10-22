@@ -15,6 +15,7 @@ import {
   X,
   Users,
 } from 'lucide-react';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -187,9 +188,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     </div>
 
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        deleteNotification(notif.id);
+                        if (await confirmDelete('Bildirim')) deleteNotification(notif.id);
                       }}
                       className="p-1 text-muted hover:text-rose-400 rounded-lg hover:bg-surface-3 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
                       title="Bildirimi Kaldır"

@@ -78,6 +78,8 @@ export function renderNoteHtml(content: string): string {
 
   // 5. Everything left is plain user text — escape it before applying Markdown.
   text = escapeHtml(text);
+  // Sahne ayracı (* * *) before italics and lists, which would read it as emphasis / a bullet.
+  text = text.replace(/^\s*\*\s*\*\s*\*\s*$/gm, () => block('<div class="text-center text-muted tracking-[0.6em] my-6" role="separator">* * *</div>'));
 
   text = text.replace(/^#{4,6} (.*$)/gim, '<h4 class="text-base font-semibold text-fg mt-4 mb-1.5">$1</h4>');
   text = text.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-fg mt-5 mb-2">$1</h3>');
@@ -97,6 +99,18 @@ export function renderNoteHtml(content: string): string {
   text = text.replace(/^\s*[-*]\s+(.*$)/gim, '<li data-list="ul" class="ml-5 list-disc text-body my-1">$1</li>');
   text = text.replace(/^\s*\d+[.)]\s+(.*$)/gim, '<li data-list="ol" class="ml-5 list-decimal text-body my-1">$1</li>');
   text = text.replace(/^---$/gim, '<hr class="border-t border-line my-6" />');
+
+  // Dipnotlar: [^1] in the text, "[^1]: açıklama" lines collected at the end (numbered in order of use).
+  const notes = new Map<string, string>();
+  text = text.replace(/^\[\^([\w-]{1,20})\]:[ \t]*(.*)$/gm, (_, id: string, body: string) => {
+    notes.set(id, body);
+    return '';
+  });
+  const order: string[] = [];
+  text = text.replace(/\[\^([\w-]{1,20})\]/g, (_, id: string) => {
+    if (!order.includes(id)) order.push(id);
+    return `<sup class="text-[0.7em] text-brand-light font-medium">${order.indexOf(id) + 1}</sup>`;
+  });
 
   // 6. Paragraphs, list grouping and pipe tables
   const lines = text.split('\n');
@@ -146,10 +160,18 @@ export function renderNoteHtml(content: string): string {
     }
 
     const isBlock =
-      /^<(h1|h2|h3|h4|blockquote|hr)/.test(line) || /^\u0001\d+\u0001$/.test(line.trim()) || line.trim() === '';
+      /^<(h1|h2|h3|h4|blockquote|hr|div)/.test(line) || /^\u0001\d+\u0001$/.test(line.trim()) || line.trim() === '';
     out.push(isBlock ? line : `<p class="text-body my-2 leading-relaxed break-words">${line}</p>`);
   }
   closeList();
+  const used = order.filter((id) => notes.has(id));
+  if (used.length) {
+    out.push(
+      '<div class="mt-8 pt-3 border-t border-line text-xs text-subtle"><ol class="space-y-1 list-decimal ml-5">' +
+        used.map((id) => `<li>${notes.get(id)}</li>`).join('') +
+        '</ol></div>'
+    );
+  }
 
   // 7. Restore rendered fragments.
   return out

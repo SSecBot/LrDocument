@@ -370,6 +370,7 @@ export const CalendarWorkspace: React.FC = () => {
                 {t.completed && <Check className="w-3 h-3" />}
               </button>
               <span className={`text-xs truncate ${t.completed ? 'line-through text-muted' : 'text-fg'}`}>{t.title}</span>
+              {t.dueTime && t.dueDate === selectedDay && <span className="ml-auto text-[11px] text-muted tabular-nums shrink-0">{t.dueTime}</span>}
             </div>
           ))}
         </PanelSection>

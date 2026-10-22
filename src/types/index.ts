@@ -33,6 +33,8 @@ export interface Task {
   /** Görev süresi aralığı: first day (optional); dueDate is the last day. YYYY-MM-DD */
   startDate?: string;
   dueDate?: string; // YYYY-MM-DD
+  /** Saat on the due day (HH:mm); none = the whole day */
+  dueTime?: string;
   linkedNoteId?: string;
   /** Who added it (shown in corporate workspaces) */
   createdBy?: string | null;
@@ -92,7 +94,7 @@ export interface MediaItem {
 
 export type FinanceTransactionType = 'gelir' | 'gider';
 
-export type RecurringFrequency = 'gunluk' | 'haftalik' | 'aylik';
+export type RecurringFrequency = 'gunluk' | 'haftalik' | 'aylik' | 'yillik';
 
 export interface FinanceCategoryItem {
   id: string;
@@ -120,7 +122,7 @@ export interface FinanceTransaction {
   type: FinanceTransactionType;
   category: FinanceCategory;
   date: string; // YYYY-MM-DD
-  endDate?: string; // YYYY-MM-DD (Mandatory for recurring income)
+  endDate?: string; // YYYY-MM-DD (optional end of a recurring entry)
   currency?: CurrencyCode; // 'TRY' | 'USD' | 'EUR'
   originalAmount?: number; // Amount in original currency (e.g. 100 for $100)
   exchangeRate?: number; // Live base exchange rate (e.g. 34.20)
@@ -141,6 +143,8 @@ export interface FinanceTransaction {
   /** Who added it (shown in corporate workspaces) */
   createdBy?: string | null;
   createdAt: string;
+  /** Set on a recurring entry's copy shown in another month / day: the id of the stored record. */
+  sourceId?: string;
 }
 
 // In-App Notification System

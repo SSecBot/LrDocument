@@ -13,7 +13,8 @@ import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
 import { EmailSection, EmailVerificationPanel, TwoFactorSection } from './SecuritySections';
 import { StudentEmailSection } from './StudentEmailSection';
 import { AccountSwitchSection, SupportSection } from './SupportSections';
-import { CurrencyPanel, InstallAppPanel, NotificationsPanel, ShortcutsPanel } from './PreferenceExtras';
+import { DeleteAccountSection } from './DeleteAccountSection';
+import { CurrencyPanel, InstallAppPanel, NotesPanel, NotificationsPanel, ShortcutsPanel } from './PreferenceExtras';
 
 export function SettingsView() {
   const { currentUser, settingsSection, setSettingsSection } = useAppStore();
@@ -59,6 +60,7 @@ export function SettingsView() {
             <>
               <AccountSection />
               {currentUser?.accountType === 'STUDENT' && !currentUser.memberId && <AccountSwitchSection />}
+              {!currentUser?.memberId && <DeleteAccountSection />}
             </>
           )}
           {active === 'guvenlik' && (
@@ -242,6 +244,7 @@ function PreferencesSection() {
           />
         </div>
       </Panel>
+      <NotesPanel />
       <CurrencyPanel />
       <NotificationsPanel />
       <ShortcutsPanel />

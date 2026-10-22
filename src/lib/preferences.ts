@@ -8,6 +8,8 @@ const fields = {
   sidebarCollapsed: z.boolean(),
   notesPanelCollapsed: z.boolean(),
   mathDrawerOpen: z.boolean(),
+  /** Notlar: the Yazım araçları strip (roman / tez shortcuts) is open. */
+  writingDrawerOpen: z.boolean(),
   calendarPanelCollapsed: z.boolean(),
   /** Calendar layers the user turned off (see src/lib/calendarFeed.ts). */
   calendarHiddenLayers: z.array(z.enum(['etkinlik', 'gorev', 'finans', 'ders', 'sinav', 'akademik', 'resmi', 'kanban', 'musteri'])).max(20),
@@ -22,6 +24,16 @@ const fields = {
   /** Notlar: list order. "manual" uses noteOrder. Pinned notes always come first. */
   noteSort: z.enum(['updated', 'created', 'title', 'manual']),
   noteOrder: z.array(z.string().max(200)).max(1000),
+  /**
+   * Notlar: which folder is open when Notlar opens — "Tüm Notlar", the folder left last time, or one
+   * chosen folder (notesStartFolderId). The last folder is kept per space (shared / Şahsi Notlar).
+   */
+  notesStartFolder: z.enum(['all', 'last', 'custom']),
+  notesStartFolderId: z.string().max(200).nullable(),
+  notesLastFolder: z.string().max(200).nullable(),
+  notesLastFolderPersonal: z.string().max(200).nullable(),
+  /** Kitap görünümü: PDFs and the note preview show two pages side by side (tablet / computer only). */
+  pdfSpread: z.boolean(),
   /** Genel bakış widgets in display order; empty = default layout. */
   /**
    * Öğrenci: when the class reminder comes, in minutes before the start (0 = at the start,
@@ -54,6 +66,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   sidebarCollapsed: false,
   notesPanelCollapsed: false,
   mathDrawerOpen: false,
+  writingDrawerOpen: false,
   calendarPanelCollapsed: false,
   calendarHiddenLayers: [],
   tasksView: 'liste',
@@ -64,6 +77,11 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   folderOrder: [],
   noteSort: 'updated',
   noteOrder: [],
+  notesStartFolder: 'all',
+  notesStartFolderId: null,
+  notesLastFolder: null,
+  notesLastFolderPersonal: null,
+  pdfSpread: false,
   classReminderMinutes: 15,
   keyboardShortcuts: true,
   touchGestures: true,

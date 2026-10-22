@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { isCorporate } from '@/lib/corporate';
 import { formatTurkishDate } from '@/lib/utils';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface ColumnDef {
   id: KanbanColumnId;
@@ -440,9 +441,9 @@ export const KanbanWorkspace: React.FC = () => {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              deleteKanbanCard(card.id);
+                              if (await confirmDelete(`"${card.title}" kartı`)) deleteKanbanCard(card.id);
                             }}
                             className="min-h-[34px] min-w-[34px] p-2 hover:bg-rose-950/40 active:bg-rose-900/60 rounded-lg text-muted hover:text-rose-400 transition-colors flex items-center justify-center"
                             title="Sil"

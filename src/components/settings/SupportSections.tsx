@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { FEEDBACK_KIND_LABEL, FEEDBACK_STATUS_LABEL, isOpenStatus, type FeedbackItem, type UserFeedbackKind } from '@/lib/feedback';
 import { getRelativeTimeTurkish } from '@/lib/utils';
 import { Message, Panel, fieldCls, labelCls, primaryBtn } from './settingsUi';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 const secondaryBtn =
   'h-10 px-4 rounded-md border border-line-strong text-body hover:bg-surface-2 text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50';
@@ -55,6 +56,7 @@ async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error
 }
 
 async function withdraw(id: string): Promise<boolean> {
+  if (!(await askConfirm({ title: 'Talep geri çekilsin mi?', confirmText: 'Geri çek', message: 'Talebiniz yöneticinin listesinden kaldırılır.' }))) return false;
   const res = await fetch(`/api/feedback?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
   return !!res?.ok;
 }

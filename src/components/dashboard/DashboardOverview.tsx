@@ -138,7 +138,7 @@ export const DashboardOverview: React.FC = () => {
     .slice(0, 4);
   const upcomingTasks = tasks
     .filter((t) => !t.completed && t.dueDate)
-    .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
+    .sort((a, b) => `${a.dueDate} ${a.dueTime ?? '99'}`.localeCompare(`${b.dueDate} ${b.dueTime ?? '99'}`))
     .slice(0, 5);
   const upcomingPayments = transactions
     .map((t) => ({ t, due: nextDue(t, todayStr, 30) }))
@@ -339,6 +339,7 @@ export const DashboardOverview: React.FC = () => {
                 <span className="block text-sm text-fg truncate">{t.title || 'Başlıksız görev'}</span>
                 <span className={`text-[11px] flex items-center gap-1 ${dueCls(t.dueDate!)}`}>
                   <Clock className="w-3 h-3" /> {dueLabel(t.dueDate!)}
+                  {t.dueTime ? ` · ${t.dueTime}` : ''}
                 </span>
               </button>
             </li>

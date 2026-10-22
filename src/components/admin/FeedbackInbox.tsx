@@ -6,6 +6,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { DECISION_KINDS, FEEDBACK_KIND_LABEL, isOpenStatus, type AdminFeedbackItem, type FeedbackKind, type FeedbackStatus } from '@/lib/feedback';
 import { StatusBadge } from '@/components/settings/SupportSections';
 import { formatTurkishDate, getRelativeTimeTurkish } from '@/lib/utils';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 const KIND_ICON: Record<FeedbackKind, React.ElementType> = {
   istek: MessageSquarePlus,
@@ -82,7 +83,7 @@ export function FeedbackInbox({ onCountChange }: { onCountChange?: (open: number
   };
 
   const remove = async (item: AdminFeedbackItem) => {
-    if (!confirm('Bu kayıt silinsin mi?')) return;
+    if (!(await confirmDelete('Bu kayıt'))) return;
     setBusyId(item.id);
     await fetch(`/api/admin/feedback/${item.id}`, { method: 'DELETE' }).catch(() => null);
     await load();

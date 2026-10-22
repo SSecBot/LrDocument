@@ -364,3 +364,55 @@ function NotificationSoundSettings() {
     </div>
   );
 }
+
+/** Ayarlar › Tercihler › Notlar: the folder Notlar opens in, and the PDF reader's book view. */
+export function NotesPanel() {
+  const { preferences, setPreference, folders } = useAppStore();
+  const mode = preferences.notesStartFolder;
+  const chosen = preferences.notesStartFolderId;
+  const exists = chosen === 'favorites' || folders.some((f) => f.id === chosen);
+  return (
+    <Panel title="Notlar" description="Notlar sayfası açıldığında hangi klasörün seçili geleceğini belirleyin.">
+      <div className="space-y-3">
+        <label className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-body">Açılış klasörü</span>
+          <select
+            className={`${fieldCls} sm:max-w-[16rem]`}
+            value={mode}
+            onChange={(e) => setPreference('notesStartFolder', e.target.value as typeof mode)}
+            aria-label="Notların açılacağı klasör"
+          >
+            <option value="all">Tüm Notlar (varsayılan)</option>
+            <option value="last">Son bıraktığım klasör</option>
+            <option value="custom">Seçtiğim klasör</option>
+          </select>
+        </label>
+        {mode === 'custom' && (
+          <label className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-body">Klasör</span>
+            <select
+              className={`${fieldCls} sm:max-w-[16rem]`}
+              value={exists ? chosen! : ''}
+              onChange={(e) => setPreference('notesStartFolderId', e.target.value || null)}
+              aria-label="Açılış klasörü seçimi"
+            >
+              <option value="">Tüm Notlar</option>
+              <option value="favorites">Favoriler</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {mode === 'custom' && chosen && !exists && <p className="text-xs text-amber-300">Seçilen klasör silinmiş; Tüm Notlar açılacak.</p>}
+        <label className="flex items-start justify-between gap-4 pt-1 cursor-pointer">
+          <span>
+            <span className="block text-sm text-body">Kitap görünümü (çift sayfa)</span>
+            <span className="block text-xs text-muted mt-0.5">PDF’ler ve not önizlemesi kitap gibi iki sayfa yan yana açılır. Yalnızca tablet ve bilgisayarda; telefonda tek sayfa gösterilir. Okuyucudaki “Kitap” düğmesiyle de açılıp kapanır.</span>
+          </span>
+          <input type="checkbox" className="mt-1 w-4 h-4 accent-[var(--color-brand)]" checked={preferences.pdfSpread} onChange={(e) => setPreference('pdfSpread', e.target.checked)} />
+        </label>
+      </div>
+    </Panel>
+  );
+}

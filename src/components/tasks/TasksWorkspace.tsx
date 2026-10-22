@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Calendar,
+  Clock,
 } from 'lucide-react';
 import { toLocalDateString } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ export const TasksWorkspace: React.FC = () => {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickPriority, setQuickPriority] = useState<TaskPriority>(systemSettings.tasks.defaultPriority);
   const [quickDueDate, setQuickDueDate] = useState('');
+  const [quickDueTime, setQuickDueTime] = useState('');
   // Görev süresi aralığı: optional first day before the due day.
   const [quickRange, setQuickRange] = useState(false);
   const [quickStartDate, setQuickStartDate] = useState('');
@@ -44,11 +46,13 @@ export const TasksWorkspace: React.FC = () => {
       priority: quickPriority,
       startDate: range ? quickStartDate : undefined,
       dueDate: quickDueDate || undefined,
+      dueTime: quickDueDate && quickDueTime ? quickDueTime : undefined,
       completed: false,
     });
 
     setQuickTitle('');
     setQuickDueDate('');
+    setQuickDueTime('');
     setQuickStartDate('');
     setQuickPriority('orta');
   };
@@ -149,6 +153,20 @@ export const TasksWorkspace: React.FC = () => {
               onChange={(e) => setQuickDueDate(e.target.value)}
               className="bg-transparent text-xs text-white focus:outline-none"
               aria-label={quickRange ? 'Bitiş tarihi' : 'Son tarih'}
+            />
+            <span className="w-px h-4 bg-line-strong mx-0.5" aria-hidden="true" />
+            <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <input
+              type="time"
+              value={quickDueTime}
+              onChange={(e) => {
+                setQuickDueTime(e.target.value);
+                // A time alone means today.
+                if (e.target.value && !quickDueDate) setQuickDueDate(todayStr);
+              }}
+              className="bg-transparent text-xs text-white focus:outline-none w-[76px]"
+              aria-label="Saat (isteğe bağlı)"
+              title="Saat (isteğe bağlı)"
             />
           </div>
           <button

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useLayoutEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNow } from '@/components/academic/useNow';
 import { Note } from '@/types';
 import { canEdit } from '@/lib/corporate';
@@ -8,6 +9,8 @@ import { applyOrder } from '@/lib/preferences';
 import { flushPendingMutations, useAppStore } from '@/store/useAppStore';
 import { KatexPreview } from './KatexPreview';
 import { MathSymbolBar } from './MathDrawer';
+import { WritingDrawer } from './WritingDrawer';
+import { WRITING_KEYS, writingStats, type WritingTool } from '@/lib/writingTools';
 import { NoteDownloadMenu } from './NoteDownloadMenu';
 import { SpreadsheetEditor } from './SpreadsheetEditor';
 import { PdfViewer } from './PdfViewer';
@@ -28,8 +31,12 @@ import {
   Sigma,
   ChevronLeft,
   ChevronDown,
+  ChevronRight,
+  PenLine,
+  BookOpen,
 } from 'lucide-react';
 import { formatTurkishDate } from '@/lib/utils';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 interface NoteEditorProps {
   note: Note;
@@ -84,7 +91,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
       setConverting(null);
     }
   };
+  // Kitap görünümü (tablet / computer): the preview flows into two columns and turns like pages.
+  const [wide, setWide] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
+  useEffect(() => {
+    const onResize = () => setWide(window.innerWidth >= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const bookRef = useRef<HTMLDivElement>(null);
+  const BOOK_GAP = 64;
+  const turnPage = (dir: 1 | -1) => {
+    const el = bookRef.current;
+    if (el) el.scrollBy({ left: dir * (el.clientWidth + BOOK_GAP), behavior: 'smooth' });
+  };
   const symbolsOpen = preferences.mathDrawerOpen;
+  const writingOpen = preferences.writingDrawerOpen;
   const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -147,6 +168,34 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     }, 50);
   };
 
+  /** Yazım araçları: applies a roman / tez tool at the caret (at the end when the editor is hidden). */
+  const applyTool = (tool: WritingTool) => {
+    if (!editable) return;
+    const ta = textareaRef.current;
+    const text = ta ? ta.value : note.content;
+    const start = ta ? ta.selectionStart : text.length;
+    const end = ta ? ta.selectionEnd : text.length;
+    const result = tool.apply(text, start, end);
+    localContent.current = result.text;
+    prevContent.current = result.text;
+    if (ta) {
+      // Render the new text now and place the caret right away, so fast typing continues there.
+      flushSync(() => updateNote(note.id, { content: result.text }));
+      ta.focus();
+      ta.setSelectionRange(result.start, result.end);
+      selection.current = { start: result.start, end: result.end };
+      return;
+    }
+    updateNote(note.id, { content: result.text });
+    setViewMode('edit');
+    setTimeout(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(result.start, result.end);
+    }, 0);
+  };
+
   /** Wraps the selection in Markdown marks (Ctrl+B / Ctrl+I). */
   const wrapSelection = (mark: string) => {
     const ta = textareaRef.current;
@@ -175,6 +224,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     } else if (!e.shiftKey && (key === 'b' || key === 'i') && e.target === textareaRef.current) {
       e.preventDefault();
       wrapSelection(key === 'b' ? '**' : '*');
+    } else if (e.shiftKey && WRITING_KEYS[key] && e.target === textareaRef.current) {
+      // Yazım araçları: Ctrl+Shift+B bölüm, +H sahne, +D diyalog, +F dipnot, +Q alıntı.
+      e.preventDefault();
+      applyTool(WRITING_KEYS[key]);
     }
   };
 
@@ -208,7 +261,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     setActiveTab('tasks');
   };
 
-  const wordCount = note.content.trim().split(/\s+/).filter(Boolean).length;
+  const stats = writingStats(note.content);
+  const wordCount = stats.words;
   const charCount = note.content.length;
 
   return (
@@ -251,6 +305,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <Sigma className="w-4 h-4" />
             <span className="hidden sm:inline">Semboller</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${symbolsOpen ? 'rotate-180' : ''}`} />
+          </button>
+          )}
+
+          {isText && editable && (
+          <button
+            onClick={() => setPreference('writingDrawerOpen', !writingOpen)}
+            aria-expanded={writingOpen}
+            className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${
+              writingOpen ? 'bg-surface-4 border-line-strong text-fg' : 'bg-surface-2 border-line-strong text-body hover:text-fg'
+            }`}
+            title="Yazım araçları: roman ve tez yazarken kısayollar"
+          >
+            <PenLine className="w-4 h-4" />
+            <span className="hidden sm:inline">Yazım</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${writingOpen ? 'rotate-180' : ''}`} />
           </button>
           )}
 
@@ -343,7 +412,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
           {editable && (
           <button
-            onClick={() => {
+            onClick={async () => {
+              if (!(await confirmDelete(`"${note.title || 'Başlıksız not'}" notu`))) return;
               deleteNote(note.id);
               if (onBack) onBack();
             }}
@@ -422,6 +492,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
       </div>
 
       {isText && symbolsOpen && <MathSymbolBar onInsertLatex={handleInsertLatex} />}
+      {isText && editable && writingOpen && <WritingDrawer onApply={applyTool} />}
 
       {kind === 'table' && (
         <div className="flex-1 min-h-0">
@@ -480,18 +551,63 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         {(viewMode === 'preview' || viewMode === 'split') && (
           <div className={`flex flex-col h-full bg-app overflow-hidden ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
             {/* Header for Right Panel */}
-            <div className="px-4 py-2 bg-surface border-b border-line flex items-center justify-between sticky top-0 z-10">
+            <div className="px-4 py-1.5 bg-surface border-b border-line flex items-center justify-between gap-2 sticky top-0 z-10">
               <span className="text-[11px] font-medium text-muted">Önizleme</span>
 
-              <span className="text-[11px] text-muted">
-                {wordCount} kelime • {charCount} karakter
+              <span className="flex items-center gap-1 text-[11px] text-muted">
+                {viewMode === 'preview' && wide && preferences.pdfSpread && (
+                  <>
+                    <button onClick={() => turnPage(-1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label="Önceki sayfa">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => turnPage(1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label="Sonraki sayfa">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                {viewMode === 'preview' && wide && (
+                  <button
+                    onClick={() => setPreference('pdfSpread', !preferences.pdfSpread)}
+                    aria-pressed={preferences.pdfSpread}
+                    className={`h-7 px-2 rounded-md inline-flex items-center gap-1 hover:bg-surface-2 hover:text-fg ${preferences.pdfSpread ? 'bg-surface-2 text-fg' : ''}`}
+                    title="Kitap görünümü: metin kitap gibi iki sayfa yan yana gösterilir"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" /> Kitap
+                  </button>
+                )}
+                <span className="ml-1">
+                  {wordCount} kelime • {charCount} karakter
+                </span>
               </span>
             </div>
 
             {/* Content view */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-              <KatexPreview content={note.content} />
-            </div>
+            {viewMode === 'preview' && wide && preferences.pdfSpread ? (
+              <div className="flex-1 min-h-0 px-6 py-6 sm:px-10">
+                <div
+                  ref={bookRef}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+                      e.preventDefault();
+                      turnPage(1);
+                    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                      e.preventDefault();
+                      turnPage(-1);
+                    }
+                  }}
+                  className="book-columns h-full overflow-x-auto overflow-y-hidden focus:outline-none"
+                  style={{ columnGap: BOOK_GAP }}
+                  aria-label="Kitap görünümü (sağ / sol ok tuşlarıyla sayfa çevirin)"
+                >
+                  <KatexPreview content={note.content} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+                <KatexPreview content={note.content} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -504,6 +620,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         <div className="flex items-center gap-3 sm:gap-4 text-[11px]">
           <span>{wordCount} kelime</span>
           <span>{charCount} karakter</span>
+          {wordCount > 0 && (
+            <span className="hidden sm:inline" title="Yaklaşık: sayfa başına 250 kelime, dakikada 200 kelime okuma">
+              ≈ {stats.pages} sayfa · {stats.minutes} dk okuma
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-muted text-[11px]">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>

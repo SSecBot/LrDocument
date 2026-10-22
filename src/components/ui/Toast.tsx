@@ -3,13 +3,15 @@
 import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { ConfirmHost } from './ConfirmDialog';
 
 export const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useAppStore();
 
-  if (toasts.length === 0) return null;
-
   return (
+    <>
+    <ConfirmHost />
+    {toasts.length > 0 && (
     <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
       {toasts.map((toast) => {
         const icons = {
@@ -49,5 +51,7 @@ export const ToastContainer: React.FC = () => {
         );
       })}
     </div>
+    )}
+    </>
   );
 };

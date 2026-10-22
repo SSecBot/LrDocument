@@ -29,7 +29,35 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu güncellemede gelenler (PDF okuyucu, bildirim sesi, sıkıştırma)
+## Bu güncellemede gelenler (Big Update 3, yasal sayfalar, hesap silme)
+
+`update.sh` Task tablosuna boş bir `dueTime` alanı ekler; mevcut veriye dokunulmaz. Ek ayar gerekmez.
+
+- **Görevlere saat:** son tarihe isteğe bağlı saat; o saatte "Görevin saati geldi" bildirimi gider, takvimde görünür.
+- **Notların açılış klasörü:** Ayarlar › Tercihler › Notlar: Tüm Notlar (varsayılan) / son bırakılan / seçilen klasör.
+- **Finans düzeltmeleri:** düzenlerken tutarın boş gelmesi (gelir ekleme/düzenleme hatası), başka aydaki düzenli kaydın
+  düzenlenip silinememesi, özel kur marjının kayıtta kaybolması, "Kredi / borç ekle"nin Gelir olarak açılması düzeltildi.
+  Düzenli işlemlere **yıllık** seçeneği eklendi; düzenli gelirde bitiş tarihi artık isteğe bağlı. Krediler kutusu mobilde
+  düzeltildi.
+- **Silme onayı:** tüm silme düğmeleri önce onay penceresi açar.
+- **Yazım araçları:** notlarda roman / tez kısayolları (bölüm, sahne, diyalog, dipnot, atıf, kaynak, numaralı başlık / şekil /
+  tablo / denklem, içindekiler, iskeletler); önizlemede dipnot ve sahne ayracı.
+- **Kitap görünümü:** PDF okuyucu ve not önizlemesi tablet / bilgisayarda çift sayfa (telefonda yok).
+- **Ders çalışma takvimi** (öğrenci): Ders Takibi › Çalışma takvimi. Haftalık çalışma saatleri, başlangıç ve bitiş bildirimi,
+  işaretleme, telafi; çalışmaların %40'ından fazlası yapılmazsa "x saat eksik — ileriki çalışmalara eklenmeli" uyarısı.
+- **Favicon** yeni turuncu Σ logosuyla güncellendi (tarayıcı eskisini önbellekte tutuyorsa bir kez yenileyin).
+- **Yasal:** yeni sayfa `/teslimat-ve-iade` (Teslimat ve İade Şartları). Metni ve Mesafeli Satış Sözleşmesi Yönetici Paneli ›
+  Açılış sayfası › Yasal metinler'den düzenlenir. **Not:** daha önce yasal metinleri panelden kaydettiyseniz Mesafeli Satış
+  metninizdeki eski "İade koşulları" bölümü olduğu gibi kalır; isterseniz yeni sayfaya yönlendiren kısa metinle değiştirin.
+  Satıcı bilgileri ve iletişim e-postası alanlarının dolu olduğundan emin olun (iyzico başvurusu bunları ister).
+- **Açılış sayfası:** iyzico ile Öde, Visa ve Mastercard logoları (alt bilgi, fiyatlar, yasal sayfalar); özellik metinleri ve
+  SSS güncellendi. Açılış sayfası metinlerini panelden daha önce kaydettiyseniz kaydettiğiniz metinler gösterilir.
+- **Hesap silme:** Ayarlar › Hesap › Hesabı sil (şifre + "HESABIMI SİL" onayı). Yönetici hesabı ve kurumsal üyeler silemez.
+- **Giriş:** e-posta kodu ekranında spam / Promosyonlar klasörü uyarısı.
+
+---
+
+## Önceki güncellemede gelenler (PDF okuyucu, bildirim sesi, sıkıştırma)
 
 `update.sh` StoredFile tablosuna iki boş alan ekler; mevcut veriye dokunulmaz.
 

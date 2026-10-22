@@ -256,3 +256,19 @@ label {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Notlar › Kitap görünümü: the preview flows into two page columns and scrolls sideways. */
+.book-columns {
+  column-count: 2;
+  column-fill: auto;
+  column-rule: 1px solid var(--color-line);
+}
+.book-columns > * {
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+.book-columns h1,
+.book-columns h2,
+.book-columns h3 {
+  break-after: avoid;
+}

@@ -103,7 +103,9 @@ export async function GET() {
 
     const txOut = (raw: (typeof dbTransactions)[number]) => {
       const tx = decryptRow('financeTransaction', userId, raw);
-      return { ...tx, currency: tx.currency || 'TRY', createdAt: tx.createdAt.toISOString() };
+      // Empty columns are left out (as in live updates), so the app sees `undefined`, not `null`.
+      const set = Object.fromEntries(Object.entries(tx).filter(([, v]) => v !== null));
+      return { ...set, currency: tx.currency || 'TRY', createdAt: tx.createdAt.toISOString() };
     };
     const transactions = dbTransactions.map(txOut);
 

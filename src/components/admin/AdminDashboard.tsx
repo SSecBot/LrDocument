@@ -41,6 +41,7 @@ import { MailSettingsPanel } from './MailSettingsPanel';
 import { PushSettingsPanel } from './PushSettingsPanel';
 import { VerificationBadges, type VerificationAction } from './VerificationBadges';
 import { classYearLabel } from '@/lib/studentProfile';
+import { askConfirm, confirmDelete } from '@/components/ui/ConfirmDialog';
 
 async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
   const res = await fetch('/api/admin/users', { cache: 'no-store' });
@@ -184,7 +185,7 @@ export function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('Seçilen JSON yedekleme dosyası mevcut veritabanı ile güvenli şekilde birleştirilecektir. Devam etmek istiyor musunuz?')) {
+    if (!(await askConfirm({ title: 'Yedek geri yüklensin mi?', message: 'Seçilen JSON yedekleme dosyası mevcut veritabanı ile birleştirilecek.', confirmText: 'Devam et', danger: false }))) {
       e.target.value = '';
       return;
     }
@@ -419,7 +420,7 @@ export function AdminDashboard() {
   };
 
   const handleDeleteUser = async (user: AdminUserItem) => {
-    if (!confirm(`${user.name} (${user.email}) kullanıcısını ve ilişkili tüm verilerini silmek istediğinize emin misiniz?`)) {
+    if (!(await confirmDelete(`${user.name} (${user.email})`, 'Kullanıcı ve ilişkili tüm verileri silinir. Bu işlem geri alınamaz.'))) {
       return;
     }
 

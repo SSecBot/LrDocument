@@ -19,6 +19,7 @@ import {
   upcomingExams,
 } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
+import { courseStudyStats, formatDuration } from '@/lib/academic/study';
 import { Card, CardHeader, EmptyState, Stat, btnGhost, btnSecondary } from './ui';
 import { ExamRow } from './ExamsTab';
 import { WeekGrid } from './ScheduleTab';
@@ -67,6 +68,11 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
     }
     return items;
   });
+
+  // Ders çalışma takvimi: more than %40 of the study time not studied.
+  for (const s of courseStudyStats(data, term, courses, { date: today, minutes: now.getHours() * 60 + now.getMinutes() })) {
+    if (s.warn) attention.push({ course: s.course, text: `Çalışmaların %${Math.round(s.ratio * 100)}’i yapılmadı — ${formatDuration(s.deficitMinutes)} eksik, ileriki çalışmalara eklenmeli`, severity: 'bad' });
+  }
 
   const absentToday = (course: Course, kind: string) => course.absences.find((a) => a.date === today && a.kind === kind);
 

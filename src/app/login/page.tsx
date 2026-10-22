@@ -174,6 +174,12 @@ function LoginForm() {
             </div>
           )}
 
+          {params.get('silindi') === '1' && stage === 'form' && (
+            <div className="mb-6 p-4 rounded-lg bg-surface-2 border border-line text-body text-sm" role="status">
+              Hesabınız ve tüm verileriniz silindi.
+            </div>
+          )}
+
           {resetDone && stage === 'form' && (
             <div className="mb-6 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm" role="status">
               Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.

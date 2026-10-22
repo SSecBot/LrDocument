@@ -7,6 +7,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { addMonthsToDate, customerSummary, formatMonth, paymentSchedule } from '@/lib/customers';
 import { formatCurrencyTRY, formatTurkishDate, toLocalDateString } from '@/lib/utils';
 import type { Customer, CustomerPayment } from '@/types';
+import { confirmDelete } from '@/components/ui/ConfirmDialog';
 
 const fieldCls =
   'w-full h-10 bg-app border border-line rounded-md px-3 text-sm text-fg placeholder-muted focus:outline-none focus:border-line-strong disabled:opacity-60';
@@ -53,7 +54,6 @@ function toDraft(c: Customer | null): Draft {
 export function CustomerModal({ customer, editable, onClose, onCreated }: Props) {
   const { addCustomer, updateCustomer, deleteCustomer, addToast, currentUser } = useAppStore();
   const [draft, setDraft] = useState<Draft>(() => toDraft(customer));
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const today = toLocalDateString(new Date());
   const set = (k: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setDraft((d) => ({ ...d, [k]: e.target.value }));
@@ -226,32 +226,17 @@ export function CustomerModal({ customer, editable, onClose, onCreated }: Props)
           {editable && (
             <div className="modal-actions flex items-center justify-between gap-3">
               {customer ? (
-                confirmDelete ? (
-                  <span className="flex items-center gap-2 text-xs">
-                    <span className="text-rose-300">Müşteri ve ödeme geçmişi silinsin mi?</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        deleteCustomer(customer.id);
-                        onClose();
-                      }}
-                      className="h-8 px-3 rounded-md bg-rose-600 hover:bg-rose-500 text-white"
-                    >
-                      Sil
-                    </button>
-                    <button type="button" onClick={() => setConfirmDelete(false)} className="h-8 px-3 rounded-md border border-line text-subtle">
-                      Vazgeç
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(true)}
-                    className="h-10 px-3 rounded-md text-sm text-rose-300 hover:bg-rose-500/10 inline-flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" /> Sil
-                  </button>
-                )
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!(await confirmDelete(`"${customer.name}" müşterisi`, 'Müşteri ve ödeme geçmişi silinir. Bu işlem geri alınamaz.'))) return;
+                    deleteCustomer(customer.id);
+                    onClose();
+                  }}
+                  className="h-10 px-3 rounded-md text-sm text-rose-300 hover:bg-rose-500/10 inline-flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Sil
+                </button>
               ) : (
                 <span />
               )}

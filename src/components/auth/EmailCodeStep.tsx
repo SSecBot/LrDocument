@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AlertCircle, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
+import { SpamHint } from './SpamHint';
 
 const inputCls =
   'w-full bg-app border border-line rounded-lg px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-fg placeholder-muted focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40';
@@ -71,6 +72,7 @@ export function EmailCodeStep({ email, displayEmail, initialError, onVerified }:
           <span className="font-medium text-fg">{displayEmail || email}</span> adresine 6 haneli bir doğrulama kodu gönderdik. Kod 15 dakika geçerlidir.
         </p>
       </div>
+      <SpamHint />
       {error && (
         <p role="alert" className="flex items-start gap-2 text-sm text-rose-300">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> {error}

@@ -3,6 +3,16 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import type { LandingContent } from '@/lib/landingContent';
+import { PaymentLogos } from './PaymentLogos';
+
+/** The legal pages, linked in the footer and below each document. */
+export const LEGAL_LINKS = [
+  { href: '/kvkk', label: 'KVKK Aydınlatma Metni' },
+  { href: '/gizlilik', label: 'Gizlilik Politikası' },
+  { href: '/mesafeli-satis', label: 'Mesafeli Satış Sözleşmesi' },
+  { href: '/teslimat-ve-iade', label: 'Teslimat ve İade Şartları' },
+  { href: '/kullanim-sartlari', label: 'Kullanım Şartları' },
+];
 
 type Block = { kind: 'h'; text: string } | { kind: 'p'; text: string } | { kind: 'ul'; items: string[] };
 
@@ -73,19 +83,13 @@ export function LegalDocument({ title, body, legal }: { title: string; body: str
           )}
         </div>
         <nav className="mt-12 pt-6 border-t border-line flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted" aria-label="Yasal metinler">
-          <Link href="/kvkk" className="hover:text-fg">
-            KVKK Aydınlatma Metni
-          </Link>
-          <Link href="/gizlilik" className="hover:text-fg">
-            Gizlilik Politikası
-          </Link>
-          <Link href="/mesafeli-satis" className="hover:text-fg">
-            Mesafeli Satış ve İade
-          </Link>
-          <Link href="/kullanim-sartlari" className="hover:text-fg">
-            Kullanım Şartları
-          </Link>
+          {LEGAL_LINKS.map((l) => (
+            <Link key={l.href} href={l.href} className="hover:text-fg">
+              {l.label}
+            </Link>
+          ))}
         </nav>
+        <PaymentLogos className="mt-6" />
       </main>
     </div>
   );
