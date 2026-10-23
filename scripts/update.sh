@@ -256,6 +256,23 @@ pm2_args() {
 if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
   # Keep the port the process already uses (nginx points at it); PORT only applies when it is unknown.
   CURRENT_PORT="$(pm2_args | sed -n 's/.*-p \([0-9][0-9]*\).*/\1/p')"
+  # Started without "-p": the port may come from the process' PORT variable…
+  if [ -z "$CURRENT_PORT" ]; then
+    CURRENT_PORT="$(pm2 jlist 2>/dev/null | node -e '
+      let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+        try {
+          const list = JSON.parse(s.slice(s.indexOf("[")));
+          const p = list.find((x) => x.name === process.argv[1]);
+          const v = p && (p.pm2_env.PORT || (p.pm2_env.env && p.pm2_env.env.PORT));
+          if (/^\d+$/.test(String(v || ""))) process.stdout.write(String(v));
+        } catch {}
+      });' "$PM2_NAME")"
+  fi
+  # …or only from nginx: use the single local port nginx forwards to.
+  if [ -z "$CURRENT_PORT" ] && command -v nginx >/dev/null 2>&1; then
+    NGINX_PORTS="$(nginx -T 2>/dev/null | sed -n 's/.*proxy_pass http:\/\/\(127\.0\.0\.1\|localhost\):\([0-9][0-9]*\).*/\2/p' | sort -u)"
+    [ "$(printf '%s\n' "$NGINX_PORTS" | grep -c .)" = 1 ] && CURRENT_PORT="$NGINX_PORTS"
+  fi
   if [ -n "$CURRENT_PORT" ] && [ "$PORT_FROM_ENV" != 1 ]; then PORT="$CURRENT_PORT"; fi
   if pm2_args | grep -q -- "-H $BIND_HOST"; then
     pm2 restart "$PM2_NAME" --update-env
