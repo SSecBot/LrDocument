@@ -1,5 +1,7 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
+import { ERR, responseError } from '@/lib/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowRightLeft, BookOpen, Bug, Clock, Keyboard, Lightbulb, MessageSquarePlus, Send, Undo2 } from 'lucide-react';
 import { GUIDE_URL } from '@/components/layout/WelcomeGuide';
@@ -21,7 +23,7 @@ const STATUS_CLS: Record<FeedbackItem['status'], string> = {
 };
 
 export function StatusBadge({ status }: { status: FeedbackItem['status'] }) {
-  return <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_CLS[status]}`}>{FEEDBACK_STATUS_LABEL[status]}</span>;
+  return <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_CLS[status]}`}>{tx(FEEDBACK_STATUS_LABEL[status])}</span>;
 }
 
 /** The signed-in person's own requests and reports. */
@@ -49,14 +51,14 @@ async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error
   try {
     const res = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
-    return res.ok ? { ok: true } : { ok: false, error: data.error || 'Gönderilemedi.' };
+    return res.ok ? { ok: true } : { ok: false, error: responseError(res, data, t('Mesajınız gönderilemedi.')) };
   } catch {
-    return { ok: false, error: 'Sunucuya ulaşılamadı.' };
+    return { ok: false, error: ERR.network };
   }
 }
 
 async function withdraw(id: string): Promise<boolean> {
-  if (!(await askConfirm({ title: 'Talep geri çekilsin mi?', confirmText: 'Geri çek', message: 'Talebiniz yöneticinin listesinden kaldırılır.' }))) return false;
+  if (!(await askConfirm({ title: t('Talep geri çekilsin mi?'), confirmText: t('Geri çek'), message: t('Talebiniz yöneticinin listesinden kaldırılır.') }))) return false;
   const res = await fetch(`/api/feedback?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
   return !!res?.ok;
 }
@@ -74,14 +76,14 @@ export function AccountSwitchSection() {
 
   return (
     <Panel
-      title="Bireysel hesaba geçiş"
-      description="Öğrenci hesabından bireysel hesaba geçmek için talep gönderin. Geçiş yönetici onayından sonra yapılır; ders takibi verileriniz silinmez."
+      title={t('Bireysel hesaba geçiş')}
+      description={t('Öğrenci hesabından bireysel hesaba geçmek için talep gönderin. Geçiş yönetici onayından sonra yapılır; ders takibi verileriniz silinmez.')}
     >
       <div className="space-y-4 max-w-xl">
         {open ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-amber-300 flex items-center gap-2">
-              <Clock className="w-4 h-4" /> Talebiniz yönetici onayı bekliyor ({getRelativeTimeTurkish(open.createdAt)}).
+              <Clock className="w-4 h-4" />{' '}{t('Talebiniz yönetici onayı bekliyor (')}{tx(getRelativeTimeTurkish(open.createdAt))}).
             </p>
             {open.status === 'yeni' && (
               <button
@@ -90,12 +92,12 @@ export function AccountSwitchSection() {
                 className={secondaryBtn}
                 onClick={async () => {
                   setBusy(true);
-                  if (await withdraw(open.id)) setMsg({ kind: 'ok', text: 'Talebiniz geri çekildi.' });
+                  if (await withdraw(open.id)) setMsg({ kind: 'ok', text: t('Talebiniz geri çekildi.') });
                   await reload();
                   setBusy(false);
                 }}
               >
-                <Undo2 className="w-4 h-4" /> Talebi geri çek
+                <Undo2 className="w-4 h-4" />{' '}{t('Talebi geri çek')}
               </button>
             )}
           </div>
@@ -107,7 +109,7 @@ export function AccountSwitchSection() {
               setBusy(true);
               setMsg(null);
               const r = await post({ kind: 'hesap-gecis', message: note.trim() || undefined });
-              setMsg(r.ok ? { kind: 'ok', text: 'Talebiniz gönderildi. Onaylandığında e-posta ile bilgilendirileceksiniz.' } : { kind: 'error', text: r.error! });
+              setMsg(r.ok ? { kind: 'ok', text: t('Talebiniz gönderildi. Onaylandığında e-posta ile bilgilendirileceksiniz.') } : { kind: 'error', text: r.error! });
               if (r.ok) setNote('');
               await reload();
               setBusy(false);
@@ -115,15 +117,15 @@ export function AccountSwitchSection() {
           >
             {last?.status === 'reddedildi' && (
               <p className="text-xs text-rose-300">
-                Önceki talebiniz onaylanmadı{last.adminNote ? `: ${last.adminNote}` : '.'}
+                {t('Önceki talebiniz onaylanmadı')}{last.adminNote ? `: ${last.adminNote}` : '.'}
               </p>
             )}
             <label className="block">
-              <span className={labelCls}>Not (isteğe bağlı)</span>
-              <input className={fieldCls} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ör. mezun oldum" />
+              <span className={labelCls}>{t('Not (isteğe bağlı)')}</span>
+              <input className={fieldCls} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Ör. mezun oldum')} />
             </label>
             <button type="submit" disabled={busy} className={primaryBtn}>
-              <ArrowRightLeft className="w-4 h-4" /> Geçiş talebi gönder
+              <ArrowRightLeft className="w-4 h-4" />{' '}{t('Geçiş talebi gönder')}
             </button>
           </form>
         )}
@@ -156,13 +158,13 @@ export function SupportSection() {
     setMsg(null);
     const context =
       kind === 'hata' && withDevice
-        ? `${navigator.userAgent.slice(0, 300)} · ekran ${window.innerWidth}×${window.innerHeight} · bölüm: ${activeTab}`
+        ? t('{v0} · ekran {innerWidth}×{innerHeight} · bölüm: {activeTab}', { v0: navigator.userAgent.slice(0, 300), innerWidth: window.innerWidth, innerHeight: window.innerHeight, activeTab })
         : undefined;
     const r = await post({ kind, subject: subject.trim(), message: message.trim(), context });
     if (r.ok) {
       setSubject('');
       setMessage('');
-      setMsg({ kind: 'ok', text: 'Gönderildi, teşekkürler! Yanıtı aşağıda ve e-postanızda görebilirsiniz.' });
+      setMsg({ kind: 'ok', text: t('Gönderildi, teşekkürler! Yanıtı aşağıda ve e-postanızda görebilirsiniz.') });
       await reload();
     } else {
       setMsg({ kind: 'error', text: r.error! });
@@ -174,19 +176,19 @@ export function SupportSection() {
 
   return (
     <>
-      <Panel title="Kullanım kılavuzu" description="Her sekmenin ve ayarın ne işe yaradığını adım adım anlatır.">
+      <Panel title={t('Kullanım kılavuzu')} description={t('Her sekmenin ve ayarın ne işe yaradığını adım adım anlatır.')}>
         <div className="flex flex-wrap gap-2">
           <a href={GUIDE_URL} target="_blank" rel="noopener" className={`${primaryBtn} inline-flex items-center gap-2`}>
-            <BookOpen className="w-4 h-4" /> Kılavuzu aç (PDF)
+            <BookOpen className="w-4 h-4" />{' '}{t('Kılavuzu aç (PDF)')}
           </a>
           <button type="button" onClick={openShortcutsHelp} className={secondaryBtn}>
-            <Keyboard className="w-4 h-4" /> Kısayollar
+            <Keyboard className="w-4 h-4" />{' '}{t('Kısayollar')}
           </button>
         </div>
       </Panel>
-      <Panel title="İstek, öneri ve hata bildirimi" description="Yazdıklarınız doğrudan yöneticiye iletilir.">
+      <Panel title={t('İstek, öneri ve hata bildirimi')} description={t('Yazdıklarınız doğrudan yöneticiye iletilir.')}>
         <form onSubmit={submit} className="space-y-4 max-w-xl">
-          <div role="radiogroup" aria-label="Bildirim türü" className="grid grid-cols-3 gap-2">
+          <div role="radiogroup" aria-label={t('Bildirim türü')} className="grid grid-cols-3 gap-2">
             {KINDS.map((k) => {
               const Icon = k.icon;
               const on = kind === k.id;
@@ -196,23 +198,23 @@ export function SupportSection() {
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  title={k.hint}
+                  title={tx(k.hint)}
                   onClick={() => setKind(k.id)}
                   className={`min-h-[44px] rounded-md border px-2 py-2 text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                     on ? 'border-brand bg-brand-soft text-fg' : 'border-line text-subtle hover:text-fg hover:bg-surface-2'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${on ? 'text-brand-light' : ''}`} /> {k.label}
+                  <Icon className={`w-4 h-4 ${on ? 'text-brand-light' : ''}`} /> {tx(k.label)}
                 </button>
               );
             })}
           </div>
           <label className="block">
-            <span className={labelCls}>Konu</span>
-            <input className={fieldCls} required minLength={3} maxLength={120} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={KINDS.find((k) => k.id === kind)!.hint} />
+            <span className={labelCls}>{t('Konu')}</span>
+            <input className={fieldCls} required minLength={3} maxLength={120} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={tx(KINDS.find((k) => k.id === kind)!.hint)} />
           </label>
           <label className="block">
-            <span className={labelCls}>Açıklama</span>
+            <span className={labelCls}>{t('Açıklama')}</span>
             <textarea
               className={`${fieldCls} h-auto min-h-[120px] py-2 leading-relaxed`}
               required
@@ -220,42 +222,42 @@ export function SupportSection() {
               maxLength={4000}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder={kind === 'hata' ? 'Ne yaptınız, ne bekliyordunuz, ne oldu?' : 'Ayrıntıları yazın…'}
+              placeholder={kind === 'hata' ? t('Ne yaptınız, ne bekliyordunuz, ne oldu?') : t('Ayrıntıları yazın…')}
             />
           </label>
           {kind === 'hata' && (
             <label className="flex items-start gap-2 text-xs text-subtle">
               <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[var(--color-brand)]" checked={withDevice} onChange={(e) => setWithDevice(e.target.checked)} />
-              Tarayıcı ve ekran bilgisini ekle (hatayı bulmayı kolaylaştırır)
+              {t('Tarayıcı ve ekran bilgisini ekle (hatayı bulmayı kolaylaştırır)')}
             </label>
           )}
           {msg && <Message {...msg} />}
           <button type="submit" disabled={busy} className={primaryBtn}>
-            <Send className="w-4 h-4" /> {busy ? 'Gönderiliyor…' : 'Gönder'}
+            <Send className="w-4 h-4" /> {busy ? t('Gönderiliyor…') : t('Gönder')}
           </button>
         </form>
       </Panel>
 
-      <Panel title="Gönderdikleriniz">
+      <Panel title={t('Gönderdikleriniz')}>
         {!items ? (
-          <p className="text-xs text-muted">Yükleniyor…</p>
+          <p className="text-xs text-muted">{t('Yükleniyor…')}</p>
         ) : mine.length === 0 ? (
-          <p className="text-xs text-muted">Henüz bir bildiriminiz yok.</p>
+          <p className="text-xs text-muted">{t('Henüz bir bildiriminiz yok.')}</p>
         ) : (
           <ul className="divide-y divide-line -my-2">
             {mine.map((i) => (
               <li key={i.id} className="py-3 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] text-muted">{FEEDBACK_KIND_LABEL[i.kind]}</span>
+                  <span className="text-[11px] text-muted">{tx(FEEDBACK_KIND_LABEL[i.kind])}</span>
                   <StatusBadge status={i.status} />
-                  <span className="text-[11px] text-muted ml-auto">{getRelativeTimeTurkish(i.createdAt)}</span>
+                  <span className="text-[11px] text-muted ml-auto">{tx(getRelativeTimeTurkish(i.createdAt))}</span>
                 </div>
-                <p className="text-sm text-fg break-words">{i.subject}</p>
-                <p className="text-xs text-subtle whitespace-pre-line break-words line-clamp-4">{i.message}</p>
+                <p className="text-sm text-fg break-words">{tx(i.subject)}</p>
+                <p className="text-xs text-subtle whitespace-pre-line break-words line-clamp-4">{tx(i.message)}</p>
                 {i.adminNote && (
                   <p className="text-xs text-body rounded-md bg-surface-2 border border-line px-3 py-2 whitespace-pre-line break-words">
-                    <span className="text-muted">Yönetici: </span>
-                    {i.adminNote}
+                    <span className="text-muted">{t('Yönetici:')}{' '}</span>
+                    {tx(i.adminNote)}
                   </p>
                 )}
                 {i.status === 'yeni' && (
@@ -266,7 +268,7 @@ export function SupportSection() {
                       if (await withdraw(i.id)) await reload();
                     }}
                   >
-                    Geri çek
+                    {t('Geri çek')}
                   </button>
                 )}
               </li>

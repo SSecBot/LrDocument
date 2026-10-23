@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { KanbanCard, KanbanColumnId, KanbanProjectType } from '@/types';
@@ -196,8 +197,8 @@ export const KanbanWorkspace: React.FC = () => {
       {/* Top Header & Actions */}
       <div className="px-4 sm:px-6 py-3.5 bg-surface border-b border-line flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-sm font-semibold text-fg">Pano</h1>
-          <p className="text-[11px] text-muted hidden sm:block">Kartları aşamalar arasında sürükleyerek ilerletin.</p>
+          <h1 className="text-sm font-semibold text-fg">{tl('Pano')}</h1>
+          <p className="text-[11px] text-muted hidden sm:block">{tl('Kartları aşamalar arasında sürükleyerek ilerletin.')}</p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -208,7 +209,7 @@ export const KanbanWorkspace: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Kartlarda ara..."
+              placeholder={tl('Kartlarda ara...')}
               className="bg-surface-2 border border-line focus:border-brand rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-muted focus:outline-none w-36 sm:w-48 min-h-[40px]"
             />
           </div>
@@ -219,7 +220,7 @@ export const KanbanWorkspace: React.FC = () => {
             className="min-h-[40px] flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Kart Ekle</span>
+            <span>{tl('Kart Ekle')}</span>
           </button>
         </div>
       </div>
@@ -227,14 +228,14 @@ export const KanbanWorkspace: React.FC = () => {
       {/* Project Type Filter Pills Bar */}
       <div className="px-4 sm:px-6 py-2 bg-app border-b border-line flex items-center gap-2 overflow-x-auto no-scrollbar">
         <span className="text-[10px] font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
-          Proje:
+          {tl('Proje:')}
         </span>
         {[
-          { id: 'all', label: 'Tüm Projeler', icon: '' },
-          { id: 'matematik', label: 'Matematik', icon: '' },
-          { id: 'icerik', label: 'İçerik', icon: '' },
-          { id: 'finans', label: 'Finans', icon: '' },
-          { id: 'genel', label: 'Genel', icon: '' },
+          { id: 'all', label: tl('Tüm Projeler'), icon: '' },
+          { id: 'matematik', label: tl('Matematik'), icon: '' },
+          { id: 'icerik', label: tl('İçerik'), icon: '' },
+          { id: 'finans', label: tl('Finans'), icon: '' },
+          { id: 'genel', label: tl('Genel'), icon: '' },
         ].map((pt) => {
           const isSelected = selectedProjectType === pt.id;
           return (
@@ -247,8 +248,8 @@ export const KanbanWorkspace: React.FC = () => {
                   : 'bg-surface-2 text-subtle hover:text-white border-line hover:bg-surface-2'
               }`}
             >
-              <span>{pt.icon}</span>
-              <span>{pt.label}</span>
+              <span>{tx(pt.icon)}</span>
+              <span>{tx(pt.label)}</span>
               {pt.id !== 'all' && (
                 <span className="text-[10px] opacity-70 ml-0.5">
                   ({kanbanCards.filter(c => c.projectType === pt.id).length})
@@ -269,7 +270,7 @@ export const KanbanWorkspace: React.FC = () => {
               : 'bg-surface-2 text-subtle hover:text-white'
           }`}
         >
-          Tüm Sütunlar (Akış)
+          {tl('Tüm Sütunlar (Akış)')}
         </button>
         {COLUMNS.map((col) => {
           const count = filteredCards.filter(c => c.columnId === col.id).length;
@@ -284,7 +285,7 @@ export const KanbanWorkspace: React.FC = () => {
                   : 'bg-surface-2 text-subtle hover:text-white'
               }`}
             >
-              <span>{col.shortTitle}</span>
+              <span>{tx(col.shortTitle)}</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 font-mono">
                 {count}
               </span>
@@ -320,7 +321,7 @@ export const KanbanWorkspace: React.FC = () => {
                   <div className={`p-1.5 rounded-lg border ${col.headerColor} ${col.borderColor}`}>
                     {col.icon}
                   </div>
-                  <span className="text-xs font-bold text-white tracking-tight">{col.title}</span>
+                  <span className="text-xs font-bold text-white tracking-tight">{tx(col.title)}</span>
                 </div>
                 <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${col.badgeColor}`}>
                   {colCards.length}
@@ -331,7 +332,7 @@ export const KanbanWorkspace: React.FC = () => {
               <div className="p-3 overflow-y-auto space-y-3 flex-1">
                 {colCards.length === 0 && (
                   <div className="py-6 px-2 text-center text-[11px] text-muted border border-dashed border-line rounded-lg bg-app/50">
-                    Bu aşamada kart bulunmuyor
+                    {tl('Bu aşamada kart bulunmuyor')}
                   </div>
                 )}
 
@@ -350,8 +351,8 @@ export const KanbanWorkspace: React.FC = () => {
                       {/* Top Badges: Project Type & Priority */}
                       <div className="flex items-center justify-between gap-1.5">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${typeInfo.style}`}>
-                          <span>{typeInfo.icon}</span>
-                          <span>{typeInfo.label}</span>
+                          <span>{tx(typeInfo.icon)}</span>
+                          <span>{tx(typeInfo.label)}</span>
                         </span>
 
                         <PriorityBadge priority={card.priority} />
@@ -359,13 +360,13 @@ export const KanbanWorkspace: React.FC = () => {
 
                       {/* Card Title */}
                       <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors leading-snug">
-                        {card.title}
+                        {tx(card.title)}
                       </h4>
 
                       {/* Description Preview */}
                       {card.description && (
                         <p className="text-[11px] text-subtle line-clamp-2 leading-relaxed">
-                          {card.description}
+                          {tx(card.description)}
                         </p>
                       )}
 
@@ -376,16 +377,16 @@ export const KanbanWorkspace: React.FC = () => {
                             isOverdue ? 'text-rose-400 font-bold' : 'text-subtle'
                           }`}>
                             <Calendar className="w-3.5 h-3.5" />
-                            <span>{formatTurkishDate(card.dueDate)}</span>
-                            {isOverdue && <span className="text-[9px] bg-rose-950 text-rose-300 px-1 rounded">Gecikti</span>}
+                            <span>{tx(formatTurkishDate(card.dueDate))}</span>
+                            {isOverdue && <span className="text-[9px] bg-rose-950 text-rose-300 px-1 rounded">{tl('Gecikti')}</span>}
                           </span>
                         ) : (
-                          <span className="text-muted">Tarih belirtilmedi</span>
+                          <span className="text-muted">{tl('Tarih belirtilmedi')}</span>
                         )}
 
                         {showAuthor && card.createdBy && (
-                          <span className="flex items-center gap-1 text-muted" title="Ekleyen">
-                            <UserRound className="w-3 h-3" /> {card.createdBy}
+                          <span className="flex items-center gap-1 text-muted" title={tl('Ekleyen')}>
+                            <UserRound className="w-3 h-3" /> {tx(card.createdBy)}
                           </span>
                         )}
 
@@ -397,10 +398,10 @@ export const KanbanWorkspace: React.FC = () => {
                               setActiveTab('notes');
                             }}
                             className="min-h-[28px] flex items-center gap-1 text-emerald-400 hover:underline"
-                            title="Bağlı Nota Git"
+                            title={tl('Bağlı Nota Git')}
                           >
                             <FileText className="w-3 h-3" />
-                            <span>Not</span>
+                            <span>{tl('Not')}</span>
                           </button>
                         )}
 
@@ -411,7 +412,7 @@ export const KanbanWorkspace: React.FC = () => {
                         <div className="flex items-center gap-1 flex-wrap pt-0.5">
                           {card.tags.map(tag => (
                             <span key={tag} className="text-[9px] px-1.5 py-0.2 rounded bg-surface-3 text-subtle">
-                              #{tag}
+                              #{tx(tag)}
                             </span>
                           ))}
                         </div>
@@ -423,10 +424,10 @@ export const KanbanWorkspace: React.FC = () => {
                           onClick={(e) => handlePrevColumn(card, e)}
                           disabled={col.id === 'fikir'}
                           className="min-h-[34px] px-2.5 py-1 bg-surface hover:bg-surface-3 active:bg-surface-4 disabled:opacity-20 rounded-lg text-[10px] text-subtle hover:text-white flex items-center gap-1 transition-colors"
-                          title="Önceki Aşamaya Taşı"
+                          title={tl('Önceki Aşamaya Taşı')}
                         >
                           <ArrowLeft className="w-3 h-3" />
-                          <span>Geri</span>
+                          <span>{tl('Geri')}</span>
                         </button>
 
                         <div className="flex items-center gap-1">
@@ -436,17 +437,17 @@ export const KanbanWorkspace: React.FC = () => {
                               openEditCardModal(card);
                             }}
                             className="min-h-[34px] min-w-[34px] p-2 hover:bg-surface-3 active:bg-surface-4 rounded-lg text-muted hover:text-white transition-colors flex items-center justify-center"
-                            title="Düzenle"
+                            title={tl('Düzenle')}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (await confirmDelete(`"${card.title}" kartı`)) deleteKanbanCard(card.id);
+                              if (await confirmDelete(tl('"{title}" kartı', { title: card.title }))) deleteKanbanCard(card.id);
                             }}
                             className="min-h-[34px] min-w-[34px] p-2 hover:bg-rose-950/40 active:bg-rose-900/60 rounded-lg text-muted hover:text-rose-400 transition-colors flex items-center justify-center"
-                            title="Sil"
+                            title={tl('Sil')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -456,9 +457,9 @@ export const KanbanWorkspace: React.FC = () => {
                           onClick={(e) => handleNextColumn(card, e)}
                           disabled={col.id === 'tamamlandi'}
                           className="min-h-[34px] px-2.5 py-1 bg-brand/40 hover:bg-brand active:bg-brand-hover disabled:opacity-20 rounded-lg text-[10px] text-emerald-300 hover:text-white flex items-center gap-1 transition-colors font-semibold"
-                          title="Sonraki Aşamaya İlerlet"
+                          title={tl('Sonraki Aşamaya İlerlet')}
                         >
-                          <span>İleri</span>
+                          <span>{tl('İleri')}</span>
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       </div>
@@ -472,7 +473,7 @@ export const KanbanWorkspace: React.FC = () => {
                   className="w-full min-h-[40px] py-2.5 bg-surface hover:bg-surface-2 active:bg-surface-3 border border-dashed border-line hover:border-brand text-xs text-muted hover:text-emerald-300 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Bu Aşamaya Kart Ekle</span>
+                  <span>{tl('Bu Aşamaya Kart Ekle')}</span>
                 </button>
               </div>
             </div>

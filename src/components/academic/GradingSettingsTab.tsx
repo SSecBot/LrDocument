@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicData, GradingSystem, LetterGrade } from '@/lib/academic/types';
@@ -10,7 +12,7 @@ import { Card, CardHeader, btnGhost, btnSecondary, inputCls, labelCls } from './
 
 interface Props {
   data: AcademicData;
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
   university: string;
 }
 
@@ -20,11 +22,11 @@ export function GradingSettingsTab({ data, update, university }: Props) {
   const g = data.grading;
   const { systemSettings } = useAppStore();
 
-  const setGrading = (patch: Partial<GradingSystem>) =>
-    update((d) => ({ ...d, grading: { ...d.grading, ...patch, preset: patch.preset ?? 'ozel' } }));
+  const setGrading = (patch: Partial<GradingSystem>, undo?: { title: string; message?: string }) =>
+    update((d) => ({ ...d, grading: { ...d.grading, ...patch, preset: patch.preset ?? 'ozel' } }), undo);
 
   const applyPreset = async (preset: 'ktu' | 'genel') => {
-    if (!(await askConfirm({ title: 'Not sistemi değiştirilsin mi?', message: 'Not sistemi seçilen ön ayarla değiştirilecek.', confirmText: 'Değiştir', danger: false }))) return;
+    if (!(await askConfirm({ title: tl('Not sistemi değiştirilsin mi?'), message: tl('Not sistemi seçilen ön ayarla değiştirilecek.'), confirmText: tl('Değiştir'), danger: false }))) return;
     update((d) => ({
       ...d,
       grading: gradingForUniversity(
@@ -59,58 +61,58 @@ export function GradingSettingsTab({ data, update, university }: Props) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Not sistemi" />
+        <CardHeader title={tl('Not sistemi')} />
         <div className="p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-subtle mr-1">Ön ayar:</span>
+            <span className="text-xs text-subtle mr-1">{tl('Ön ayar:')}</span>
             <button className={`${btnSecondary} ${g.preset === 'ktu' ? 'border-line-strong bg-surface-3 text-fg' : ''}`} onClick={() => applyPreset('ktu')}>
-              KTÜ
+              {tl('KTÜ')}
             </button>
             <button className={`${btnSecondary} ${g.preset === 'genel' ? 'border-line-strong bg-surface-3 text-fg' : ''}`} onClick={() => applyPreset('genel')}>
-              Genel (mutlak sistem)
+              {tl('Genel (mutlak sistem)')}
             </button>
-            {g.preset === 'ozel' && <span className="text-[11px] px-2 py-1 rounded bg-surface-3 text-subtle">Özel ayarlar</span>}
+            {g.preset === 'ozel' && <span className="text-[11px] px-2 py-1 rounded bg-surface-3 text-subtle">{tl('Özel ayarlar')}</span>}
           </div>
-          {g.relativeNote && <p className="text-[11px] text-amber-300/80">{g.relativeNote}</p>}
+          {g.relativeNote && <p className="text-[11px] text-amber-300/80">{tx(g.relativeNote)}</p>}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="col-span-2">
-              <label className={labelCls}>Üniversite</label>
+              <label className={labelCls}>{tl('Üniversite')}</label>
               <input className={inputCls} value={g.universityName} onChange={(e) => setGrading({ universityName: e.target.value })} />
             </div>
             <div>
-              <label className={labelCls}>Varsayılan final ağırlığı (%)</label>
+              <label className={labelCls}>{tl('Varsayılan final ağırlığı (%)')}</label>
               <input type="number" className={inputCls} value={g.finalWeight} onChange={(e) => setGrading({ finalWeight: num(e.target.value, 0, 100) })} />
             </div>
             <div>
-              <label className={labelCls}>Final / bütünleme barajı</label>
+              <label className={labelCls}>{tl('Final / bütünleme barajı')}</label>
               <input type="number" className={inputCls} value={g.minFinal} onChange={(e) => setGrading({ minFinal: num(e.target.value, 0, 100) })} />
             </div>
             <div>
-              <label className={labelCls}>Bu ortalamanın altı FF</label>
+              <label className={labelCls}>{tl('Bu ortalamanın altı FF')}</label>
               <input type="number" className={inputCls} value={g.failBelowAverage} onChange={(e) => setGrading({ failBelowAverage: num(e.target.value, 0, 100) })} />
             </div>
             <div>
-              <label className={labelCls}>Teorik devam şartı (%)</label>
+              <label className={labelCls}>{tl('Teorik devam şartı (%)')}</label>
               <input type="number" className={inputCls} value={g.attendanceTheory} onChange={(e) => setGrading({ attendanceTheory: num(e.target.value, 0, 100) })} />
             </div>
             <div>
-              <label className={labelCls}>Uygulama devam şartı (%)</label>
+              <label className={labelCls}>{tl('Uygulama devam şartı (%)')}</label>
               <input type="number" className={inputCls} value={g.attendancePractice} onChange={(e) => setGrading({ attendancePractice: num(e.target.value, 0, 100) })} />
             </div>
             <div>
-              <label className={labelCls}>Dönem hafta sayısı</label>
+              <label className={labelCls}>{tl('Dönem hafta sayısı')}</label>
               <input type="number" className={inputCls} value={g.weeksPerTerm} onChange={(e) => setGrading({ weeksPerTerm: Math.round(num(e.target.value, 1, 30)) })} />
             </div>
             <div>
-              <label className={labelCls}>Ortalama hesabı</label>
+              <label className={labelCls}>{tl('Ortalama hesabı')}</label>
               <select className={inputCls} value={g.gpaBasis} onChange={(e) => setGrading({ gpaBasis: e.target.value as GradingSystem['gpaBasis'] })}>
-                <option value="ects">AKTS ile</option>
-                <option value="credit">Yerel kredi ile</option>
+                <option value="ects">{tl('AKTS ile')}</option>
+                <option value="credit">{tl('Yerel kredi ile')}</option>
               </select>
             </div>
             <div>
-              <label className={labelCls}>Şartlı geçme için dönem ort.</label>
+              <label className={labelCls}>{tl('Şartlı geçme için dönem ort.')}</label>
               <input type="number" step={0.05} className={inputCls} value={g.conditionalGpa} onChange={(e) => setGrading({ conditionalGpa: num(e.target.value, 0, 4) })} />
             </div>
           </div>
@@ -119,14 +121,14 @@ export function GradingSettingsTab({ data, update, university }: Props) {
 
       <Card>
         <CardHeader
-          title="Harf notu tablosu"
+          title={tl('Harf notu tablosu')}
           action={
             <button
               className={btnGhost}
               onClick={() => setGrading({ letters: [...g.letters, { letter: 'XX', min: 0, point: 0 }] })}
               disabled={g.letters.length >= 15}
             >
-              <Plus className="w-3.5 h-3.5" /> Satır
+              <Plus className="w-3.5 h-3.5" />{' '}{tl('Satır')}
             </button>
           }
         />
@@ -134,10 +136,10 @@ export function GradingSettingsTab({ data, update, university }: Props) {
           <table className="w-full text-sm min-w-[420px]">
             <thead>
               <tr className="text-[11px] text-muted text-left">
-                <th className="pb-2 font-medium">Harf</th>
-                <th className="pb-2 font-medium">En düşük puan</th>
-                <th className="pb-2 font-medium">Katsayı</th>
-                <th className="pb-2 font-medium">Durum</th>
+                <th className="pb-2 font-medium">{tl('Harf')}</th>
+                <th className="pb-2 font-medium">{tl('En düşük puan')}</th>
+                <th className="pb-2 font-medium">{tl('Katsayı')}</th>
+                <th className="pb-2 font-medium">{tl('Durum')}</th>
                 <th />
               </tr>
             </thead>
@@ -157,17 +159,17 @@ export function GradingSettingsTab({ data, update, university }: Props) {
                     </td>
                     <td className="py-1 pr-2">
                       <select className={inputCls} value={ruleOf(l.letter)} onChange={(e) => setRule(l.letter, e.target.value as LetterRule)}>
-                        <option value="pass">Geçer</option>
-                        <option value="conditional">Şartlı geçer</option>
-                        <option value="fail">Kalır</option>
+                        <option value="pass">{tl('Geçer')}</option>
+                        <option value="conditional">{tl('Şartlı geçer')}</option>
+                        <option value="fail">{tl('Kalır')}</option>
                       </select>
                     </td>
                     <td className="py-1 w-9">
                       <button
                         className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400 disabled:opacity-30"
                         disabled={g.letters.length <= 2}
-                        onClick={async () => (await confirmDelete(`${l.letter} harf notu`)) && setGrading({ letters: g.letters.filter((_, i) => i !== index) })}
-                        aria-label={`${l.letter} satırını sil`}
+                        onClick={async () => (await confirmDelete(`${l.letter} harf notu`)) && setGrading({ letters: g.letters.filter((_, i) => i !== index) }, { title: tl('Harf notu silindi'), message: l.letter })}
+                        aria-label={tl('{letter} satırını sil', { letter: l.letter })}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -189,19 +191,19 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
   return (
     <Card>
       <CardHeader
-        title="Dönemler"
+        title={tl('Dönemler')}
         action={
           <button
             className={btnGhost}
             disabled={data.terms.length >= 20}
             onClick={() => {
-              const name = prompt('Dönem adı (ör. 2026-2027 Bahar)');
+              const name = prompt(tl('Dönem adı (ör. 2026-2027 Bahar)'));
               if (!name?.trim()) return;
               const term = { id: newId(), name: name.trim().slice(0, 40) };
               update((d) => ({ ...d, terms: [...d.terms, term], activeTermId: term.id }));
             }}
           >
-            <Plus className="w-3.5 h-3.5" /> Dönem
+            <Plus className="w-3.5 h-3.5" />{' '}{tl('Dönem')}
           </button>
         }
       />
@@ -216,13 +218,13 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
                 value={t.name}
                 onChange={(e) => update((d) => ({ ...d, terms: d.terms.map((x) => (x.id === t.id ? { ...x, name: e.target.value.slice(0, 40) || x.name } : x)) }))}
               />
-              <span className="text-[11px] text-muted whitespace-nowrap">{count} ders</span>
+              <span className="text-[11px] text-muted whitespace-nowrap">{tl('{count} ders', { count })}</span>
               <button
                 className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400 disabled:opacity-30"
                 disabled={count > 0 || data.terms.length <= 1}
-                title={count > 0 ? 'Önce dönemdeki dersleri silin' : 'Dönemi sil'}
+                title={count > 0 ? tl('Önce dönemdeki dersleri silin') : tl('Dönemi sil')}
                 onClick={async () =>
-                  (await confirmDelete(`"${t.name}" dönemi`)) &&
+                  (await confirmDelete(tl('"{name}" dönemi', { name: t.name }))) &&
                   update((d) => {
                     const terms = d.terms.filter((x) => x.id !== t.id);
                     return {
@@ -231,9 +233,9 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
                       exams: (d.exams ?? []).filter((e) => e.termId !== t.id),
                       activeTermId: d.activeTermId === t.id ? terms[terms.length - 1].id : d.activeTermId,
                     };
-                  })
+                  }, { title: tl('Dönem silindi'), message: t.name })
                 }
-                aria-label="Dönemi sil"
+                aria-label={tl('Dönemi sil')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -241,7 +243,7 @@ function TermsCard({ data, update }: Pick<Props, 'data' | 'update'>) {
           );
         })}
       </ul>
-      <p className="px-4 pb-3 text-[11px] text-muted">Dönemler eskiden yeniye sıralı olmalı; tekrar alınan derslerde sonraki dönemin notu geçerli sayılır.</p>
+      <p className="px-4 pb-3 text-[11px] text-muted">{tl('Dönemler eskiden yeniye sıralı olmalı; tekrar alınan derslerde sonraki dönemin notu geçerli sayılır.')}</p>
     </Card>
   );
 }

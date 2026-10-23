@@ -1,12 +1,13 @@
 'use client';
 
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowRightLeft, Bug, CalendarRange, Check, Inbox, Lightbulb, Loader2, MessageSquarePlus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { DECISION_KINDS, FEEDBACK_KIND_LABEL, isOpenStatus, type AdminFeedbackItem, type FeedbackKind, type FeedbackStatus } from '@/lib/feedback';
 import { StatusBadge } from '@/components/settings/SupportSections';
 import { formatTurkishDate, getRelativeTimeTurkish } from '@/lib/utils';
-import { confirmDelete } from '@/components/ui/ConfirmDialog';
+import { confirmDelete, PERMANENT } from '@/components/ui/ConfirmDialog';
 
 const KIND_ICON: Record<FeedbackKind, React.ElementType> = {
   istek: MessageSquarePlus,
@@ -70,20 +71,20 @@ export function FeedbackInbox({ onCountChange }: { onCountChange?: (open: number
         body: JSON.stringify({ ...body, adminNote: notes[item.id] ?? item.adminNote ?? undefined }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'İşlem yapılamadı.');
+      if (!res.ok) throw new Error(responseError(res, json, 'Talep güncellenemedi.'));
       if (body.decision === 'approve') {
         addToast({ type: 'success', title: item.kind === 'takvim' ? 'Takvim yayınlandı' : 'Hesap bireysele geçirildi', message: 'Kullanıcıya e-posta gönderiliyor.' });
       }
       await load();
     } catch (err) {
-      addToast({ type: 'error', title: 'Hata', message: (err as Error).message });
+      addToast({ type: 'error', title: 'Talep güncellenemedi', message: thrownError(err) });
     } finally {
       setBusyId(null);
     }
   };
 
   const remove = async (item: AdminFeedbackItem) => {
-    if (!(await confirmDelete('Bu kayıt'))) return;
+    if (!(await confirmDelete('Bu kayıt', PERMANENT))) return;
     setBusyId(item.id);
     await fetch(`/api/admin/feedback/${item.id}`, { method: 'DELETE' }).catch(() => null);
     await load();

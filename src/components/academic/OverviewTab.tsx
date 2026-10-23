@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React, { useState } from 'react';
 import { AlertTriangle, CalendarClock, CalendarDays, Check, Table2, Undo2, UserX } from 'lucide-react';
 import type { AcademicData, Course, Term } from '@/lib/academic/types';
@@ -30,7 +32,7 @@ interface Props {
   data: AcademicData;
   term: Term;
   courses: Course[];
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
   onAddCourse: () => void;
   onOpenTab: (tab: 'program' | 'sinavlar') => void;
 }
@@ -55,23 +57,23 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
     const items: { course: Course; text: string; severity: 'warn' | 'bad' }[] = [];
     for (const a of attendanceStatus(c, data.grading, term)) {
       const label = a.kind === 'teori' ? 'teorik' : 'uygulama';
-      if (a.state === 'over') items.push({ course: c, text: `Devamsızlık sınırı aşıldı (${label})`, severity: 'bad' });
-      else if (a.state === 'warn') items.push({ course: c, text: `${label} için ${a.remaining} saat devamsızlık hakkı kaldı`, severity: 'warn' });
+      if (a.state === 'over') items.push({ course: c, text: tl('Devamsızlık sınırı aşıldı ({label})', { label }), severity: 'bad' });
+      else if (a.state === 'warn') items.push({ course: c, text: tl('{label} için {remaining} saat devamsızlık hakkı kaldı', { label, remaining: a.remaining }), severity: 'warn' });
     }
     const g = computeCourseGrade(c, data.grading, {}, term);
-    if (g.status === 'kaldi') items.push({ course: c, text: `Kaldı${g.reason ? ` — ${g.reason}` : ''}`, severity: 'bad' });
+    if (g.status === 'kaldi') items.push({ course: c, text: tl('Kaldı{v0}', { v0: g.reason ? ` — ${g.reason}` : '' }), severity: 'bad' });
     if (g.status === 'devam') {
       const pass = g.required[0];
-      if (pass && pass.score === null) items.push({ course: c, text: 'Kalan sınavlarla geçmek mümkün görünmüyor', severity: 'bad' });
+      if (pass && pass.score === null) items.push({ course: c, text: tl('Kalan sınavlarla geçmek mümkün görünmüyor'), severity: 'bad' });
       else if (pass && pass.score !== null && pass.score >= 75)
-        items.push({ course: c, text: `Geçmek için kalan sınavlardan en az ${pass.score} gerekli`, severity: 'warn' });
+        items.push({ course: c, text: tl('Geçmek için kalan sınavlardan en az {score} gerekli', { score: pass.score }), severity: 'warn' });
     }
     return items;
   });
 
   // Ders çalışma takvimi: more than %40 of the study time not studied.
   for (const s of courseStudyStats(data, term, courses, { date: today, minutes: now.getHours() * 60 + now.getMinutes() })) {
-    if (s.warn) attention.push({ course: s.course, text: `Çalışmaların %${Math.round(s.ratio * 100)}’i yapılmadı — ${formatDuration(s.deficitMinutes)} eksik, ileriki çalışmalara eklenmeli`, severity: 'bad' });
+    if (s.warn) attention.push({ course: s.course, text: tl('Çalışmaların %{v0}’i yapılmadı — {v1} eksik, ileriki çalışmalara eklenmeli', { v0: Math.round(s.ratio * 100), v1: formatDuration(s.deficitMinutes) }), severity: 'bad' });
   }
 
   const absentToday = (course: Course, kind: string) => course.absences.find((a) => a.date === today && a.kind === kind);
@@ -92,18 +94,18 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <Stat label={`Dönem ortalaması (${term.name})`} value={termSummary.gpa?.toFixed(2) ?? '—'} hint={`${termSummary.gradedWeight} ${basisLabel} notlandı`} tone={gpaTone(termSummary.gpa)} />
-        <Stat label="Genel ortalama (AGNO)" value={all.gpa?.toFixed(2) ?? '—'} hint={`${all.earnedWeight} ${basisLabel} tamamlandı`} tone={gpaTone(all.gpa)} />
+        <Stat label={tl('Dönem ortalaması ({name})', { name: term.name })} value={termSummary.gpa?.toFixed(2) ?? '—'} hint={tl('{gradedWeight} {basisLabel} notlandı', { gradedWeight: termSummary.gradedWeight, basisLabel })} tone={gpaTone(termSummary.gpa)} />
+        <Stat label={tl('Genel ortalama (AGNO)')} value={all.gpa?.toFixed(2) ?? '—'} hint={tl('{earnedWeight} {basisLabel} tamamlandı', { earnedWeight: all.earnedWeight, basisLabel })} tone={gpaTone(all.gpa)} />
         <Stat
-          label="Sıradaki sınav"
-          value={nextExam ? (daysUntil(nextExam.date) <= 0 ? 'Bugün' : `${daysUntil(nextExam.date)} gün`) : '—'}
-          hint={nextExam ? nextExam.title : `${courses.length} ders • ${termSummary.totalWeight} ${basisLabel}`}
+          label={tl('Sıradaki sınav')}
+          value={nextExam ? (daysUntil(nextExam.date) <= 0 ? tl('Bugün') : tl('{days} gün', { days: daysUntil(nextExam.date) })) : '—'}
+          hint={nextExam ? nextExam.title : tl('{count} ders • {weight} {basisLabel}', { count: courses.length, weight: termSummary.totalWeight, basisLabel })}
           tone={nextExam ? (daysUntil(nextExam.date) <= 2 ? 'bad' : daysUntil(nextExam.date) <= 7 ? 'warn' : undefined) : undefined}
         />
         <Stat
-          label="Uyarılar"
+          label={tl('Uyarılar')}
           value={attention.length}
-          hint={attention.length ? 'aşağıda listelendi' : 'her şey yolunda'}
+          hint={attention.length ? tl('aşağıda listelendi') : tl('her şey yolunda')}
           tone={attention.some((a) => a.severity === 'bad') ? 'bad' : attention.length ? 'warn' : 'good'}
         />
       </div>
@@ -111,18 +113,18 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader
-            title={`${showTomorrow ? 'Yarın' : 'Bugün'} — ${DAYS[plan.weekday]}`}
+            title={`${showTomorrow ? tl('Yarın') : tl('Bugün')} — ${tx(DAYS[plan.weekday])}`}
             icon={<CalendarClock className="w-4 h-4 text-subtle" />}
             action={<DayToggle tomorrow={showTomorrow} onChange={(t) => setDayPick(t ? 'tomorrow' : 'today')} />}
           />
           {courses.length === 0 ? (
-            <EmptyState title="Bu dönem için ders yok" text="Ders programını oluşturarak başlayın." action={<button className={btnSecondary} onClick={onAddCourse}>Ders ekle</button>} />
+            <EmptyState title={tl('Bu dönem için ders yok')} text={tl('Ders programını oluşturarak başlayın.')} action={<button className={btnSecondary} onClick={onAddCourse}>{tl('Ders ekle')}</button>} />
           ) : empty ? (
-            <EmptyState title={empty.title} text={empty.text} />
+            <EmptyState title={tx(empty.title)} text={tx(empty.text)} />
           ) : (
             <ul className="divide-y divide-line">
               {plan.halfHoliday && (
-                <li className="px-4 py-2 text-[11px] text-amber-300 bg-amber-500/5">{plan.halfHoliday.name} — 13:00’ten sonraki dersler yapılmaz.</li>
+                <li className="px-4 py-2 text-[11px] text-amber-300 bg-amber-500/5">{tx(plan.halfHoliday.name)}{' '}{tl('— 13:00’ten sonraki dersler yapılmaz.')}</li>
               )}
               {plan.sessions.map(({ course, session }) => {
                 const absent = absentToday(course, session.kind);
@@ -131,15 +133,15 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                   <li key={session.id} className="px-4 py-2.5 flex items-center gap-3">
                     <span className="w-1 self-stretch rounded-full" style={{ backgroundColor: course.color }} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-fg truncate">{course.name}</p>
+                      <p className="text-sm text-fg truncate">{tx(course.name)}</p>
                       <p className="text-[11px] text-muted">
-                        {session.start}–{session.end} • {session.kind === 'teori' ? 'Teorik' : 'Uygulama'}
+                        {tx(session.start)}–{tx(session.end)} • {session.kind === 'teori' ? tl('Teorik') : tl('Uygulama')}
                         {session.room ? ` • ${session.room}` : ''}
                       </p>
                     </div>
                     {showTomorrow ? null : isAttendanceExempt(course) ? (
-                      <span className="text-[11px] text-muted whitespace-nowrap" title="Alttan alınan ders, nottan kalınmış">
-                        Devam muaf
+                      <span className="text-[11px] text-muted whitespace-nowrap" title={tl('Alttan alınan ders, nottan kalınmış')}>
+                        {tl('Devam muaf')}
                       </span>
                     ) : (
                     <button
@@ -149,10 +151,10 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                           ? 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
                           : 'border-line text-subtle hover:text-fg hover:bg-surface-2'
                       }`}
-                      title={absent ? 'Devamsızlığı geri al' : `${hours} saat devamsızlık işle`}
+                      title={absent ? tl('Devamsızlığı geri al') : tl('{hours} saat devamsızlık işle', { hours })}
                     >
                       {absent ? <Undo2 className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
-                      {absent ? 'Geri al' : 'Gitmedim'}
+                      {absent ? tl('Geri al') : tl('Gitmedim')}
                     </button>
                     )}
                   </li>
@@ -164,14 +166,14 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
 
         <Card>
           <CardHeader
-            title="Yaklaşan sınavlar"
+            title={tl('Yaklaşan sınavlar')}
             icon={<CalendarDays className="w-4 h-4 text-subtle" />}
-            action={<button className={btnGhost} onClick={() => onOpenTab('sinavlar')}>Tümü</button>}
+            action={<button className={btnGhost} onClick={() => onOpenTab('sinavlar')}>{tl('Tümü')}</button>}
           />
           {exams.length === 0 ? (
             <EmptyState
-              title="Yaklaşan sınav yok"
-              action={<button className={btnSecondary} onClick={() => onOpenTab('sinavlar')}>Sınav takvimi ekle</button>}
+              title={tl('Yaklaşan sınav yok')}
+              action={<button className={btnSecondary} onClick={() => onOpenTab('sinavlar')}>{tl('Sınav takvimi ekle')}</button>}
             />
           ) : (
             <div className="divide-y divide-line">
@@ -186,9 +188,9 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
       {courses.some((c) => c.sessions.length > 0) && (
         <Card>
           <CardHeader
-            title="Haftalık ders programı"
+            title={tl('Haftalık ders programı')}
             icon={<Table2 className="w-4 h-4 text-subtle" />}
-            action={<button className={btnGhost} onClick={() => onOpenTab('program')}>Düzenle</button>}
+            action={<button className={btnGhost} onClick={() => onOpenTab('program')}>{tl('Düzenle')}</button>}
           />
           <WeekGrid courses={courses} />
         </Card>
@@ -196,11 +198,11 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
 
       <div>
         <Card>
-          <CardHeader title="Dikkat gerektirenler" icon={<AlertTriangle className="w-4 h-4 text-subtle" />} />
+          <CardHeader title={tl('Dikkat gerektirenler')} icon={<AlertTriangle className="w-4 h-4 text-subtle" />} />
           {attention.length === 0 ? (
             <div className="px-4 py-10 text-center text-xs text-muted flex flex-col items-center gap-2">
               <Check className="w-5 h-5 text-emerald-400" />
-              Devamsızlık ve notlarda risk görünmüyor.
+              {tl('Devamsızlık ve notlarda risk görünmüyor.')}
             </div>
           ) : (
             <ul className="divide-y divide-line">
@@ -208,8 +210,8 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
                 <li key={i} className="px-4 py-2.5 flex items-center gap-3">
                   <span className={`w-2 h-2 rounded-full shrink-0 ${a.severity === 'bad' ? 'bg-rose-500' : 'bg-amber-500'}`} />
                   <div className="min-w-0">
-                    <p className="text-sm text-fg truncate">{a.course.name}</p>
-                    <p className="text-[11px] text-muted">{a.text}</p>
+                    <p className="text-sm text-fg truncate">{tx(a.course.name)}</p>
+                    <p className="text-[11px] text-muted">{tx(a.text)}</p>
                   </div>
                 </li>
               ))}
@@ -224,11 +226,11 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
 /** Small "Bugün / Yarın" switch for day-schedule cards. */
 export function DayToggle({ tomorrow, onChange }: { tomorrow: boolean; onChange: (tomorrow: boolean) => void }) {
   return (
-    <div className="flex rounded-md bg-surface-2 border border-line p-0.5" role="group" aria-label="Gün seçimi">
+    <div className="flex rounded-md bg-surface-2 border border-line p-0.5" role="group" aria-label={tl('Gün seçimi')}>
       {(
         [
-          [false, 'Bugün'],
-          [true, 'Yarın'],
+          [false, tl('Bugün')],
+          [true, tl('Yarın')],
         ] as const
       ).map(([value, label]) => (
         <button
@@ -238,7 +240,7 @@ export function DayToggle({ tomorrow, onChange }: { tomorrow: boolean; onChange:
           onClick={() => onChange(value)}
           className={`h-6 px-2 rounded text-[11px] ${tomorrow === value ? 'bg-surface text-fg' : 'text-subtle hover:text-fg'}`}
         >
-          {label}
+          {tx(label)}
         </button>
       ))}
     </div>

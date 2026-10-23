@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
@@ -46,7 +47,7 @@ import { askConfirm, confirmDelete } from '@/components/ui/ConfirmDialog';
 async function loadAdminData(): Promise<{ users?: AdminUserItem[]; metrics?: AdminMetrics }> {
   const res = await fetch('/api/admin/users', { cache: 'no-store' });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Veriler alınamadı.');
+  if (!res.ok) throw new Error(responseError(res, data, 'Veriler alınamadı.'));
   return data;
 }
 
@@ -56,7 +57,7 @@ function isLive(user: AdminUserItem): boolean {
 }
 
 function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : 'Beklenmeyen bir hata oluştu.';
+  return thrownError(err);
 }
 
 export function AdminDashboard() {
@@ -201,8 +202,8 @@ export function AdminDashboard() {
         body: JSON.stringify(json),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'İçe aktarım başarısız oldu.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'İçe aktarım başarısız oldu.'));
 
       addToast({
         type: 'success',
@@ -269,8 +270,8 @@ export function AdminDashboard() {
       const res = await fetch(`/api/admin/users/${user.id}/approve`, {
         method: 'PATCH',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Onaylama başarısız.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Onaylama başarısız.'));
 
       addToast({
         type: 'success',
@@ -295,8 +296,8 @@ export function AdminDashboard() {
       const res = await fetch(`/api/admin/users/${user.id}/reject`, {
         method: 'PATCH',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Reddetme başarısız.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Reddetme başarısız.'));
 
       addToast({
         type: 'warning',
@@ -323,8 +324,8 @@ export function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscriptionPlan: newPlan }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Paket güncellenemedi.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Paket güncellenemedi.'));
 
       addToast({
         type: 'success',
@@ -335,7 +336,7 @@ export function AdminDashboard() {
     } catch (err) {
       addToast({
         type: 'error',
-        title: 'Hata',
+        title: 'Paket güncellenemedi',
         message: errorMessage(err),
       });
     } finally {
@@ -352,11 +353,11 @@ export function AdminDashboard() {
         body: JSON.stringify({ accountType, ...(organization !== undefined ? { organization } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Hesap tipi güncellenemedi.');
+      if (!res.ok) throw new Error(responseError(res, data, 'Hesap tipi güncellenemedi.'));
       addToast({ type: 'success', title: 'Hesap tipi güncellendi', message: data.message });
       await fetchAdminData();
     } catch (err) {
-      addToast({ type: 'error', title: 'Hata', message: errorMessage(err) });
+      addToast({ type: 'error', title: 'Hesap tipi güncellenemedi', message: errorMessage(err) });
     } finally {
       setActionLoadingId(null);
     }
@@ -371,11 +372,11 @@ export function AdminDashboard() {
         body: JSON.stringify({ action }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı.');
+      if (!res.ok) throw new Error(responseError(res, data, 'Doğrulama durumu değiştirilemedi.'));
       addToast({ type: 'success', title: 'Güncellendi', message: data.message });
       await fetchAdminData();
     } catch (err) {
-      addToast({ type: 'error', title: 'Hata', message: errorMessage(err) });
+      addToast({ type: 'error', title: 'Doğrulama durumu değiştirilemedi', message: errorMessage(err) });
     } finally {
       setActionLoadingId(null);
     }
@@ -399,8 +400,8 @@ export function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Rol güncelleme başarısız.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Rol güncelleme başarısız.'));
 
       addToast({
         type: 'info',
@@ -411,7 +412,7 @@ export function AdminDashboard() {
     } catch (err) {
       addToast({
         type: 'error',
-        title: 'Hata',
+        title: 'Rol güncellenemedi',
         message: errorMessage(err),
       });
     } finally {
@@ -429,8 +430,8 @@ export function AdminDashboard() {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Kullanıcı silinemedi.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Kullanıcı silinemedi.'));
 
       addToast({
         type: 'success',
@@ -441,7 +442,7 @@ export function AdminDashboard() {
     } catch (err) {
       addToast({
         type: 'error',
-        title: 'Hata',
+        title: 'Kullanıcı silinemedi',
         message: errorMessage(err),
       });
     } finally {
@@ -485,8 +486,8 @@ export function AdminDashboard() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Kullanıcı oluşturulamadı.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseError(res, data, 'Kullanıcı oluşturulamadı.'));
 
       addToast({
         type: 'success',

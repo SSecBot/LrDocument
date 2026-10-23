@@ -1,11 +1,12 @@
+import { t } from '@/lib/i18n';
 import * as XLSX from 'xlsx';
 import { AdminUserItem } from '@/types';
 
 export function exportUsersToExcel(users: AdminUserItem[], filename: string = 'lrdocument_kullanici_listesi') {
   const formattedData = users.map((u) => {
-    let statusText = 'Onay Bekliyor';
-    if (u.status === 'APPROVED') statusText = 'Onaylı';
-    if (u.status === 'REJECTED') statusText = 'Reddedildi';
+    let statusText = t('Onay Bekliyor');
+    if (u.status === 'APPROVED') statusText = t('Onaylı');
+    if (u.status === 'REJECTED') statusText = t('Reddedildi');
 
     const regDate = new Date(u.createdAt);
     const formattedDate = !isNaN(regDate.getTime())
@@ -41,7 +42,7 @@ export function exportUsersToExcel(users: AdminUserItem[], filename: string = 'l
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Kullanıcılar');
+  XLSX.utils.book_append_sheet(workbook, worksheet, t('Kullanıcılar'));
 
   // Trigger download
   XLSX.writeFile(workbook, `${filename}.xlsx`);
@@ -49,18 +50,18 @@ export function exportUsersToExcel(users: AdminUserItem[], filename: string = 'l
 
 export function exportUsersToCSV(users: AdminUserItem[], filename: string = 'lrdocument_kullanici_listesi') {
   const headers = [
-    'User Email',
-    'Ad Soyad',
-    'Account Status',
-    'Subscription Type',
-    'Role',
-    'Registration Date',
+    t('User Email'),
+    t('Ad Soyad'),
+    t('Account Status'),
+    t('Subscription Type'),
+    t('Role'),
+    t('Registration Date'),
   ];
   
   const rows = users.map((u) => {
-    let statusText = 'Onay Bekliyor';
-    if (u.status === 'APPROVED') statusText = 'Onaylı';
-    if (u.status === 'REJECTED') statusText = 'Reddedildi';
+    let statusText = t('Onay Bekliyor');
+    if (u.status === 'APPROVED') statusText = t('Onaylı');
+    if (u.status === 'REJECTED') statusText = t('Reddedildi');
 
     const regDate = new Date(u.createdAt);
     const formattedDate = !isNaN(regDate.getTime())

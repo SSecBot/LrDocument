@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError } from '@/lib/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Mail, Send } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -35,7 +36,7 @@ export function MailSettingsPanel() {
     try {
       const res = await fetch('/api/admin/mail', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      addToast(res.ok ? { type: 'success', title: 'Test e-postası gönderildi', message: data.message } : { type: 'error', title: 'Gönderilemedi', message: data.error || 'Bilinmeyen hata.' });
+      addToast(res.ok ? { type: 'success', title: 'Test e-postası gönderildi', message: data.message } : { type: 'error', title: 'Gönderilemedi', message: responseError(res, data, 'Test e-postası gönderilemedi.') });
     } finally {
       setBusy(false);
       load();

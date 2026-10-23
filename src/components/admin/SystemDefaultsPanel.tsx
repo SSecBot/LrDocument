@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useState } from 'react';
 import { RotateCcw, Save } from 'lucide-react';
 import { applySystemSettings, useAppStore } from '@/store/useAppStore';
@@ -104,14 +105,14 @@ export function SystemDefaultsPanel() {
         body: JSON.stringify({ settings: draft }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Kaydedilemedi.');
+      if (!res.ok) throw new Error(responseError(res, data, 'Kaydedilemedi.'));
       const saved = resolveSystemSettings(data.settings);
       setDraft(saved);
       // Every open screen picks up the new defaults right away.
       applySystemSettings(saved);
       addToast({ type: 'success', title: 'Varsayılanlar kaydedildi', message: 'Yeni değerler tüm kullanıcılara uygulanır.' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kaydedilemedi.');
+      setError(thrownError(err, 'Kaydedilemedi.'));
     } finally {
       setSaving(false);
     }

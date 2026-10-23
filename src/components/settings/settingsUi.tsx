@@ -1,5 +1,6 @@
 'use client';
 
+import { tx } from '@/lib/i18n';
 import React from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -13,8 +14,8 @@ export function Panel({ title, description, children }: { title: string; descrip
   return (
     <section className="rounded-lg bg-surface border border-line">
       <header className="px-5 py-4 border-b border-line">
-        <h2 className="text-sm font-semibold text-fg">{title}</h2>
-        {description && <p className="text-xs text-muted mt-1">{description}</p>}
+        <h2 className="text-sm font-semibold text-fg">{tx(title)}</h2>
+        {description && <p className="text-xs text-muted mt-1">{tx(description)}</p>}
       </header>
       <div className="p-5">{children}</div>
     </section>
@@ -28,7 +29,7 @@ export function Message({ kind, text }: { kind: 'ok' | 'error'; text: string }) 
       className={`text-xs flex items-center gap-2 ${kind === 'ok' ? 'text-emerald-300' : 'text-rose-300'}`}
     >
       {kind === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-      {text}
+      {tx(text)}
     </p>
   );
 }

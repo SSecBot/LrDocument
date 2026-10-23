@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { useAppStore, isTaskOverdue, isTransactionOverdue } from '@/store/useAppStore';
 import {
@@ -61,13 +62,13 @@ export const AlertBanner: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight">Geciken & Acil Eylem Bildirimleri</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight">{tl('Geciken & Acil Eylem Bildirimleri')}</h3>
               <span className="bg-rose-950 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-700/60 font-mono">
-                {totalAlertCount} Bildirim
+                {totalAlertCount}{' '}{tl('Bildirim')}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-body mt-0.5">
-              Teslim tarihi geçen görevler veya onaylanmamış finansal ödemeler bulunmaktadır.
+              {tl('Teslim tarihi geçen görevler veya onaylanmamış finansal ödemeler bulunmaktadır.')}
             </p>
           </div>
         </div>
@@ -75,8 +76,8 @@ export const AlertBanner: React.FC = () => {
         <button
           onClick={() => setIsDismissed(true)}
           className="min-h-[38px] min-w-[38px] p-2 rounded-lg bg-surface-2 hover:bg-rose-900/60 text-subtle hover:text-white transition-colors flex items-center justify-center shrink-0"
-          title="Bildirimi Gizle"
-          aria-label="Gizle"
+          title={tl('Bildirimi Gizle')}
+          aria-label={tl('Gizle')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -97,21 +98,21 @@ export const AlertBanner: React.FC = () => {
                 ) : (
                   <TrendingDown className="w-3 h-3 text-rose-400" />
                 )}
-                <span>Gecikmiş {tr.type === 'gelir' ? 'Gelir' : 'Ödeme'}</span>
+                <span>{tl('Gecikmiş')}{' '}{tr.type === 'gelir' ? tl('Gelir') : tl('Ödeme')}</span>
               </div>
-              <h4 className="text-xs font-semibold text-white truncate">{tr.title}</h4>
+              <h4 className="text-xs font-semibold text-white truncate">{tx(tr.title)}</h4>
               <p className="text-[11px] font-mono font-bold text-rose-300 mt-0.5">
-                {formatCurrencyTRY(tr.amount)}
+                {tx(formatCurrencyTRY(tr.amount))}
               </p>
             </div>
 
             <button
               onClick={() => toggleTransactionConfirmation(tr.id)}
               className="min-h-[36px] px-3 py-1.5 bg-brand hover:bg-brand-hover text-white border border-brand-hover rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1"
-              title={tr.type === 'gelir' ? 'Gelir Geldi (Onayla)' : 'Gider Ödendi (Onayla)'}
+              title={tr.type === 'gelir' ? tl('Gelir Geldi (Onayla)') : tl('Gider Ödendi (Onayla)')}
             >
               <Check className="w-3.5 h-3.5" />
-              <span className="text-[10px]">{tr.type === 'gelir' ? 'Tahsil Et' : 'Öde'}</span>
+              <span className="text-[10px]">{tr.type === 'gelir' ? tl('Tahsil Et') : tl('Öde')}</span>
             </button>
           </div>
         ))}
@@ -125,15 +126,15 @@ export const AlertBanner: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-1">
                 <Clock className="w-3 h-3" />
-                <span>Gecikmiş Görev</span>
+                <span>{tl('Gecikmiş Görev')}</span>
               </div>
-              <h4 className="text-xs font-semibold text-white truncate">{t.title}</h4>
+              <h4 className="text-xs font-semibold text-white truncate">{tx(t.title)}</h4>
             </div>
 
             <button
               onClick={() => toggleTask(t.id)}
               className="min-h-[36px] min-w-[36px] p-2 bg-emerald-950/40 hover:bg-brand text-emerald-300 hover:text-white border border-emerald-800/40 rounded-lg text-xs transition-colors shrink-0 flex items-center justify-center"
-              title="Görevi Tamamla"
+              title={tl('Görevi Tamamla')}
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -149,15 +150,15 @@ export const AlertBanner: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">
                 <Calendar className="w-3 h-3" />
-                <span>Bugünün Görevi</span>
+                <span>{tl('Bugünün Görevi')}</span>
               </div>
-              <h4 className="text-xs font-semibold text-white truncate">{t.title}</h4>
+              <h4 className="text-xs font-semibold text-white truncate">{tx(t.title)}</h4>
             </div>
 
             <button
               onClick={() => toggleTask(t.id)}
               className="min-h-[36px] min-w-[36px] p-2 bg-emerald-950/40 hover:bg-brand text-emerald-300 hover:text-white border border-emerald-800/40 rounded-lg text-xs transition-colors shrink-0 flex items-center justify-center"
-              title="Görevi Tamamla"
+              title={tl('Görevi Tamamla')}
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -173,16 +174,16 @@ export const AlertBanner: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1">
                 <Calendar className="w-3 h-3" />
-                <span>Bekleyen Yayın ({formatTurkishDate(ev.date)})</span>
+                <span>{tl('Bekleyen Yayın (')}{tx(formatTurkishDate(ev.date))})</span>
               </div>
-              <h4 className="text-xs font-semibold text-white truncate">{ev.title}</h4>
+              <h4 className="text-xs font-semibold text-white truncate">{tx(ev.title)}</h4>
             </div>
 
             <button
               onClick={() => setActiveTab('calendar')}
               className="min-h-[36px] p-1.5 px-2.5 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-800/40 rounded-lg text-xs transition-colors shrink-0 flex items-center gap-1"
             >
-              <span>Takvim</span>
+              <span>{tl('Takvim')}</span>
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>

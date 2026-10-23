@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { ActiveTab } from '@/types';
@@ -59,30 +60,30 @@ export const Sidebar: React.FC = () => {
 
   const groups: { title: string; items: NavItem[] }[] = [
     {
-      title: corporate ? currentUser?.organization || 'Kurum' : 'Çalışma alanı',
+      title: corporate ? currentUser?.organization || tl('Kurum') : tl('Çalışma alanı'),
       items: [
-        { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
+        { id: 'dashboard', label: tl('Genel Bakış'), icon: LayoutDashboard },
         // Kurumsal: everyone also has private notes and finances, outside the shared workspace.
-        ...(corporate ? [{ id: 'personalNotes' as ActiveTab, label: 'Şahsi Notlar', icon: NotebookPen }] : []),
+        ...(corporate ? [{ id: 'personalNotes' as ActiveTab, label: tl('Şahsi Notlar'), icon: NotebookPen }] : []),
         // In a corporate workspace the notes are shared by the whole team.
-        ...(canView(currentUser, 'notes') ? [{ id: 'notes' as ActiveTab, label: corporate ? 'Ortak Notlar' : 'Notlar', icon: FileText, badge: notes.length }] : []),
-        ...(canView(currentUser, 'customers') ? [{ id: 'customers' as ActiveTab, label: 'Müşteriler', icon: Building2, badge: customers.length }] : []),
-        ...(canView(currentUser, 'work') ? [{ id: 'tasks' as ActiveTab, label: 'Görevler', icon: CheckSquare, badge: openWork }] : []),
-        ...(canView(currentUser, 'calendar') ? [{ id: 'calendar' as ActiveTab, label: 'Takvim', icon: Calendar }] : []),
-        ...(hasStudentAccess(currentUser) ? [{ id: 'academic' as ActiveTab, label: 'Ders Takibi', icon: GraduationCap }] : []),
-        ...(canView(currentUser, 'finance') ? [{ id: 'finance' as ActiveTab, label: 'Finans', icon: Wallet }] : []),
-        ...(corporate ? [{ id: 'personalFinance' as ActiveTab, label: 'Şahsi Finans', icon: PiggyBank }] : []),
+        ...(canView(currentUser, 'notes') ? [{ id: 'notes' as ActiveTab, label: corporate ? tl('Ortak Notlar') : tl('Notlar'), icon: FileText, badge: notes.length }] : []),
+        ...(canView(currentUser, 'customers') ? [{ id: 'customers' as ActiveTab, label: tl('Müşteriler'), icon: Building2, badge: customers.length }] : []),
+        ...(canView(currentUser, 'work') ? [{ id: 'tasks' as ActiveTab, label: tl('Görevler'), icon: CheckSquare, badge: openWork }] : []),
+        ...(canView(currentUser, 'calendar') ? [{ id: 'calendar' as ActiveTab, label: tl('Takvim'), icon: Calendar }] : []),
+        ...(hasStudentAccess(currentUser) ? [{ id: 'academic' as ActiveTab, label: tl('Ders Takibi'), icon: GraduationCap }] : []),
+        ...(canView(currentUser, 'finance') ? [{ id: 'finance' as ActiveTab, label: tl('Finans'), icon: Wallet }] : []),
+        ...(corporate ? [{ id: 'personalFinance' as ActiveTab, label: tl('Şahsi Finans'), icon: PiggyBank }] : []),
       ],
     },
   ];
 
   const accountItems: NavItem[] = [];
   if (corporate && (currentUser?.orgRole === 'OWNER' || currentUser?.orgRole === 'MANAGER')) {
-    accountItems.push({ id: 'team', label: 'Kurum ve Ekip', icon: Users });
+    accountItems.push({ id: 'team', label: tl('Kurum ve Ekip'), icon: Users });
   }
-  accountItems.push({ id: 'settings', label: 'Ayarlar', icon: Settings });
+  accountItems.push({ id: 'settings', label: tl('Ayarlar'), icon: Settings });
   if (currentUser?.role === 'ADMIN') {
-    accountItems.push({ id: 'admin', label: 'Yönetici Paneli', icon: ShieldCheck });
+    accountItems.push({ id: 'admin', label: tl('Yönetici Paneli'), icon: ShieldCheck });
   }
 
   const renderItem = (item: NavItem, isMobile: boolean) => {
@@ -97,15 +98,15 @@ export const Sidebar: React.FC = () => {
           if (isMobile) setIsMobileSidebarOpen(false);
         }}
         aria-current={isActive ? 'page' : undefined}
-        title={mini ? item.label : undefined}
-        aria-label={mini ? item.label : undefined}
+        title={tx(mini ? item.label : undefined)}
+        aria-label={tx(mini ? item.label : undefined)}
         className={`relative w-full h-10 md:h-9 flex items-center gap-2.5 rounded-md text-[13px] transition-colors ${
           mini ? 'justify-center px-0' : 'px-2.5'
         } ${isActive ? 'bg-surface-3 text-fg font-medium' : 'text-subtle hover:text-fg hover:bg-surface-2'}`}
       >
         {isActive && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
         <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-fg' : 'text-muted'}`} />
-        {!mini && <span className="flex-1 text-left truncate">{item.label}</span>}
+        {!mini && <span className="flex-1 text-left truncate">{tx(item.label)}</span>}
         {!mini && !!item.badge && <span className="text-[11px] tabular-nums text-muted">{item.badge}</span>}
         {mini && !!item.badge && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand" />}
       </button>
@@ -124,7 +125,7 @@ export const Sidebar: React.FC = () => {
             if (isMobile) setIsMobileSidebarOpen(false);
           }}
           className="flex items-center gap-2.5 px-1"
-          aria-label="Genel Bakış"
+          aria-label={tl('Genel Bakış')}
         >
           <div className="w-8 h-8 rounded-md bg-brand flex items-center justify-center">
             <Sigma className="w-4 h-4 text-white" />
@@ -136,8 +137,8 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setPreference('sidebarCollapsed', true)}
             className="w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2 transition-colors"
-            aria-label="Menüyü daralt"
-            title="Menüyü daralt"
+            aria-label={tl('Menüyü daralt')}
+            title={tl('Menüyü daralt')}
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>
@@ -147,7 +148,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
             className="w-10 h-10 flex items-center justify-center rounded-lg text-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-            aria-label="Menüyü Kapat"
+            aria-label={tl('Menüyü Kapat')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -159,8 +160,8 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setPreference('sidebarCollapsed', false)}
             className="w-full h-9 flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2 transition-colors"
-            aria-label="Menüyü genişlet"
-            title="Menüyü genişlet"
+            aria-label={tl('Menüyü genişlet')}
+            title={tl('Menüyü genişlet')}
           >
             <PanelLeftOpen className="w-4 h-4" />
           </button>
@@ -170,8 +171,8 @@ export const Sidebar: React.FC = () => {
       {/* Search */}
       <div className={mini ? 'p-2 pb-1' : 'p-3 pb-1'}>
         <button
-          title={mini ? 'Ara (Ctrl K)' : undefined}
-          aria-label={mini ? 'Ara' : undefined}
+          title={mini ? tl('Ara (Ctrl K)') : undefined}
+          aria-label={mini ? tl('Ara') : undefined}
           onClick={() => {
             if (isMobile) setIsMobileSidebarOpen(false);
             setIsCommandPaletteOpen(true);
@@ -181,7 +182,7 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <Search className="w-4 h-4" />
-          {!mini && <span className="flex-1 text-left">Ara…</span>}
+          {!mini && <span className="flex-1 text-left">{tl('Ara…')}</span>}
           {!mini && (
             <kbd className="hidden md:inline text-[10px] font-mono text-muted px-1.5 py-0.5 rounded border border-line-strong">
               Ctrl K
@@ -194,12 +195,12 @@ export const Sidebar: React.FC = () => {
       <nav className={`flex-1 overflow-y-auto py-2 space-y-4 ${mini ? 'px-2' : 'px-3'}`}>
         {groups.map((group) => (
           <div key={group.title} className="space-y-0.5">
-            {!mini && <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">{group.title}</div>}
+            {!mini && <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">{tx(group.title)}</div>}
             {group.items.map((item) => renderItem(item, isMobile))}
           </div>
         ))}
         <div className="space-y-0.5">
-          {mini ? <div className="mx-2 border-t border-line" /> : <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">Hesap</div>}
+          {mini ? <div className="mx-2 border-t border-line" /> : <div className="px-2.5 pb-1 text-[11px] font-medium text-muted">{tl('Hesap')}</div>}
           {accountItems.map((item) => renderItem(item, isMobile))}
         </div>
       </nav>
@@ -219,15 +220,15 @@ export const Sidebar: React.FC = () => {
             onClick={() => setAccountMenuOpen((o) => !o)}
             aria-expanded={accountMenuOpen}
             aria-haspopup="menu"
-            title={mini ? `${currentUser.name} — hesaplar` : 'Hesaplar'}
+            title={mini ? `${currentUser.name} — hesaplar` : tl('Hesaplar')}
             className={`w-full flex items-center gap-2.5 rounded-md hover:bg-surface-2 transition-colors ${mini ? 'justify-center p-1' : 'px-1 py-1 text-left'}`}
           >
             <span className="w-8 h-8 rounded-full bg-surface-3 text-body flex items-center justify-center text-xs font-semibold shrink-0">
-              {currentUser.name.charAt(0).toUpperCase()}
+              {tx(currentUser.name.charAt(0).toUpperCase())}
             </span>
             {!mini && (
               <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-medium text-fg truncate">{currentUser.name}</span>
+                <span className="block text-[13px] font-medium text-fg truncate">{tx(currentUser.name)}</span>
                 <span className="block text-[11px] text-muted truncate">
                   {currentUser.memberId ? `${currentUser.organization || 'Kurum'} · kurumsal` : currentUser.email}
                 </span>
@@ -244,13 +245,13 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <aside
-        className={`hidden md:flex border-r border-line flex-col h-full shrink-0 transition-[width] duration-200 ${collapsed ? 'w-14' : 'w-60'}`}
+        className={`hidden [@media(min-width:768px)_and_(min-height:501px)]:flex border-r border-line flex-col h-full shrink-0 transition-[width] duration-200 ${collapsed ? 'w-14' : 'w-60'}`}
       >
         {renderSidebarContent(false)}
       </aside>
 
       {isMobileSidebarOpen && (
-        <div ref={drawerSwipe} className="fixed inset-0 z-50 md:hidden flex animate-fade-in">
+        <div ref={drawerSwipe} className="fixed inset-0 z-50 [@media(min-width:768px)_and_(min-height:501px)]:hidden flex animate-fade-in">
           <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileSidebarOpen(false)} />
           <div className="relative w-4/5 max-w-[288px] h-full z-10 border-r border-line bg-surface safe-top">
             {renderSidebarContent(true)}

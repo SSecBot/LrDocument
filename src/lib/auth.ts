@@ -32,6 +32,8 @@ export interface UserJWTPayload {
   /** The login e-mail was confirmed with a code. */
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
+  /** Interface language of the account (User.locale / OrgMember.locale). */
+  locale?: 'tr' | 'en';
 }
 
 const PRESENCE_WRITE_MS = 60_000;
@@ -228,6 +230,7 @@ export async function sessionFromToken(token: string | undefined): Promise<UserJ
         lastSeenAt: true,
         emailVerifiedAt: true,
         twoFactorEnabledAt: true,
+        locale: true,
       },
     });
 
@@ -254,6 +257,7 @@ export async function sessionFromToken(token: string | undefined): Promise<UserJ
       sv: user.sessionVersion,
       emailVerified: !!user.emailVerifiedAt,
       twoFactorEnabled: !!user.twoFactorEnabledAt,
+      locale: user.locale === 'en' ? 'en' : 'tr',
       ...(user.accountType === 'CORPORATE' ? { orgRole: 'OWNER' as const, permissions: FULL_PERMISSIONS } : {}),
     };
   } catch {
@@ -273,6 +277,7 @@ async function memberSession(payload: UserJWTPayload): Promise<UserJWTPayload | 
       permissions: true,
       sessionVersion: true,
       lastSeenAt: true,
+      locale: true,
       owner: {
         select: { status: true, accountType: true, organization: true, seats: true, subscriptionPlan: true, subscriptionType: true, paymentStatus: true },
       },
@@ -303,6 +308,7 @@ async function memberSession(payload: UserJWTPayload): Promise<UserJWTPayload | 
     sv: member.sessionVersion,
     orgRole: role,
     permissions: role === 'MANAGER' ? FULL_PERMISSIONS : parsePermissions(member.permissions),
+    locale: member.locale === 'en' ? 'en' : 'tr',
   };
 }
 

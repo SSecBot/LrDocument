@@ -1,3 +1,4 @@
+import { intlLocale, t } from '@/lib/i18n';
 import { DEFAULT_SYSTEM_SETTINGS, type SystemSettings } from './systemSettings';
 
 export type SubscriptionPlanName = 'Aylık' | 'Tek Seferlik';
@@ -49,14 +50,23 @@ export function planPrice(
   return accountType === 'CORPORATE' ? one * clampSeats(seats, pricing) : one;
 }
 
-export const formatTL = (n: number) => `${n.toLocaleString('tr-TR')} TL`;
+export const formatTL = (n: number) => `${n.toLocaleString(intlLocale())} TL`;
 
 export function formatPlanPrice(plan: SubscriptionPlanName, accountType: AccountType = 'STANDARD', pricing?: PricingSettings, seats?: number): string {
   return formatTL(planPrice(plan, accountType, pricing, seats));
 }
 
 export function planLabel(plan: SubscriptionPlanName, accountType: AccountType = 'STANDARD', pricing?: PricingSettings, seats?: number): string {
-  const name = plan === 'Tek Seferlik' ? 'Ömür Boyu' : 'Aylık';
-  const suffix = accountType === 'CORPORATE' ? ` · ${clampSeats(seats, pricing)} kişi` : '';
+  const name = plan === 'Tek Seferlik' ? t('Ömür Boyu') : t('Aylık');
+  const suffix = accountType === 'CORPORATE' ? t(' · {v0} kişi', { v0: clampSeats(seats, pricing) }) : '';
   return `${name} (${formatPlanPrice(plan, accountType, pricing, seats)}${suffix})`;
+}
+
+/** Shown under every monthly price (landing, kayıt, Ayarlar). */
+export const RENEWAL_NOTE = 'Otomatik yenilenir · İstediğiniz an iptal';
+/** Shown under one-time prices: lifetime access is paid once and never renews. */
+export const ONE_TIME_NOTE = 'Tek seferlik ödeme · Otomatik yenilenmez';
+
+export function billingNote(plan: SubscriptionPlanName): string {
+  return plan === 'Tek Seferlik' ? ONE_TIME_NOTE : RENEWAL_NOTE;
 }

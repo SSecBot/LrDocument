@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx, intlLocale } from '@/lib/i18n';
 import React, { useState } from 'react';
 import {
   ArrowRight,
@@ -47,11 +48,11 @@ export function WidgetCard({
       <header className="flex items-center justify-between px-4 h-11 border-b border-line shrink-0">
         <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
           <Icon className="w-4 h-4 text-subtle" />
-          {title}
+          {tx(title)}
         </h2>
         {action && onAction && (
           <button onClick={onAction} className="text-xs text-subtle hover:text-fg flex items-center gap-1 h-8">
-            {action} <ArrowRight className="w-3 h-3" />
+            {tx(action)} <ArrowRight className="w-3 h-3" />
           </button>
         )}
       </header>
@@ -119,23 +120,23 @@ export function MonthCalendarWidget() {
   const swipe = useSwipe<HTMLDivElement>({ onLeft: () => move(1), onRight: () => move(-1), enabled: preferences.touchGestures });
 
   return (
-    <WidgetCard icon={CalendarDays} title="Aylık takvim" action="Takvim" onAction={() => setActiveTab('calendar')}>
+    <WidgetCard icon={CalendarDays} title={tl('Aylık takvim')} action="Takvim" onAction={() => setActiveTab('calendar')}>
       <div ref={swipe} className="p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <button onClick={() => move(-1)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label="Önceki ay">
+          <button onClick={() => move(-1)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label={tl('Önceki ay')}>
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm font-medium text-fg">
-            {MONTHS[cursor.m]} {cursor.y}
+            {tx(MONTHS[cursor.m])} {cursor.y}
           </span>
-          <button onClick={() => move(1)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label="Sonraki ay">
+          <button onClick={() => move(1)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label={tl('Sonraki ay')}>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <div className="grid grid-cols-7 gap-0.5 text-center" role="grid" aria-label={`${MONTHS[cursor.m]} ${cursor.y}`}>
+        <div className="grid grid-cols-7 gap-0.5 text-center" role="grid" aria-label={`${tx(MONTHS[cursor.m])} ${cursor.y}`}>
           {WEEKDAYS.map((w) => (
             <span key={w} className="text-[10px] text-muted py-1">
-              {w}
+              {tx(w)}
             </span>
           ))}
           {Array.from({ length: lead }, (_, i) => (
@@ -167,14 +168,14 @@ export function MonthCalendarWidget() {
         </div>
         <div className="border-t border-line pt-2 min-h-[3rem]">
           {list.length === 0 ? (
-            <p className="text-[11px] text-muted px-1">Bu günde kayıt yok.</p>
+            <p className="text-[11px] text-muted px-1">{tl('Bu günde kayıt yok.')}</p>
           ) : (
             <ul className="space-y-1 max-h-32 overflow-y-auto">
               {list.map((x, i) => (
                 <li key={i} className="flex items-center gap-2 text-xs px-1">
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${KIND_DOT[x.kind]}`} />
-                  <span className="text-muted shrink-0 w-14">{x.time || KIND_LABEL[x.kind]}</span>
-                  <span className="text-body truncate">{x.title}</span>
+                  <span className="text-muted shrink-0 w-14">{tx(x.time || KIND_LABEL[x.kind])}</span>
+                  <span className="text-body truncate">{tx(x.title)}</span>
                 </li>
               ))}
             </ul>
@@ -199,13 +200,13 @@ export function ExchangeWidget() {
     setBusy(false);
   };
   return (
-    <WidgetCard icon={ArrowRightLeft} title="Döviz kurları">
+    <WidgetCard icon={ArrowRightLeft} title={tl('Döviz kurları')}>
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           {(['USD', 'EUR'] as const).map((c) => (
             <div key={c} className="rounded-lg bg-surface-2 border border-line px-3 py-2">
-              <p className="text-[11px] text-muted">{c === 'USD' ? '1 Dolar' : '1 Euro'}</p>
-              <p className="text-lg font-semibold text-fg tabular-nums">{exchangeRates[c].toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ₺</p>
+              <p className="text-[11px] text-muted">{c === 'USD' ? tl('1 Dolar') : tl('1 Euro')}</p>
+              <p className="text-lg font-semibold text-fg tabular-nums">{exchangeRates[c].toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ₺</p>
             </div>
           ))}
         </div>
@@ -215,27 +216,27 @@ export function ExchangeWidget() {
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, '').slice(0, 14))}
             className="w-24 min-w-0 flex-1 h-10 bg-surface-2 border border-line rounded-lg px-3 text-sm text-fg focus:outline-none focus:border-brand"
-            aria-label="Tutar"
+            aria-label={tl('Tutar')}
           />
           <select
             value={cur}
             onChange={(e) => setCur(e.target.value as 'USD' | 'EUR')}
             className="h-10 bg-surface-2 border border-line rounded-lg px-2 text-sm text-fg"
-            aria-label="Para birimi"
+            aria-label={tl('Para birimi')}
           >
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
           </select>
           <span className="text-sm text-muted">=</span>
-          <span className="text-sm font-semibold text-fg tabular-nums truncate">{formatCurrencyTRY(n * rate)}</span>
+          <span className="text-sm font-semibold text-fg tabular-nums truncate">{tx(formatCurrencyTRY(n * rate))}</span>
         </div>
         <div className="flex items-center justify-between text-[11px] text-muted">
           <span>
-            {exchangeRates.isLive ? 'Canlı kur' : 'Kayıtlı kur'} · {getRelativeTimeTurkish(exchangeRates.lastUpdated)}
+            {exchangeRates.isLive ? tl('Canlı kur') : tl('Kayıtlı kur')} · {tx(getRelativeTimeTurkish(exchangeRates.lastUpdated))}
             {exchangeRates.markupTRY > 0 ? ` · +${exchangeRates.markupTRY} ₺ marj` : ''}
           </span>
-          <button onClick={refresh} disabled={busy} className="h-8 px-2 rounded-md inline-flex items-center gap-1 hover:text-fg hover:bg-surface-2" aria-label="Kurları yenile">
-            <RefreshCw className={`w-3.5 h-3.5 ${busy ? 'animate-spin' : ''}`} /> Yenile
+          <button onClick={refresh} disabled={busy} className="h-8 px-2 rounded-md inline-flex items-center gap-1 hover:text-fg hover:bg-surface-2" aria-label={tl('Kurları yenile')}>
+            <RefreshCw className={`w-3.5 h-3.5 ${busy ? 'animate-spin' : ''}`} />{' '}{tl('Yenile')}
           </button>
         </div>
       </div>
@@ -249,8 +250,8 @@ export function AcademicSummaryWidget() {
   const data = useAcademicSnapshot(true);
   if (!data) {
     return (
-      <WidgetCard icon={GraduationCap} title="Akademik durum">
-        <p className="px-4 py-8 text-center text-xs text-muted">Yükleniyor…</p>
+      <WidgetCard icon={GraduationCap} title={tl('Akademik durum')}>
+        <p className="px-4 py-8 text-center text-xs text-muted">{tl('Yükleniyor…')}</p>
       </WidgetCard>
     );
   }
@@ -264,12 +265,12 @@ export function AcademicSummaryWidget() {
   const next = upcomingExams(data.exams ?? [])[0];
   const gpa = (v: number | null | undefined) => (v === null || v === undefined ? '—' : v.toFixed(2));
   return (
-    <WidgetCard icon={GraduationCap} title="Akademik durum" action="Ders Takibi" onAction={() => setActiveTab('academic')}>
+    <WidgetCard icon={GraduationCap} title={tl('Akademik durum')} action="Ders Takibi" onAction={() => setActiveTab('academic')}>
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-3 gap-2">
-          <Stat label="Dönem ortalaması" value={gpa(termSum?.gpa)} />
-          <Stat label="Genel ortalama" value={gpa(all.gpa)} />
-          <Stat label="Bu dönem ders" value={String(courses.length)} />
+          <Stat label={tl('Dönem ortalaması')} value={gpa(termSum?.gpa)} />
+          <Stat label={tl('Genel ortalama')} value={gpa(all.gpa)} />
+          <Stat label={tl('Bu dönem ders')} value={String(courses.length)} />
         </div>
         {risky.length > 0 ? (
           <ul className="space-y-1">
@@ -277,17 +278,17 @@ export function AcademicSummaryWidget() {
               <li key={c.id} className={`text-xs flex items-center gap-2 ${worst === 'over' ? 'text-rose-300' : 'text-amber-300'}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                 <span className="truncate">
-                  {c.name}: {worst === 'over' ? 'devamsızlık sınırı aşıldı' : 'devamsızlık sınırına yakın'}
+                  {tx(c.name)}: {worst === 'over' ? tl('devamsızlık sınırı aşıldı') : tl('devamsızlık sınırına yakın')}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-emerald-300">Devamsızlık durumu iyi.</p>
+          <p className="text-xs text-emerald-300">{tl('Devamsızlık durumu iyi.')}</p>
         )}
         {next && (
           <p className="text-xs text-subtle border-t border-line pt-2">
-            Sıradaki sınav: <span className="text-fg">{next.title}</span> · {countdownLabel(next)}
+            {tl('Sıradaki sınav:')}{' '}<span className="text-fg">{tx(next.title)}</span> · {tx(countdownLabel(next))}
           </p>
         )}
       </div>
@@ -298,8 +299,8 @@ export function AcademicSummaryWidget() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="rounded-lg bg-surface-2 border border-line px-2.5 py-2 min-w-0">
-      <p className="text-[10px] text-muted truncate">{label}</p>
-      <p className={`text-base font-semibold tabular-nums truncate ${tone ?? 'text-fg'}`}>{value}</p>
+      <p className="text-[10px] text-muted truncate">{tx(label)}</p>
+      <p className={`text-base font-semibold tabular-nums truncate ${tone ?? 'text-fg'}`}>{tx(value)}</p>
     </div>
   );
 }
@@ -324,29 +325,29 @@ export function FinanceSummaryWidget() {
   const top = [...byCat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
   const max = top[0]?.[1] ?? 1;
   return (
-    <WidgetCard icon={Wallet} title="Finans analizi (bu ay)" action="Finans" onAction={() => setActiveTab('finance')}>
+    <WidgetCard icon={Wallet} title={tl('Finans analizi (bu ay)')} action="Finans" onAction={() => setActiveTab('finance')}>
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-3 gap-2">
-          <Stat label="Gelir" value={formatCurrencyTRY(cur.income)} tone="text-emerald-400" />
-          <Stat label="Gider" value={formatCurrencyTRY(cur.expense)} tone="text-rose-300" />
-          <Stat label="Net" value={formatCurrencyTRY(cur.net)} tone={cur.net < 0 ? 'text-rose-400' : 'text-fg'} />
+          <Stat label={tl('Gelir')} value={formatCurrencyTRY(cur.income)} tone="text-emerald-400" />
+          <Stat label={tl('Gider')} value={formatCurrencyTRY(cur.expense)} tone="text-rose-300" />
+          <Stat label={tl('Net')} value={formatCurrencyTRY(cur.net)} tone={cur.net < 0 ? 'text-rose-400' : 'text-fg'} />
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-subtle">
           {change !== null && (
             <span className="inline-flex items-center gap-1">
               {change > 0 ? <TrendingUp className="w-3.5 h-3.5 text-rose-300" /> : <TrendingDown className="w-3.5 h-3.5 text-emerald-400" />}
-              Gider geçen aya göre %{Math.abs(change)} {change > 0 ? 'fazla' : 'az'}
+              {tl('Gider geçen aya göre %')}{Math.abs(change)} {change > 0 ? 'fazla' : 'az'}
             </span>
           )}
-          {savings !== null && <span>Birikim oranı: %{savings}</span>}
+          {savings !== null && <span>{tl('Birikim oranı: %')}{savings}</span>}
         </div>
         {top.length > 0 ? (
-          <ul className="space-y-1.5" aria-label="En büyük gider kategorileri">
+          <ul className="space-y-1.5" aria-label={tl('En büyük gider kategorileri')}>
             {top.map(([cat, v]) => (
               <li key={cat} className="text-xs">
                 <div className="flex justify-between gap-2">
-                  <span className="text-body truncate">{cat}</span>
-                  <span className="text-muted tabular-nums shrink-0">{formatCurrencyTRY(v)}</span>
+                  <span className="text-body truncate">{tx(cat)}</span>
+                  <span className="text-muted tabular-nums shrink-0">{tx(formatCurrencyTRY(v))}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-surface-3 mt-1 overflow-hidden">
                   <div className="h-full rounded-full bg-rose-400/70" style={{ width: `${Math.max(4, (v / max) * 100)}%` }} />
@@ -355,7 +356,7 @@ export function FinanceSummaryWidget() {
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-muted">Bu ay gider kaydı yok.</p>
+          <p className="text-xs text-muted">{tl('Bu ay gider kaydı yok.')}</p>
         )}
       </div>
     </WidgetCard>
@@ -367,9 +368,9 @@ export function PinnedNotesWidget() {
   const { notes, setActiveNoteId, setActiveTab } = useAppStore();
   const pinned = notes.filter((n) => n.isPinned).slice(0, 6);
   return (
-    <WidgetCard icon={Pin} title="Sabitlenmiş notlar" action="Notlar" onAction={() => setActiveTab('notes')}>
+    <WidgetCard icon={Pin} title={tl('Sabitlenmiş notlar')} action="Notlar" onAction={() => setActiveTab('notes')}>
       {pinned.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-muted">Not düzenleyicideki iğne simgesiyle notları buraya sabitleyin.</p>
+        <p className="px-4 py-8 text-center text-xs text-muted">{tl('Not düzenleyicideki iğne simgesiyle notları buraya sabitleyin.')}</p>
       ) : (
         <ul className="divide-y divide-line">
           {pinned.map((n) => (
@@ -381,8 +382,8 @@ export function PinnedNotesWidget() {
                 }}
                 className="w-full text-left px-4 py-2.5 hover:bg-surface-2 transition-colors"
               >
-                <span className="block text-sm text-fg truncate">{n.title || 'Başlıksız not'}</span>
-                <span className="block text-[11px] text-muted truncate">{n.kind === 'table' ? 'Tablo' : n.kind === 'pdf' ? 'PDF' : n.content.replace(/[#*`$\n]/g, ' ').trim().slice(0, 80) || 'Boş not'}</span>
+                <span className="block text-sm text-fg truncate">{n.title || tl('Başlıksız not')}</span>
+                <span className="block text-[11px] text-muted truncate">{n.kind === 'table' ? tl('Tablo') : n.kind === 'pdf' ? 'PDF' : n.content.replace(/[#*`$\n]/g, ' ').trim().slice(0, 80) || tl('Boş not')}</span>
               </button>
             </li>
           ))}

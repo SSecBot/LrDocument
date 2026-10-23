@@ -4,6 +4,7 @@ import { prisma } from './prisma';
 import { COOKIE_NAME, sessionMaxAgeSeconds, setSessionCookie, signSessionToken, verifySessionToken } from './auth';
 import { ACCOUNTS_COOKIE, type AccountEntry, readAccounts, setAccountsCookie, signAccounts } from './accounts';
 import { decryptText } from './dataCrypto';
+import { normalizeLocale, setLocaleCookie } from './i18n/server';
 
 /** Remembered-account key of a corporate member (user accounts use their plain user id). */
 export const memberKey = (memberId: string) => `m:${memberId}`;
@@ -100,4 +101,9 @@ export async function activateAccount(
   );
   setSessionCookie(response, token, maxAge);
   setAccountsCookie(response, await signAccounts(list, maxAge), maxAge);
+  // The interface opens in the account's own language.
+  const row = account.memberId
+    ? await prisma.orgMember.findUnique({ where: { id: account.memberId }, select: { locale: true } })
+    : await prisma.user.findUnique({ where: { id: account.userId }, select: { locale: true } });
+  if (row) setLocaleCookie(response, normalizeLocale(row.locale));
 }

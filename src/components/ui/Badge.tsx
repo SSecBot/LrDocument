@@ -1,3 +1,4 @@
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import { Platform, TaskPriority } from '@/types';
 import { Film, Globe, Mic, Play, Camera } from 'lucide-react';
@@ -78,7 +79,7 @@ export const PlatformBadge: React.FC<{ platform: Platform; size?: 'sm' | 'md' }>
   return (
     <span className={`inline-flex items-center gap-1.5 font-medium rounded-md border ${sizeClasses} ${c.bg} ${c.text} ${c.border}`}>
       {c.icon}
-      <span>{platform}</span>
+      <span>{tx(platform)}</span>
     </span>
   );
 };
@@ -86,19 +87,19 @@ export const PlatformBadge: React.FC<{ platform: Platform; size?: 'sm' | 'md' }>
 export const PriorityBadge: React.FC<{ priority: TaskPriority }> = ({ priority }) => {
   const configs: Record<TaskPriority, { label: string; bg: string; text: string; border: string }> = {
     yuksek: {
-      label: 'Yüksek',
+      label: t('Yüksek'),
       bg: 'bg-rose-950/40',
       text: 'text-rose-300',
       border: 'border-rose-800/40',
     },
     orta: {
-      label: 'Orta',
+      label: t('Orta'),
       bg: 'bg-amber-950/40',
       text: 'text-amber-300',
       border: 'border-amber-800/40',
     },
     dusuk: {
-      label: 'Düşük',
+      label: t('Düşük'),
       bg: 'bg-sky-950/40',
       text: 'text-sky-300',
       border: 'border-sky-800/40',
@@ -109,7 +110,7 @@ export const PriorityBadge: React.FC<{ priority: TaskPriority }> = ({ priority }
 
   return (
     <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md border ${c.bg} ${c.text} ${c.border}`}>
-      {c.label}
+      {tx(c.label)}
     </span>
   );
 };

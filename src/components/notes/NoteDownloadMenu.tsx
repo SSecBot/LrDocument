@@ -1,5 +1,7 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
+import { thrownError } from '@/lib/errors';
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, FileSpreadsheet, FileText, FileType2, Loader2 } from 'lucide-react';
 import type { Note } from '@/types';
@@ -48,7 +50,7 @@ export function NoteDownloadMenu({ note, getLatest }: { note: Note; getLatest?: 
       setOpen(false);
     } catch (err) {
       console.error(err);
-      addToast({ type: 'error', title: 'İndirilemedi', message: (err as Error).message || 'Dosya hazırlanamadı.' });
+      addToast({ type: 'error', title: t('İndirilemedi'), message: thrownError(err, t('Dosya hazırlanamadı.')) });
     } finally {
       setBusy(null);
     }
@@ -61,14 +63,14 @@ export function NoteDownloadMenu({ note, getLatest }: { note: Note; getLatest?: 
         aria-haspopup="menu"
         aria-expanded={open}
         className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center gap-1"
-        title="İndir"
-        aria-label="Notu indir"
+        title={t('İndir')}
+        aria-label={t('Notu indir')}
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
       </button>
       {open && (
         <div role="menu" className="absolute right-0 top-full mt-1 z-40 w-64 rounded-lg border border-line bg-surface shadow-xl p-1">
-          <p className="px-2.5 py-1.5 text-[11px] text-muted">Hangi biçimde indirilsin?</p>
+          <p className="px-2.5 py-1.5 text-[11px] text-muted">{t('Hangi biçimde indirilsin?')}</p>
           {OPTIONS[kind].map(({ format, label, hint, icon: Icon }) => (
             <button
               key={format}
@@ -79,8 +81,8 @@ export function NoteDownloadMenu({ note, getLatest }: { note: Note; getLatest?: 
             >
               {busy === format ? <Loader2 className="w-4 h-4 mt-0.5 animate-spin text-subtle" /> : <Icon className="w-4 h-4 mt-0.5 text-subtle" />}
               <span>
-                <span className="block text-sm text-fg">{label}</span>
-                <span className="block text-[11px] text-muted">{hint}</span>
+                <span className="block text-sm text-fg">{tx(label)}</span>
+                <span className="block text-[11px] text-muted">{tx(hint)}</span>
               </span>
             </button>
           ))}

@@ -1,7 +1,16 @@
 'use client';
 
+import { t } from '@/lib/i18n';
+import { ERR, responseError, thrownError } from '@/lib/errors';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AcademicData } from '@/lib/academic/types';
+import { offerUndo, showToast } from '@/store/useAppStore';
+
+/**
+ * Changes the academic data. With `undo` (deletions), a toast offers "Geri al" for a few seconds,
+ * which puts the data back as it was before this change.
+ */
+export type AcademicUpdate = (fn: (d: AcademicData) => AcademicData, undo?: { title: string; message?: string }) => void;
 import type { University } from '@/lib/universities';
 
 export interface StudentProfileView {
@@ -33,9 +42,9 @@ async function putData(data: AcademicData, keepalive = false): Promise<string | 
     });
     if (res.ok) return null;
     const json = await res.json().catch(() => ({}));
-    return json.error || 'Değişiklikler kaydedilemedi.';
+    return responseError(res, json, t('Değişiklikler kaydedilemedi.'));
   } catch {
-    return 'Sunucuya ulaşılamadı.';
+    return ERR.network;
   }
 }
 
@@ -70,7 +79,7 @@ export function useAcademicData() {
     fetch('/api/student', { cache: 'no-store' })
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || 'Ders bilgileri yüklenemedi.');
+        if (!res.ok) throw new Error(responseError(res, json, t('Ders bilgileri yüklenemedi.')));
         return json;
       })
       .then((json) => {
@@ -80,7 +89,7 @@ export function useAcademicData() {
         setSchool(json.school ?? null);
       })
       .catch((err: Error) => {
-        if (!cancelled) setLoadError(err.message);
+        if (!cancelled) setLoadError(thrownError(err));
       });
 
     const onHide = () => {
@@ -94,7 +103,7 @@ export function useAcademicData() {
     };
   }, [flush]);
 
-  const update = useCallback(
+  const apply = useCallback(
     (fn: (prev: AcademicData) => AcademicData) => {
       setData((prev) => {
         if (!prev) return prev;
@@ -107,6 +116,34 @@ export function useAcademicData() {
       setSaveState('saving');
     },
     [flush]
+  );
+
+  const update: AcademicUpdate = useCallback(
+    (fn, undo) => {
+      if (!undo) return apply(fn);
+      // React may call an updater twice (StrictMode); both calls must yield the same object.
+      let before: AcademicData | null = null;
+      let after: AcademicData | null = null;
+      apply((prev) => {
+        if (before !== prev) {
+          before = prev;
+          after = fn(prev);
+        }
+        return after!;
+      });
+      offerUndo({
+        title: undo.title,
+        message: undo.message,
+        undo: () =>
+          apply((cur) => {
+            if (cur === after && before) return before;
+            // Something else changed meanwhile: keep it rather than overwrite it.
+            showToast({ type: 'warning', title: t('Geri alınamadı'), message: t('Silmeden sonra başka bir değişiklik yapıldı. Silinen kaydı yeniden ekleyebilirsiniz.') });
+            return cur;
+          }),
+      });
+    },
+    [apply]
   );
 
   return { data, profile, school, loadError, saveState, saveError, update, retrySave: () => flush() };

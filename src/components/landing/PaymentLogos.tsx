@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import React from 'react';
 
 /**
@@ -7,7 +8,7 @@ import React from 'react';
  */
 export function PaymentLogos({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-2 ${className}`} aria-label="iyzico ile öde; kabul edilen kartlar: Visa ve Mastercard">
+    <div className={`flex items-center gap-2 ${className}`} aria-label={t('iyzico ile öde; kabul edilen kartlar: Visa ve Mastercard')}>
       <span className="h-7 px-2.5 rounded-md bg-white flex items-center gap-1 shadow-sm" title="iyzico ile Öde">
         <svg viewBox="0 0 104 20" className="h-[14px] w-auto" role="img" aria-label="iyzico ile Öde">
           <text x="0" y="15" fontFamily="Arial, Helvetica, sans-serif" fontSize="17" fontWeight="700" fill="#1E64FF" letterSpacing="-0.3">

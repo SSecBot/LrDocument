@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { t } from '@/lib/i18n';
 import katex from 'katex';
 
 interface KatexPreviewProps {
@@ -62,7 +63,7 @@ export function renderNoteHtml(content: string): string {
       return block(`<div class="katex-display-wrapper my-4 overflow-x-auto">${renderMath(math, true)}</div>`);
     } catch (err) {
       return block(
-        `<div class="p-3 bg-red-950/40 border border-red-800/50 rounded-lg text-rose-300 text-sm">LaTeX Hatası: ${escapeHtml((err as Error).message)}</div>`
+        `<div class="p-3 bg-red-950/40 border border-red-800/50 rounded-lg text-rose-300 text-sm">${escapeHtml(t('LaTeX hatası'))}: ${escapeHtml((err as Error).message)}</div>`
       );
     }
   });

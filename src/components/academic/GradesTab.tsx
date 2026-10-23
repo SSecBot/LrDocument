@@ -1,5 +1,7 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React, { useState } from 'react';
 import { Activity, FlaskConical, Plus, RotateCcw, Settings2 } from 'lucide-react';
 import type { AcademicData, Course, CourseCurve, GradingSystem, Term } from '@/lib/academic/types';
@@ -11,7 +13,7 @@ interface Props {
   data: AcademicData;
   term: Term;
   courses: Course[];
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
   onEditCourse: (course: Course) => void;
 }
 
@@ -26,7 +28,7 @@ export function GradesTab({ data, term, courses, update, onEditCourse }: Props) 
   if (courses.length === 0) {
     return (
       <Card>
-        <EmptyState title="Bu dönem için ders yok" text="Önce Program sekmesinden ders ekleyin." />
+        <EmptyState title={t('Bu dönem için ders yok')} text={t('Önce Program sekmesinden ders ekleyin.')} />
       </Card>
     );
   }
@@ -37,12 +39,12 @@ export function GradesTab({ data, term, courses, update, onEditCourse }: Props) 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
-        Final barajı {g.minFinal}
-        {g.failBelowAverage > 0 ? ` • ${g.failBelowAverage} altı ortalama FF` : ''} •{' '}
-        {g.conditionalLetters.length > 0 && `${g.conditionalLetters.join(', ')} dönem ortalaması ${g.conditionalGpa.toFixed(2)} ve üzeriyse geçer • `}
-        Notları girdikçe harf notu otomatik hesaplanır. “Test et” ile kaydetmeden farklı notları deneyebilirsiniz.
+        {t('Final barajı')}{' '}{g.minFinal}
+        {g.failBelowAverage > 0 ? t(' • {failBelowAverage} altı ortalama FF', { failBelowAverage: g.failBelowAverage }) : ''} •{' '}
+        {g.conditionalLetters.length > 0 && t('{v0} dönem ortalaması {v1} ve üzeriyse geçer • ', { v0: g.conditionalLetters.join(', '), v1: g.conditionalGpa.toFixed(2) })}
+        {t('Notları girdikçe harf notu otomatik hesaplanır. “Test et” ile kaydetmeden farklı notları deneyebilirsiniz.')}
       </p>
-      {g.relativeNote && <p className="text-[11px] text-amber-300/80 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">{g.relativeNote}</p>}
+      {g.relativeNote && <p className="text-[11px] text-amber-300/80 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">{tx(g.relativeNote)}</p>}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {courses.map((c) => (
           <GradeCard
@@ -106,7 +108,7 @@ function GradeCard({
       ...d,
       courses: d.courses.map((c) =>
         c.id === course.id
-          ? { ...c, assessments: [...c.assessments, { id: newId(), name: 'Bütünleme', type: 'butunleme', weight: 0, score: null }] }
+          ? { ...c, assessments: [...c.assessments, { id: newId(), name: t('Bütünleme'), type: 'butunleme', weight: 0, score: null }] }
           : c
       ),
     }));
@@ -121,7 +123,7 @@ function GradeCard({
         title={
           <span className="flex items-center gap-2 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: course.color }} />
-            <span className="truncate">{course.name}</span>
+            <span className="truncate">{tx(course.name)}</span>
           </span>
         }
         action={
@@ -132,18 +134,18 @@ function GradeCard({
                 setSimulate((v) => !v);
                 setOverrides({});
               }}
-              title="Kaydetmeden farklı notları dene"
+              title={t('Kaydetmeden farklı notları dene')}
             >
-              <FlaskConical className="w-3.5 h-3.5" /> Test et
+              <FlaskConical className="w-3.5 h-3.5" />{' '}{t('Test et')}
             </button>
             <button
               className={`${btnGhost} ${course.curve?.enabled ? 'text-violet-300 bg-violet-500/10' : ''}`}
               onClick={onEditCurve}
-              title="Hocanın çan eğrisini (bağıl değerlendirme) gir"
+              title={t('Hocanın çan eğrisini (bağıl değerlendirme) gir')}
             >
-              <Activity className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Çan eğrisi</span>
+              <Activity className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t('Çan eğrisi')}</span>
             </button>
-            <button className={btnGhost} onClick={() => onEditCourse(course)} aria-label="Dersi düzenle" title="Değerlendirme ağırlıklarını düzenle">
+            <button className={btnGhost} onClick={() => onEditCourse(course)} aria-label={t('Dersi düzenle')} title={t('Değerlendirme ağırlıklarını düzenle')}>
               <Settings2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -152,12 +154,12 @@ function GradeCard({
 
       <div className="p-4 space-y-3">
         {course.manualLetter ? (
-          <p className="text-xs text-subtle">Transkript notu girilmiş: harf notu {course.manualLetter}.</p>
+          <p className="text-xs text-subtle">{t('Transkript notu girilmiş: harf notu')}{' '}{tx(course.manualLetter)}.</p>
         ) : course.assessments.length === 0 ? (
           <p className="text-xs text-muted">
-            Değerlendirme yok.{' '}
+            {t('Değerlendirme yok.')}{' '}
             <button className="text-emerald-400 hover:underline" onClick={() => onEditCourse(course)}>
-              Vize/final ekle
+              {t('Vize/final ekle')}
             </button>
           </p>
         ) : (
@@ -168,7 +170,7 @@ function GradeCard({
                 return (
                   <tr key={a.id}>
                     <td className="py-1.5 pr-2">
-                      <span className="text-body">{a.name}</span>
+                      <span className="text-body">{tx(a.name)}</span>
                       <span className="text-[11px] text-muted ml-1.5">
                         {a.type === 'butunleme' ? 'finalin yerine' : `%${a.weight}`}
                       </span>
@@ -191,26 +193,26 @@ function GradeCard({
           <div className="text-xs text-subtle">
             {shown.average !== null ? (
               <>
-                Ortalama <span className="text-fg font-semibold tabular-nums">{shown.average.toFixed(2)}</span>
-                {shown.missingWeight > 0 && <span className="text-muted"> (girilen %{shown.totalWeight - shown.missingWeight} üzerinden)</span>}
+                {t('Ortalama')}{' '}<span className="text-fg font-semibold tabular-nums">{tx(shown.average.toFixed(2))}</span>
+                {shown.missingWeight > 0 && <span className="text-muted"> (girilen %{shown.totalWeight - shown.missingWeight}{' '}{t('üzerinden)')}</span>}
               </>
             ) : (
-              <span className="text-muted">Henüz not girilmedi</span>
+              <span className="text-muted">{t('Henüz not girilmedi')}</span>
             )}
-            {!shown.weightsValid && <span className="text-amber-400"> • ağırlık toplamı %{shown.totalWeight}</span>}
+            {!shown.weightsValid && <span className="text-amber-400">{' '}{t('• ağırlık toplamı %')}{shown.totalWeight}</span>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <LetterBadge letter={shown.letter} failing={failing} conditional={conditional} />
             <StatusBadge status={status} />
           </div>
         </div>
-        {shown.reason && <p className="text-[11px] text-rose-400">{shown.reason}</p>}
+        {shown.reason && <p className="text-[11px] text-rose-400">{tx(shown.reason)}</p>}
         {course.curve?.enabled && <CurveInfo grade={shown} onEdit={onEditCurve} />}
 
         {shown.status === 'devam' && shown.required.length > 0 && (
           <div className="rounded-lg bg-surface-2 border border-line p-3">
             <p className="text-[11px] text-subtle mb-2">
-              Kalan değerlendirmelerden (%{shown.missingWeight}) almanız gereken ortalama:
+              {t('Kalan değerlendirmelerden (%')}{shown.missingWeight}{t(') almanız gereken ortalama:')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {shown.required.map((r) => (
@@ -219,9 +221,9 @@ function GradeCard({
                   className={`text-[11px] px-2 py-1 rounded-md border tabular-nums ${
                     r.score === null ? 'border-line text-muted line-through' : 'border-line-strong text-body'
                   }`}
-                  title={r.score === null ? 'Ulaşılamaz' : undefined}
+                  title={r.score === null ? t('Ulaşılamaz') : undefined}
                 >
-                  {r.letter}: {r.score === null ? '—' : r.score}
+                  {tx(r.letter)}: {r.score === null ? '—' : r.score}
                 </span>
               ))}
             </div>
@@ -231,12 +233,12 @@ function GradeCard({
         <div className="flex items-center gap-2">
           {simulate && (
             <button className={btnGhost} onClick={() => setOverrides({})}>
-              <RotateCcw className="w-3.5 h-3.5" /> Sıfırla
+              <RotateCcw className="w-3.5 h-3.5" />{' '}{t('Sıfırla')}
             </button>
           )}
           {!simulate && !hasButunleme && !course.manualLetter && saved.status === 'kaldi' && (
             <button className={btnGhost} onClick={addButunleme}>
-              <Plus className="w-3.5 h-3.5" /> Bütünleme notu ekle
+              <Plus className="w-3.5 h-3.5" />{' '}{t('Bütünleme notu ekle')}
             </button>
           )}
         </div>
@@ -252,17 +254,17 @@ function CurveInfo({ grade, onEdit }: { grade: ReturnType<typeof computeCourseGr
       onClick={onEdit}
       className="w-full text-left text-[11px] rounded-lg border border-violet-500/25 bg-violet-500/5 px-3 py-1.5 text-violet-200/90 hover:bg-violet-500/10"
     >
-      <span className="font-medium">Çan eğrisi</span>
+      <span className="font-medium">{t('Çan eğrisi')}</span>
       {sc.note ? (
-        <span className="text-amber-300/90"> — {sc.note}</span>
+        <span className="text-amber-300/90"> — {tx(sc.note)}</span>
       ) : sc.mode === 'tscore' ? (
         <>
           {' '}— ort. {sc.mean} • std. sapma {sc.stdDev}
-          {grade.tScore !== null && <> • T-skorunuz {grade.tScore.toFixed(1)}</>}
-          {sc.tableLabel && <span className="text-muted"> • {sc.tableLabel}</span>}
+          {grade.tScore !== null && <>{' '}{t('• T-skorunuz')}{' '}{tx(grade.tScore.toFixed(1))}</>}
+          {sc.tableLabel && <span className="text-muted"> • {tx(sc.tableLabel)}</span>}
         </>
       ) : (
-        <> — hocanın not aralıkları (
+        <>{' '}{t('— hocanın not aralıkları (')}
           {sc.letters
             .filter((l) => l.min > 0)
             .slice(0, 4)

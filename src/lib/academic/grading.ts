@@ -1,3 +1,4 @@
+import { intlLocale } from '@/lib/i18n';
 import type {
   AcademicData,
   Assessment,
@@ -302,8 +303,9 @@ export function dayPlan(courses: Course[], term: Term | undefined | null, date: 
   return { date, weekday, holiday, halfHoliday, outside, sessions };
 }
 
-const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const shortDate = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS_TR[Number(iso.slice(5, 7)) - 1]}`;
+/** "5 Ocak" / "January 5" in the page language. */
+const shortDate = (iso: string) =>
+  new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long' });
 
 /** Message for a day without classes, or null when the plan has sessions. */
 export function formatDayPlanEmpty(plan: DayPlan, tomorrow: boolean, term?: Term | null): { title: string; text?: string } | null {

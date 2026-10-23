@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, GraduationCap } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -26,13 +27,13 @@ export function StudentDashboardCard() {
   if (courses.length === 0 && exams.length === 0) {
     return (
       <Card>
-        <CardHeader title="Ders Takibi" icon={<GraduationCap className="w-4 h-4 text-emerald-400" />} />
+        <CardHeader title={tl('Ders Takibi')} icon={<GraduationCap className="w-4 h-4 text-emerald-400" />} />
         <EmptyState
-          title="Ders programınızı ekleyin"
-          text="Ders programı PDF’inizi yükleyin, sınav tarihlerinizi girin; bugünkü dersleriniz ve sınavlara kalan süre burada görünsün."
+          title={tl('Ders programınızı ekleyin')}
+          text={tl('Ders programı PDF’inizi yükleyin, sınav tarihlerinizi girin; bugünkü dersleriniz ve sınavlara kalan süre burada görünsün.')}
           action={
             <button className={btnGhost} onClick={() => setActiveTab('academic')}>
-              Ders Takibi’ne git <ArrowRight className="w-3.5 h-3.5" />
+              {tl('Ders Takibi’ne git')}{' '}<ArrowRight className="w-3.5 h-3.5" />
             </button>
           }
         />
@@ -51,23 +52,23 @@ export function StudentDashboardCard() {
   // Used when the shown day has no classes.
   const next = empty ? nextClassDay(courses, term, plan.date) : null;
   const nextText = next
-    ? `Sıradaki ders: ${next.date === addDays(todayIso, 1) ? 'Yarın' : DAYS[next.weekday]} ${next.sessions[0].session.start} • ${next.sessions[0].course.name}`
+    ? tl('Sıradaki ders: {v0} {start} • {name}', { v0: next.date === addDays(todayIso, 1) ? 'Yarın' : DAYS[next.weekday], start: next.sessions[0].session.start, name: next.sessions[0].course.name })
     : undefined;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
       <Card className="lg:col-span-3 min-w-0">
         <CardHeader
-          title="Ders programı"
+          title={tl('Ders programı')}
           icon={<GraduationCap className="w-4 h-4 text-emerald-400" />}
           action={
             <div className="flex items-center gap-1">
               <div className="flex rounded-md bg-surface-2 border border-line p-0.5">
                 {(
                   [
-                    ['today', 'Bugün'],
-                    ['tomorrow', 'Yarın'],
-                    ['week', 'Hafta'],
+                    ['today', tl('Bugün')],
+                    ['tomorrow', tl('Yarın')],
+                    ['week', tl('Hafta')],
                   ] as const
                 ).map(([v, label]) => (
                   <button
@@ -76,11 +77,11 @@ export function StudentDashboardCard() {
                     aria-pressed={shown === v}
                     className={`h-6 px-2 rounded text-[11px] ${shown === v ? 'bg-surface text-fg' : 'text-subtle hover:text-fg'}`}
                   >
-                    {label}
+                    {tx(label)}
                   </button>
                 ))}
               </div>
-              <button className={btnGhost} onClick={() => setActiveTab('academic')} aria-label="Ders Takibi’ni aç">
+              <button className={btnGhost} onClick={() => setActiveTab('academic')} aria-label={tl('Ders Takibi’ni aç')}>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -89,12 +90,12 @@ export function StudentDashboardCard() {
         {shown === 'week' ? (
           <WeekGrid courses={courses} />
         ) : empty ? (
-          <EmptyState title={empty.title} text={nextText ?? empty.text} />
+          <EmptyState title={tx(empty.title)} text={tx(nextText ?? empty.text)} />
         ) : (
           <ul className="divide-y divide-line">
             <li className="px-4 py-1.5 text-[11px] text-muted">
-              {tomorrow ? 'Yarın' : 'Bugün'} • {DAYS[plan.weekday]}
-              {plan.halfHoliday ? ` • ${plan.halfHoliday.name}: 13:00 sonrası ders yok` : ''}
+              {tomorrow ? tl('Yarın') : tl('Bugün')} • {tx(DAYS[plan.weekday])}
+              {plan.halfHoliday ? tl(' • {name}: 13:00 sonrası ders yok', { name: plan.halfHoliday.name }) : ''}
             </li>
             {plan.sessions.map(({ course, session }) => {
               const done = !tomorrow && toMin(session.end) <= nowMinutes;
@@ -103,13 +104,13 @@ export function StudentDashboardCard() {
                 <li key={session.id} className={`px-4 py-2.5 flex items-center gap-3 ${done ? 'opacity-50' : ''}`}>
                   <span className="w-1 self-stretch rounded-full" style={{ backgroundColor: course.color }} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-fg truncate">{course.name}</p>
+                    <p className="text-sm text-fg truncate">{tx(course.name)}</p>
                     <p className="text-[11px] text-muted">
-                      {session.start}–{session.end} • {session.kind === 'teori' ? 'Teorik' : 'Uygulama'}
+                      {tx(session.start)}–{tx(session.end)} • {session.kind === 'teori' ? tl('Teorik') : tl('Uygulama')}
                       {session.room ? ` • ${session.room}` : ''}
                     </p>
                   </div>
-                  {live && <span className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-medium">Şu an</span>}
+                  {live && <span className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-medium">{tl('Şu an')}</span>}
                 </li>
               );
             })}
@@ -118,9 +119,9 @@ export function StudentDashboardCard() {
       </Card>
 
       <Card className="lg:col-span-2 min-w-0">
-        <CardHeader title="Yaklaşan sınavlar" icon={<CalendarDays className="w-4 h-4 text-subtle" />} />
+        <CardHeader title={tl('Yaklaşan sınavlar')} icon={<CalendarDays className="w-4 h-4 text-subtle" />} />
         {exams.length === 0 ? (
-          <EmptyState title="Yaklaşan sınav yok" text="Sınav tarihlerinizi Ders Takibi › Sınavlar bölümünden ekleyin." />
+          <EmptyState title={tl('Yaklaşan sınav yok')} text={tl('Sınav tarihlerinizi Ders Takibi › Sınavlar bölümünden ekleyin.')} />
         ) : (
           <div className="divide-y divide-line">
             {exams.map((e) => (

@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { MATH_SHORTCUTS, MathShortcut } from '@/lib/mathShortcuts';
 import { Search } from 'lucide-react';
@@ -31,7 +32,7 @@ export const MathSymbolBar: React.FC<MathSymbolBarProps> = ({ onInsertLatex }) =
   };
 
   return (
-    <div className="border-b border-line bg-surface px-3 sm:px-6 py-2.5 space-y-2" aria-label="LaTeX sembolleri">
+    <div className="border-b border-line bg-surface px-3 sm:px-6 py-2.5 space-y-2" aria-label={t('LaTeX sembolleri')}>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative w-full sm:w-56">
           <Search className="w-3.5 h-3.5 text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -39,7 +40,7 @@ export const MathSymbolBar: React.FC<MathSymbolBarProps> = ({ onInsertLatex }) =
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Sembol ara (integral, matris, pi…)"
+            placeholder={t('Sembol ara (integral, matris, pi…)')}
             className="w-full h-8 bg-surface-2 border border-line focus:border-line-strong rounded-md pl-8 pr-2 text-xs text-fg placeholder-muted focus:outline-none"
           />
         </div>
@@ -53,7 +54,7 @@ export const MathSymbolBar: React.FC<MathSymbolBarProps> = ({ onInsertLatex }) =
                 category === cat ? 'bg-surface-4 text-fg' : 'text-subtle hover:text-fg hover:bg-surface-2'
               }`}
             >
-              {cat}
+              {tx(cat)}
             </button>
           ))}
         </div>
@@ -66,11 +67,11 @@ export const MathSymbolBar: React.FC<MathSymbolBarProps> = ({ onInsertLatex }) =
             title={`${item.name} — ${item.latex}`}
             className="h-8 max-w-[220px] px-2.5 rounded-md border border-line bg-surface-2 hover:bg-surface-3 hover:border-line-strong text-left inline-flex items-center gap-2 transition-colors"
           >
-            <span className="text-[11px] text-body truncate">{item.name}</span>
-            <code className="text-[10px] text-muted font-mono truncate">{item.latex}</code>
+            <span className="text-[11px] text-body truncate">{tx(item.name)}</span>
+            <code className="text-[10px] text-muted font-mono truncate">{tx(item.latex)}</code>
           </button>
         ))}
-        {filtered.length === 0 && <p className="text-xs text-muted py-1.5">Eşleşen sembol yok.</p>}
+        {filtered.length === 0 && <p className="text-xs text-muted py-1.5">{t('Eşleşen sembol yok.')}</p>}
       </div>
     </div>
   );

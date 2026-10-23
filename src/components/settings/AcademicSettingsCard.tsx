@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import { AlertCircle, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useAcademicData } from '@/components/academic/useAcademicData';
@@ -17,18 +18,18 @@ export function AcademicSettingsCard() {
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
             <SlidersHorizontal className="w-5 h-5 text-emerald-400" />
-            Ders Takibi Ayarları
+            {t('Ders Takibi Ayarları')}
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Akademik takvim, not sistemi, harf aralıkları, final barajı, devam şartları ve dönemler. Değişiklikler otomatik kaydedilir.
+            {t('Akademik takvim, not sistemi, harf aralıkları, final barajı, devam şartları ve dönemler. Değişiklikler otomatik kaydedilir.')}
           </p>
         </div>
-        <SaveIndicator state={saveState} error={saveError} onRetry={retrySave} />
+        <SaveIndicator state={saveState} error={tx(saveError)} onRetry={retrySave} />
       </div>
 
       {loadError ? (
         <p className="text-xs text-rose-400 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" /> {loadError}
+          <AlertCircle className="w-4 h-4" /> {tx(loadError)}
         </p>
       ) : !data ? (
         <div className="h-24 flex items-center justify-center">

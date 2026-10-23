@@ -145,6 +145,10 @@ body {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Undo toast: the bar shrinks while "Geri al" is still possible */
+@keyframes toastTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-timer { animation: toastTimer linear forwards; }
+
 /* Dialogs (src/components/ui/Modal.tsx) */
 @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
@@ -185,6 +189,8 @@ body {
   .modal-backdrop[data-keyboard='true'] { align-items: flex-start; padding-top: max(0.75rem, env(safe-area-inset-top)); }
 }
 .modal-backdrop[data-keyboard='true'] { height: var(--vv-height, 100dvh); }
+/* iPhone / iPad keyboard outside dialogs: the app fits the area above it (see KeyboardAware.tsx). */
+html[data-keyboard='true'] .app-shell { height: var(--vv-height, 100dvh); }
 
 /* Phones: full-width, thumb-sized buttons, primary action on top */
 @media (max-width: 639.98px) {
@@ -195,6 +201,16 @@ body {
   .modal-body .modal-actions button { width: 100%; min-height: 44px; justify-content: center; }
   .modal-body .modal-actions > .modal-actions-start { order: -1; } /* bottom of the reversed column */
 }
+/* Short screens (on-screen keyboard up, phones in landscape): buttons side by side and no subtitle,
+   so the fields keep most of the height. */
+@media (max-height: 560px) {
+  .modal-body .modal-actions { flex-direction: row-reverse; padding-top: 0.5rem; padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+  .modal-body .modal-actions > div:not(:empty) { flex-direction: row-reverse; }
+  .modal-body .modal-actions button { width: auto; flex: 1 1 0; min-height: 40px; }
+  .modal-panel header p { display: none; }
+}
+/* A field scrolled into view (focus, keyboard) never ends up under the sticky action row. */
+.modal-body :is(input, select, textarea) { scroll-margin-top: 0.75rem; scroll-margin-bottom: 6.5rem; }
 
 
 

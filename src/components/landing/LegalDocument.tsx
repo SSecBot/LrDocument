@@ -1,3 +1,4 @@
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -48,7 +49,7 @@ function parse(source: string): Block[] {
 export function LegalDocument({ title, body, legal }: { title: string; body: string; legal: LandingContent['legal'] }) {
   const filled = body
     .replaceAll('{veriSorumlusu}', legal.controller || 'LrDocument')
-    .replaceAll('{iletisim}', legal.contact || 'yöneticinin belirttiği iletişim')
+    .replaceAll('{iletisim}', legal.contact || t('yöneticinin belirttiği iletişim'))
     .replaceAll('{saticiBilgileri}', legal.seller.trim() ? legal.seller.trim().replace(/\s*\n\s*/g, ', ') : legal.controller || 'LrDocument');
   return (
     <div className="min-h-dvh bg-app text-fg">
@@ -58,34 +59,34 @@ export function LegalDocument({ title, body, legal }: { title: string; body: str
             <SigmaLogo size="xs" /> LrDocument
           </Link>
           <Link href="/" className="text-xs text-subtle hover:text-fg inline-flex items-center gap-1.5">
-            <ArrowLeft className="w-3.5 h-3.5" /> Ana sayfa
+            <ArrowLeft className="w-3.5 h-3.5" />{' '}{t('Ana sayfa')}
           </Link>
         </div>
       </header>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{title}</h1>
-        {legal.updated && <p className="text-xs text-muted mt-2">Son güncelleme: {legal.updated}</p>}
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{tx(title)}</h1>
+        {legal.updated && <p className="text-xs text-muted mt-2">{t('Son güncelleme:')}{' '}{tx(legal.updated)}</p>}
         <div className="mt-8 space-y-4 text-[15px] leading-relaxed text-body">
           {parse(filled).map((b, i) =>
             b.kind === 'h' ? (
               <h2 key={i} className="pt-4 text-base font-semibold text-fg">
-                {b.text}
+                {tx(b.text)}
               </h2>
             ) : b.kind === 'ul' ? (
               <ul key={i} className="list-disc pl-5 space-y-1.5">
                 {b.items.map((item, j) => (
-                  <li key={j}>{item}</li>
+                  <li key={j}>{tx(item)}</li>
                 ))}
               </ul>
             ) : (
-              <p key={i}>{b.text}</p>
+              <p key={i}>{tx(b.text)}</p>
             )
           )}
         </div>
-        <nav className="mt-12 pt-6 border-t border-line flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted" aria-label="Yasal metinler">
+        <nav className="mt-12 pt-6 border-t border-line flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted" aria-label={t('Yasal metinler')}>
           {LEGAL_LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-fg">
-              {l.label}
+              {tx(l.label)}
             </Link>
           ))}
         </nav>

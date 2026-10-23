@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { Task, TaskPriority } from '@/types';
 import { useAppStore, isTaskOverdue, getEffectiveTaskPriority } from '@/store/useAppStore';
@@ -92,8 +93,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     setIsEditing(false);
     addToast({
       type: 'success',
-      title: 'Görev Güncellendi',
-      message: `"${editTitle.trim()}" başarıyla kaydedildi.`,
+      title: t('Görev Güncellendi'),
+      message: t('"{v0}" başarıyla kaydedildi.', { v0: editTitle.trim() }),
     });
   };
 
@@ -111,19 +112,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     e.stopPropagation();
     addKanbanCard({
       title: task.title,
-      description: task.description || 'Görevler modülünden aktarıldı.',
+      description: task.description || t('Görevler modülünden aktarıldı.'),
       projectType: 'genel',
       columnId: 'yapilacak',
       priority: task.priority,
       dueDate: task.dueDate,
-      tags: ['Görev'],
+      tags: [t('Görev')],
       linkedNoteId: task.linkedNoteId,
     });
 
     addToast({
       type: 'success',
-      title: 'Kanban Panosuna Eklendi',
-      message: `"${task.title}" Yapılacaklar sütununa eklendi.`,
+      title: t('Kanban Panosuna Eklendi'),
+      message: t('"{title}" Yapılacaklar sütununa eklendi.', { title: task.title }),
     });
   };
 
@@ -151,44 +152,44 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
           <form onSubmit={handleSaveEdit} className="space-y-3">
             <div className="space-y-2">
               <div>
-                <label className="block text-[11px] font-bold text-subtle mb-1">Görev Başlığı *</label>
+                <label className="block text-[11px] font-bold text-subtle mb-1">{t('Görev Başlığı *')}</label>
                 <input
                   type="text"
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none min-h-[44px]"
-                  placeholder="Görev başlığı..."
+                  placeholder={t('Görev başlığı...')}
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-subtle mb-1">Açıklama & Detaylar</label>
+                <label className="block text-[11px] font-bold text-subtle mb-1">{t('Açıklama & Detaylar')}</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={2}
                   className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none resize-none"
-                  placeholder="Görevle ilgili ayrıntılı notlar..."
+                  placeholder={t('Görevle ilgili ayrıntılı notlar...')}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-subtle mb-1">Öncelik</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">{t('Öncelik')}</label>
                   <select
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
                     className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px]"
                   >
-                    <option value="yuksek">Yüksek Öncelik</option>
-                    <option value="orta">Orta Öncelik</option>
-                    <option value="dusuk">Düşük Öncelik</option>
+                    <option value="yuksek">{t('Yüksek Öncelik')}</option>
+                    <option value="orta">{t('Orta Öncelik')}</option>
+                    <option value="dusuk">{t('Düşük Öncelik')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-subtle mb-1">Başlangıç (isteğe bağlı)</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">{t('Başlangıç (isteğe bağlı)')}</label>
                   <input
                     type="date"
                     value={editStartDate}
@@ -199,7 +200,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-subtle mb-1">{editStartDate ? 'Bitiş Tarihi' : 'Son Teslim Tarihi'}</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">{editStartDate ? t('Bitiş Tarihi') : t('Son Teslim Tarihi')}</label>
                   <input
                     type="date"
                     value={editDueDate}
@@ -210,14 +211,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-subtle mb-1">Saat (isteğe bağlı)</label>
+                  <label className="block text-[11px] font-bold text-subtle mb-1">{t('Saat (isteğe bağlı)')}</label>
                   <input
                     type="time"
                     value={editDueTime}
                     disabled={!editDueDate}
                     onChange={(e) => setEditDueTime(e.target.value)}
                     className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none min-h-[44px] disabled:opacity-50"
-                    title={editDueDate ? undefined : 'Önce bir tarih seçin'}
+                    title={editDueDate ? undefined : t('Önce bir tarih seçin')}
                   />
                 </div>
               </div>
@@ -230,7 +231,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 className="min-h-[40px] px-3.5 py-1.5 bg-surface-2 hover:bg-surface-3 text-body text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>İptal</span>
+                <span>{t('İptal')}</span>
               </button>
 
               <button
@@ -238,7 +239,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 className="min-h-[40px] px-4 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Kaydet</span>
+                <span>{t('Kaydet')}</span>
               </button>
             </div>
           </form>
@@ -249,7 +250,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             <button
               onClick={handleToggle}
               className="min-h-[44px] min-w-[44px] -ml-2 -mt-2 p-2 flex items-center justify-center rounded-lg transition-all cursor-pointer"
-              aria-label={task.completed ? 'Tamamlandı olarak işaretlendi' : 'Tamamla'}
+              aria-label={task.completed ? t('Tamamlandı olarak işaretlendi') : t('Tamamla')}
             >
               <div
                 className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border ${
@@ -272,7 +273,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     task.completed ? 'line-through text-muted' : 'text-white'
                   }`}
                 >
-                  {task.title}
+                  {tx(task.title)}
                 </h4>
 
                 {/* Dynamic Priority Badge */}
@@ -282,14 +283,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {overdue && (
                   <span className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-700/80 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
                     <AlertTriangle className="w-3 h-3 text-rose-400" />
-                    <span>Vadesi Geçti</span>
+                    <span>{t('Vadesi Geçti')}</span>
                   </span>
                 )}
               </div>
 
               {task.description && (
                 <p className="text-xs text-subtle mt-1 leading-relaxed">
-                  {task.description}
+                  {tx(task.description)}
                 </p>
               )}
 
@@ -307,14 +308,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                     <Calendar className="w-3 h-3 text-emerald-400" />
                     {task.startDate ? (
                       <span>
-                        {formatTurkishDate(task.startDate)} – {formatTurkishDate(task.dueDate)} ({rangeDays} gün)
+                        {tx(formatTurkishDate(task.startDate))} – {tx(formatTurkishDate(task.dueDate))} ({rangeDays}{' '}{t('gün)')}
                       </span>
                     ) : (
-                      <span>{getRelativeTimeTurkish(task.dueDate)} ({formatTurkishDate(task.dueDate)})</span>
+                      <span>{tx(getRelativeTimeTurkish(task.dueDate))} ({tx(formatTurkishDate(task.dueDate))})</span>
                     )}
                     {task.dueTime && (
                       <span className="inline-flex items-center gap-0.5 ml-1 font-semibold tabular-nums">
-                        <Clock className="w-3 h-3" /> {task.dueTime}
+                        <Clock className="w-3 h-3" /> {tx(task.dueTime)}
                       </span>
                     )}
                     {overdue && <AlertCircle className="w-3 h-3 text-rose-400 ml-0.5" />}
@@ -323,8 +324,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
                 {/* Kurumsal: who added it */}
                 {isCorporate(currentUser) && task.createdBy && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-muted min-h-[32px]" title="Ekleyen">
-                    <UserRound className="w-3 h-3" /> {task.createdBy}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-muted min-h-[32px]" title={t('Ekleyen')}>
+                    <UserRound className="w-3 h-3" /> {tx(task.createdBy)}
                   </span>
                 )}
 
@@ -333,10 +334,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                   <button
                     onClick={handleJumpToNote}
                     className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand/40 border border-brand/50 text-[11px] text-emerald-300 transition-colors cursor-pointer"
-                    title="Bağlı Nota Git"
+                    title={t('Bağlı Nota Git')}
                   >
                     <FileText className="w-3 h-3 text-emerald-400" />
-                    <span className="truncate max-w-[130px]">Not: {linkedNote.title}</span>
+                    <span className="truncate max-w-[130px]">{t('Not:')}{' '}{tx(linkedNote.title)}</span>
                   </button>
                 )}
 
@@ -345,20 +346,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 <button
                   onClick={handleSendToKanban}
                   className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-brand-soft border border-brand/60 text-[11px] text-emerald-300 hover:text-white font-medium transition-colors cursor-pointer"
-                  title="Görevi Kanban panosuna aktar"
+                  title={t('Görevi Kanban panosuna aktar')}
                 >
                   <Kanban className="w-3 h-3 text-emerald-400" />
-                  <span>Kanban’a Ekle</span>
+                  <span>{t('Kanban’a Ekle')}</span>
                 </button>
 
                 {/* Cross Link button */}
                 <button
                   onClick={() => setIsCrossLinkModalOpen(true)}
                   className="min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line-strong text-[11px] text-subtle hover:text-white transition-colors cursor-pointer"
-                  title="Döküman bağlantılarını düzenle"
+                  title={t('Döküman bağlantılarını düzenle')}
                 >
                   <Link2 className="w-3 h-3" />
-                  <span>{linkedNote ? 'Bağlantı' : '+ Not'}</span>
+                  <span>{linkedNote ? t('Bağlantı') : t('+ Not')}</span>
                 </button>
               </div>
             </div>
@@ -368,17 +369,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               <button
                 onClick={() => setIsEditing(true)}
                 className="min-h-[44px] min-w-[44px] p-2.5 text-subtle hover:text-emerald-400 hover:bg-surface-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
-                title="Görevi Düzenle"
-                aria-label="Düzenle"
+                title={t('Görevi Düzenle')}
+                aria-label={t('Düzenle')}
               >
                 <Edit2 className="w-4 h-4" />
               </button>
 
               <button
-                onClick={async () => (await confirmDelete(`"${task.title}" görevi`)) && deleteTask(task.id)}
+                onClick={async () => (await confirmDelete(t('"{title}" görevi', { title: task.title }))) && deleteTask(task.id)}
                 className="min-h-[44px] min-w-[44px] p-2.5 text-muted hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
-                title="Görevi Sil"
-                aria-label="Sil"
+                title={t('Görevi Sil')}
+                aria-label={t('Sil')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>

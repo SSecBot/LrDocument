@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { FinanceCategoryItem, FinanceTransactionType } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -67,8 +68,8 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Finans Kategori Yönetimi"
-      subtitle="Gelir ve gider işlemleriniz için özel kategori etiketleri oluşturun, düzenleyin veya silin."
+      title={t('Finans Kategori Yönetimi')}
+      subtitle={t('Gelir ve gider işlemleriniz için özel kategori etiketleri oluşturun, düzenleyin veya silin.')}
       maxWidth="max-w-md"
     >
       <div className="space-y-4">
@@ -84,7 +85,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Gelir Kategorileri</span>
+            <span>{t('Gelir Kategorileri')}</span>
           </button>
 
           <button
@@ -97,7 +98,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             }`}
           >
             <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
-            <span>Gider Kategorileri</span>
+            <span>{t('Gider Kategorileri')}</span>
           </button>
         </div>
 
@@ -107,7 +108,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder={`+ Yeni ${activeTab === 'gelir' ? 'gelir' : 'gider'} kategorisi adı...`}
+            placeholder={t('+ Yeni {v0} kategorisi adı...', { v0: activeTab === 'gelir' ? 'gelir' : 'gider' })}
             className="flex-1 bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-xs text-white placeholder-muted focus:outline-none"
           />
           <button
@@ -116,7 +117,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             className="shrink-0 min-h-[40px] px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-30 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Ekle</span>
+            <span>{t('Ekle')}</span>
           </button>
         </form>
 
@@ -124,7 +125,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         <div className="border border-line bg-surface rounded-lg p-2 max-h-64 overflow-y-auto space-y-1.5 divide-y divide-line">
           {currentCategories.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted">
-              Bu türde kayıtlı kategori bulunamadı.
+              {t('Bu türde kayıtlı kategori bulunamadı.')}
             </div>
           ) : (
             currentCategories.map((cat) => (
@@ -145,7 +146,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       type="button"
                       onClick={() => handleSaveEdit(cat.id)}
                       className="p-1.5 bg-brand hover:bg-brand-hover text-white rounded-lg text-xs"
-                      title="Kaydet"
+                      title={t('Kaydet')}
                     >
                       <Check className="w-3.5 h-3.5" />
                     </button>
@@ -153,7 +154,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                       type="button"
                       onClick={handleCancelEdit}
                       className="p-1.5 bg-surface-3 hover:bg-surface-4 text-subtle rounded-lg text-xs"
-                      title="İptal"
+                      title={t('İptal')}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -162,10 +163,10 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                   <>
                     <div className="flex items-center gap-2">
                       <Tag className={`w-3.5 h-3.5 ${activeTab === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`} />
-                      <span className="text-xs font-semibold text-white">{cat.name}</span>
+                      <span className="text-xs font-semibold text-white">{tx(cat.name)}</span>
                       {cat.isSystem && (
                         <span className="text-[9px] bg-surface-3 text-muted px-1.5 py-0.2 rounded font-mono">
-                          Varsayılan
+                          {t('Varsayılan')}
                         </span>
                       )}
                     </div>
@@ -175,7 +176,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                         type="button"
                         onClick={() => handleStartEdit(cat)}
                         className="p-1.5 hover:bg-surface-3 text-muted hover:text-white rounded-lg transition-colors"
-                        title="Düzenle"
+                        title={t('Düzenle')}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -183,7 +184,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                         type="button"
                         onClick={async () => (await confirmDelete(`"${cat.name}" kategorisi`)) && deleteFinanceCategory(cat.id)}
                         className="p-1.5 hover:bg-rose-950/50 text-muted hover:text-rose-400 rounded-lg transition-colors"
-                        title="Sil"
+                        title={t('Sil')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -202,7 +203,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-white rounded-lg transition-colors"
           >
-            Tamam
+            {t('Tamam')}
           </button>
         </div>
       </div>

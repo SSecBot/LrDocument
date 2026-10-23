@@ -1,3 +1,4 @@
+import { t as tl, tx } from '@/lib/i18n';
 // ---------------------------------------------------------------------------
 // Yazım araçları: shortcuts for writing a novel (roman) or a thesis / paper (tez) in a text note.
 // Each tool turns the note text and the selection into a new text and selection; numbering (bölüm,
@@ -51,6 +52,7 @@ function wrap(text: string, start: number, end: number, open: string, close: str
 }
 
 const count = (text: string, re: RegExp) => (text.match(re) ?? []).length;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 function nextNumber(text: string, re: RegExp): number {
   let max = 0;
@@ -140,12 +142,13 @@ export function tableOfContents(text: string): string {
   const items: string[] = [];
   for (const line of text.split('\n')) {
     const m = /^(#{1,3}) (.+)$/.exec(line.trim());
-    if (!m || /^i̇?çindekiler$/i.test(m[2].trim())) continue;
+    if (!m || /^(i̇?çindekiler|contents|table of contents)$/i.test(m[2].trim())) continue;
     const level = m[1].length;
     if (level === 1) continue; // the title of the work
     items.push(`${level === 3 ? '  ' : ''}- ${m[2].trim()}`);
   }
-  return items.length ? `## İçindekiler\n\n${items.join('\n')}` : '## İçindekiler\n\n- (Henüz başlık yok: ## ile bölüm başlıkları ekleyin.)';
+  const title = `## ${tl('İçindekiler')}\n\n`;
+  return items.length ? title + items.join('\n') : title + tl('- (Henüz başlık yok: ## ile bölüm başlıkları ekleyin.)');
 }
 
 export const WRITING_TOOLS: WritingTool[] = [
@@ -157,8 +160,10 @@ export const WRITING_TOOLS: WritingTool[] = [
     hint: 'Sıradaki bölüm numarasıyla başlık ekler',
     key: 'B',
     apply: (t, s, e) => {
-      const n = nextNumber(t, /^#{1,2} Bölüm (\d+)/gim);
-      const head = `## Bölüm ${n}: `;
+      // "Bölüm 3" in Turkish, "Chapter 3" in English: counted in the language of the note's tools.
+      const word = tl('Bölüm');
+      const n = nextNumber(t, new RegExp(`^#{1,2} ${escapeRe(word)} (\\d+)`, 'gim'));
+      const head = `## ${word} ${n}: `;
       return block(t, s, e, head, head.length);
     },
   },
@@ -188,14 +193,14 @@ export const WRITING_TOOLS: WritingTool[] = [
     name: 'İç ses / düşünce',
     group: 'Roman',
     hint: 'Seçili metni italik yapar',
-    apply: (t, s, e) => wrap(t, s, e, '*', '*', 'düşünce'),
+    apply: (t, s, e) => wrap(t, s, e, '*', '*', tl('düşünce')),
   },
   {
     id: 'quote-marks',
     name: '“Tırnak”',
     group: 'Roman',
     hint: 'Seçili metni çift tırnağa alır',
-    apply: (t, s, e) => wrap(t, s, e, '“', '”', 'söz'),
+    apply: (t, s, e) => wrap(t, s, e, '“', '”', tl('söz')),
   },
   { id: 'ellipsis', name: 'Üç nokta (…)', group: 'Roman', hint: 'Tek karakterlik üç nokta', apply: (t, s, e) => put(t, s, e, '…') },
   {
@@ -204,8 +209,8 @@ export const WRITING_TOOLS: WritingTool[] = [
     group: 'Roman',
     hint: 'Karakter bilgileri için alıntı bloğu',
     apply: (t, s, e) => {
-      const body = '> **Karakter:** \n> **Görünüş:** \n> **İstediği:** \n> **Sırrı:** ';
-      return block(t, s, e, body, '> **Karakter:** '.length);
+      const body = tl('> **Karakter:** \n> **Görünüş:** \n> **İstediği:** \n> **Sırrı:** ');
+      return block(t, s, e, body, tl('> **Karakter:** ').length);
     },
   },
   {
@@ -213,14 +218,14 @@ export const WRITING_TOOLS: WritingTool[] = [
     name: 'Yazar notu',
     group: 'Roman',
     hint: 'Kendinize hatırlatma (önizlemede kutu olarak görünür)',
-    apply: (t, s, e) => block(t, s, e, '> **Yazar notu:** ', '> **Yazar notu:** '.length),
+    apply: (t, s, e) => block(t, s, e, tl('> **Yazar notu:** '), tl('> **Yazar notu:** ').length),
   },
   {
     id: 'roman-template',
     name: 'Roman iskeleti',
     group: 'Roman',
     hint: 'Karakterler, olay örgüsü ve ilk bölüm',
-    apply: (t, s, e) => block(t, s, e, ROMAN_TEMPLATE.trimEnd()),
+    apply: (t, s, e) => block(t, s, e, tx(ROMAN_TEMPLATE).trimEnd()),
   },
 
   // ---------------- Tez / Akademik ----------------
@@ -269,7 +274,7 @@ export const WRITING_TOOLS: WritingTool[] = [
     name: 'Atıf (Yazar, Yıl)',
     group: 'Tez / Akademik',
     hint: 'APA metin içi atıf',
-    apply: (t, s, e) => put(t, s, e, '(Soyad, Yıl, s. 00)', 1, 6),
+    apply: (t, s, e) => put(t, s, e, tl('(Soyad, Yıl, s. 00)'), 1, 1 + tl('Soyad').length),
   },
   {
     id: 'blockquote',
@@ -278,8 +283,8 @@ export const WRITING_TOOLS: WritingTool[] = [
     hint: 'Seçili metni kaynaklı alıntı bloğu yapar',
     key: 'Q',
     apply: (t, s, e) => {
-      const inner = t.slice(s, e) || 'Alıntı metni';
-      const body = `> “${inner}” (Soyad, Yıl, s. 00)`;
+      const inner = t.slice(s, e) || tl('Alıntı metni');
+      const body = tl('> “{inner}” (Soyad, Yıl, s. 00)', { inner });
       return block(t, s, e, body, 3 + inner.length);
     },
   },
@@ -288,14 +293,14 @@ export const WRITING_TOOLS: WritingTool[] = [
     name: 'Kaynak: kitap',
     group: 'Tez / Akademik',
     hint: 'APA 7 kitap künyesi',
-    apply: (t, s, e) => block(t, s, e, '- Soyad, A. A. (Yıl). *Kitabın adı* (2. bs.). Yayınevi.', 2),
+    apply: (t, s, e) => block(t, s, e, tl('- Soyad, A. A. (Yıl). *Kitabın adı* (2. bs.). Yayınevi.'), 2),
   },
   {
     id: 'ref-article',
     name: 'Kaynak: makale',
     group: 'Tez / Akademik',
     hint: 'APA 7 dergi makalesi künyesi',
-    apply: (t, s, e) => block(t, s, e, '- Soyad, A. A. (Yıl). Makalenin başlığı. *Derginin Adı, Cilt*(Sayı), 1–20. https://doi.org/', 2),
+    apply: (t, s, e) => block(t, s, e, tl('- Soyad, A. A. (Yıl). Makalenin başlığı. *Derginin Adı, Cilt*(Sayı), 1–20. https://doi.org/'), 2),
   },
   {
     id: 'figure',
@@ -303,8 +308,9 @@ export const WRITING_TOOLS: WritingTool[] = [
     group: 'Tez / Akademik',
     hint: 'Şekil 1, Şekil 2… numaralı',
     apply: (t, s, e) => {
-      const head = `**Şekil ${count(t, /\*\*Şekil \d+\.\*\*/g) + 1}.** `;
-      return block(t, s, e, head + 'Açıklama', head.length);
+      const word = tl('Şekil');
+      const head = `**${word} ${count(t, new RegExp(`\\*\\*${escapeRe(word)} \\d+\\.\\*\\*`, 'g')) + 1}.** `;
+      return block(t, s, e, head + tl('Açıklama'), head.length);
     },
   },
   {
@@ -313,8 +319,9 @@ export const WRITING_TOOLS: WritingTool[] = [
     group: 'Tez / Akademik',
     hint: 'Başlıklı, numaralı boş tablo',
     apply: (t, s, e) => {
-      const head = `**Tablo ${count(t, /\*\*Tablo \d+\.\*\*/g) + 1}.** `;
-      return block(t, s, e, `${head}Açıklama\n\n| Değişken | n | % |\n| --- | --- | --- |\n|  |  |  |`, head.length);
+      const word = tl('Tablo');
+      const head = `**${word} ${count(t, new RegExp(`\\*\\*${escapeRe(word)} \\d+\\.\\*\\*`, 'g')) + 1}.** `;
+      return block(t, s, e, tl('{head}Açıklama\n\n| Değişken | n | % |\n| --- | --- | --- |\n|  |  |  |', { head }), head.length);
     },
   },
   {
@@ -339,7 +346,7 @@ export const WRITING_TOOLS: WritingTool[] = [
     name: 'Tez iskeleti',
     group: 'Tez / Akademik',
     hint: 'Özet, Giriş, Yöntem, Bulgular, Kaynakça…',
-    apply: (t, s, e) => block(t, s, e, TEZ_TEMPLATE.trimEnd()),
+    apply: (t, s, e) => block(t, s, e, tx(TEZ_TEMPLATE).trimEnd()),
   },
 ];
 

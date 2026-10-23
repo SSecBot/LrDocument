@@ -1,5 +1,6 @@
 'use client';
 
+import { t } from '@/lib/i18n';
 // ---------------------------------------------------------------------------
 // Notu indir: a text note as Markdown, PDF or Word; a table note as Excel, CSV or PDF; a PDF note as
 // the original file. Everything is produced in the browser and handed over as a download.
@@ -33,9 +34,9 @@ export async function exportNote(note: Note, format: ExportFormat): Promise<void
     return htmlToPdf(tableHtml(note.title, doc), `${base(note)}.pdf`, wideTable(doc));
   }
   if (note.kind === 'pdf') {
-    if (!note.fileId) throw new Error('PDF dosyası bulunamadı.');
+    if (!note.fileId) throw new Error(t('PDF dosyası bulunamadı.'));
     const res = await fetch(`/api/files/${encodeURIComponent(note.fileId)}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('PDF indirilemedi.');
+    if (!res.ok) throw new Error(t('PDF indirilemedi.'));
     return downloadBlob(await res.blob(), `${base(note)}.pdf`);
   }
   if (format === 'md') return downloadBlob(new Blob([note.content], { type: 'text/markdown;charset=utf-8' }), `${base(note)}.md`);
@@ -133,14 +134,14 @@ async function markdownToDocx(title: string, md: string): Promise<Blob> {
       else if (m[3]) out.push(new d.TextRun({ text: m[3], italics: true, bold: extra.bold }));
       else if (m[4]) out.push(new d.TextRun({ text: m[4], font: 'Consolas' }));
       else if (m[5]) out.push(new d.TextRun({ text: m[5], italics: true, font: 'Cambria Math' }));
-      else if (m[6]) out.push(new d.ExternalHyperlink({ link: m[7], children: [new d.TextRun({ text: m[6], style: 'Hyperlink' })] }));
+      else if (m[6]) out.push(new d.ExternalHyperlink({ link: m[7], children: [new d.TextRun({ text: m[6], style: t('Hyperlink') })] }));
       last = m.index + m[0].length;
     }
     if (last < text.length) out.push(new d.TextRun({ text: text.slice(last), ...extra }));
     return out;
   };
   const children: (InstanceType<typeof d.Paragraph> | InstanceType<typeof d.Table>)[] = [
-    new d.Paragraph({ heading: d.HeadingLevel.TITLE, children: [new d.TextRun(title || 'Not')] }),
+    new d.Paragraph({ heading: d.HeadingLevel.TITLE, children: [new d.TextRun(title || t('Not'))] }),
   ];
   const lines = md.replace(/\r\n?/g, '\n').split('\n');
   const cells = (row: string) => row.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
@@ -261,9 +262,9 @@ async function sheetToXlsx(doc: SheetDoc): Promise<Blob> {
       if (z) out.z = z;
       ws[k] = out;
     }
-    ws['!ref'] = `A1:${addr(maxR, maxC)}`;
+    ws['!ref'] = t('A1:{v0}', { v0: addr(maxR, maxC) });
     ws['!cols'] = Array.from({ length: maxC + 1 }, (_, c) => ({ wpx: sh.widths?.[c] ?? 104 }));
-    XLSX.utils.book_append_sheet(wb, ws as never, sh.name.slice(0, 31) || `Sayfa${si + 1}`);
+    XLSX.utils.book_append_sheet(wb, ws as never, sh.name.slice(0, 31) || t('Sayfa{v0}', { v0: si + 1 }));
   });
   const data = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
   return new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -345,9 +346,9 @@ export const TABLE_IMPORT_ACCEPT = '.xlsx,.xls,.xlsm,.ods,.csv,.tsv,application/
 
 /** An Excel / LibreOffice / CSV file → table note content. */
 export async function importTableFile(file: File): Promise<{ title: string; doc: SheetDoc; notes: string[] }> {
-  if (file.size > 15 * 1024 * 1024) throw new Error('Dosya en fazla 15 MB olabilir.');
+  if (file.size > 15 * 1024 * 1024) throw new Error(t('Dosya en fazla 15 MB olabilir.'));
   const name = file.name.toLowerCase();
-  const title = file.name.replace(/\.[^.]+$/, '').slice(0, 200) || 'İçe aktarılan tablo';
+  const title = file.name.replace(/\.[^.]+$/, '').slice(0, 200) || t('İçe aktarılan tablo');
   const notes: string[] = [];
   if (name.endsWith('.csv') || name.endsWith('.tsv') || file.type === 'text/csv') {
     return { title, doc: csvToDoc(await file.text()), notes };
@@ -358,7 +359,7 @@ export async function importTableFile(file: File): Promise<{ title: string; doc:
   doc.sheets = [];
   for (const sheetName of wb.SheetNames.slice(0, 50)) {
     const ws = wb.Sheets[sheetName] as Record<string, { t?: string; v?: unknown; f?: string; z?: string; w?: string }>;
-    const ref = (ws['!ref'] as unknown as string) || 'A1:A1';
+    const ref = (ws['!ref'] as unknown as string) || t('A1:A1');
     const range = XLSX.utils.decode_range(ref);
     const rows = Math.min(5000, range.e.r + 1);
     const cols = Math.min(104, range.e.c + 1);
@@ -375,7 +376,7 @@ export async function importTableFile(file: File): Promise<{ title: string; doc:
         v = String(c.v).replace('.', ',');
         if (c.z && XLSX.SSF.is_date(c.z)) nf = 'tarih';
         else if (c.z && /%/.test(c.z)) nf = 'yuzde';
-      } else if (c.t === 'b') v = c.v ? 'DOĞRU' : 'YANLIŞ';
+      } else if (c.t === 'b') v = c.v ? t('DOĞRU') : t('YANLIŞ');
       else if (c.v !== undefined && c.v !== null) v = String(c.v);
       if (!v) continue;
       cells[addr(pos.r, pos.c)] = nf ? { v: v.slice(0, 5000), s: { nf } } : { v: v.slice(0, 5000) };

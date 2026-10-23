@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { AlertCircle, GraduationCap, Loader2, Plus, Settings2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -41,7 +42,7 @@ export function AcademicWorkspace() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center space-y-2">
           <AlertCircle className="w-6 h-6 text-rose-400 mx-auto" />
-          <p className="text-sm text-body">{loadError}</p>
+          <p className="text-sm text-body">{tx(loadError)}</p>
         </div>
       </div>
     );
@@ -68,12 +69,15 @@ export function AcademicWorkspace() {
     }));
 
   const deleteCourse = (id: string) =>
-    update((d) => ({
-      ...d,
-      courses: d.courses.filter((c) => c.id !== id),
-      exams: (d.exams ?? []).filter((e) => e.courseId !== id),
-      ...(d.study ? { study: { ...d.study, sessions: d.study.sessions.filter((s) => s.courseId !== id), logs: d.study.logs.filter((l) => l.courseId !== id) } } : {}),
-    }));
+    update(
+      (d) => ({
+        ...d,
+        courses: d.courses.filter((c) => c.id !== id),
+        exams: (d.exams ?? []).filter((e) => e.courseId !== id),
+        ...(d.study ? { study: { ...d.study, sessions: d.study.sessions.filter((s) => s.courseId !== id), logs: d.study.logs.filter((l) => l.courseId !== id) } } : {}),
+      }),
+      { title: tl('Ders silindi'), message: data?.courses.find((c) => c.id === id)?.name }
+    );
 
   return (
     <div className="flex-1 overflow-y-auto bg-app">
@@ -85,44 +89,44 @@ export function AcademicWorkspace() {
               <GraduationCap className="w-5 h-5 text-emerald-400" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold text-fg">Ders Takibi</h1>
+              <h1 className="text-lg font-semibold text-fg">{tl('Ders Takibi')}</h1>
               <p className="text-xs text-muted truncate">
                 {profile && profile.university ? (
                   <>
-                    {profile.university} • {profile.department} • {classYearLabel(profile.classYear)}{' '}
+                    {tx(profile.university)} • {tx(profile.department)} • {tx(classYearLabel(profile.classYear))}{' '}
                     <button className="text-subtle hover:text-fg underline-offset-2 hover:underline" onClick={() => openSettings('ogrenci')}>
-                      düzenle
+                      {tl('düzenle')}
                     </button>
                   </>
                 ) : (
-                  'Devamsızlık, notlar ve ortalama takibi'
+                  tl('Devamsızlık, notlar ve ortalama takibi')
                 )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <SaveIndicator state={saveState} error={saveError} onRetry={retrySave} />
+            <SaveIndicator state={saveState} error={tx(saveError)} onRetry={retrySave} />
             <select
               className={`${inputCls} w-auto min-w-[150px]`}
               value={term.id}
               onChange={(e) => update((d) => ({ ...d, activeTermId: e.target.value }))}
-              aria-label="Dönem"
+              aria-label={tl('Dönem')}
             >
               {data.terms.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+                <option key={t.id} value={t.id}>{tx(t.name)}</option>
               ))}
             </select>
             <button className={btnPrimary} onClick={openNew}>
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Ders ekle</span>
+              <span className="hidden sm:inline">{tl('Ders ekle')}</span>
             </button>
             <button
               className={btnSecondary}
               onClick={() => {
                 openSettings('ders');
               }}
-              title="Not sistemi, devam şartları ve dönemler"
-              aria-label="Ders takibi ayarları"
+              title={tl('Not sistemi, devam şartları ve dönemler')}
+              aria-label={tl('Ders takibi ayarları')}
             >
               <Settings2 className="w-4 h-4" />
             </button>
@@ -139,7 +143,7 @@ export function AcademicWorkspace() {
                 tab === t.id ? 'border-emerald-400 text-fg font-medium' : 'border-transparent text-subtle hover:text-fg'
               }`}
             >
-              {t.label}
+              {tx(t.label)}
             </button>
           ))}
         </div>

@@ -85,6 +85,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
   } catch (error) {
-    return handleRouteError(error, '2FA manage error', 'İşlem yapılamadı.');
+    return handleRouteError(error, '2FA manage error', 'İki adımlı doğrulama ayarı değiştirilemedi.');
   }
 }

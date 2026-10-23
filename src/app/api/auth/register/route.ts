@@ -9,6 +9,7 @@ import { encryptRow } from '@/lib/dataCrypto';
 import { normalizeAccountType } from '@/lib/pricing';
 import { getSystemSettings } from '@/lib/systemSettingsServer';
 import { issueCode } from '@/lib/verification';
+import { LOCALES, requestLocale, setLocaleCookie, type Locale } from '@/lib/i18n/server';
 import { siteHostFrom } from '@/lib/mailer';
 import {
   getClientIp,
@@ -95,6 +96,8 @@ export async function POST(req: NextRequest) {
     const subType: 'AYLIK' | 'TEK_SEFERLIK' = planValue === 'Tek Seferlik' ? 'TEK_SEFERLIK' : 'AYLIK';
 
     const passwordHash = await hashPassword(body.password as string);
+    // Chosen on the sign-up form (it also switches the form itself); the page language otherwise.
+    const locale = LOCALES.includes(body.locale as Locale) ? (body.locale as Locale) : await requestLocale();
 
     const newUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -110,6 +113,7 @@ export async function POST(req: NextRequest) {
           accountType,
           organization: corporate?.organization ?? null,
           seats: corporate?.seats ?? null,
+          locale,
         },
       });
       await seedDefaultUserData(tx, user.id);
@@ -137,7 +141,7 @@ export async function POST(req: NextRequest) {
       verification = { sent: false, error: (err as Error).message };
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         verification,
@@ -157,6 +161,8 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
+    setLocaleCookie(response, locale);
+    return response;
   } catch (error) {
     return handleRouteError(error, 'Registration error', 'Kayıt işlemi sırasında bir sunucu hatası oluştu.');
   }

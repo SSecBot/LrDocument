@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import {
   Archive,
@@ -57,15 +58,15 @@ export function FolderIcon({ name, className }: { name?: string; className?: str
 /** Grid of icons to choose from (folder create / edit dialogs). */
 export function FolderIconPicker({ value, onChange }: { value: string; onChange: (name: string) => void }) {
   return (
-    <div role="radiogroup" aria-label="Klasör simgesi" className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+    <div role="radiogroup" aria-label={t('Klasör simgesi')} className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
       {Object.entries(FOLDER_ICONS).map(([name, { icon: Icon, label }]) => (
         <button
           key={name}
           type="button"
           role="radio"
           aria-checked={value === name}
-          aria-label={label}
-          title={label}
+          aria-label={tx(label)}
+          title={tx(label)}
           onClick={() => onChange(name)}
           className={`h-10 rounded-lg border flex items-center justify-center transition-colors ${
             value === name ? 'border-brand bg-brand/15 text-emerald-300' : 'border-line text-subtle hover:text-fg hover:bg-surface-2'

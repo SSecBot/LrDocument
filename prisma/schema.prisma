@@ -26,6 +26,8 @@ model User {
   lastSeenAt       DateTime?
   /// Encrypted JSON of UI preferences (panels, views, read notifications). Nothing is kept in the browser.
   preferences      String              @default("")
+  /// Interface language ("tr" | "en"); pushes and e-mails use it too. Older accounts stay Turkish.
+  locale           String              @default("tr")
   /// Set once all of the user's existing rows were encrypted (see src/lib/dataCrypto.ts).
   dataEncryptedAt  DateTime?
   /// The login e-mail was confirmed with a code sent to it (src/lib/verification.ts).
@@ -299,6 +301,8 @@ model OrgMember {
   permissions    String    @default("{}")
   /// Encrypted JSON of the member's own UI preferences.
   preferences    String    @default("")
+  /// The member's interface language ("tr" | "en").
+  locale         String    @default("tr")
   sessionVersion Int       @default(0)
   lastSeenAt     DateTime?
   createdAt      DateTime  @default(now())

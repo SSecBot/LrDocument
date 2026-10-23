@@ -1,3 +1,4 @@
+import { intlLocale } from '@/lib/i18n';
 import { CurrencyCode, ExchangeRates } from '@/types';
 
 export const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
@@ -202,7 +203,7 @@ export function formatCurrencyWithCode(amount: number, currency: CurrencyCode = 
         maximumFractionDigits: 2,
       }).format(amount);
     default:
-      return new Intl.NumberFormat('tr-TR', {
+      return new Intl.NumberFormat(intlLocale(), {
         style: 'currency',
         currency: 'TRY',
         maximumFractionDigits: 0,

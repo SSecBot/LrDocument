@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import { FileUp, Plus } from 'lucide-react';
 import type { Course } from '@/lib/academic/types';
@@ -20,25 +21,25 @@ export function ScheduleTab({ courses, onAddCourse, onEditCourse, onImport }: Pr
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Haftalık ders programı"
+          title={t('Haftalık ders programı')}
           action={
             <div className="flex items-center gap-2">
-              <button className={btnSecondary} onClick={onImport} title="Ders programı PDF'inden otomatik ekle">
-                <FileUp className="w-4 h-4" /> <span className="hidden sm:inline">PDF’ten içe aktar</span><span className="sm:hidden">PDF</span>
+              <button className={btnSecondary} onClick={onImport} title={t('Ders programı PDF\'inden otomatik ekle')}>
+                <FileUp className="w-4 h-4" /> <span className="hidden sm:inline">{t('PDF’ten içe aktar')}</span><span className="sm:hidden">PDF</span>
               </button>
               <button className={btnPrimary} onClick={onAddCourse}>
-                <Plus className="w-4 h-4" /> Ders ekle
+                <Plus className="w-4 h-4" />{' '}{t('Ders ekle')}
               </button>
             </div>
           }
         />
         {entries.length === 0 ? (
           <EmptyState
-            title="Program boş"
-            text="Ders programınızın PDF'ini yükleyin ya da dersleri tek tek ekleyin. Devamsızlık hakları bu saatlere göre hesaplanır."
+            title={t('Program boş')}
+            text={t('Ders programınızın PDF\'ini yükleyin ya da dersleri tek tek ekleyin. Devamsızlık hakları bu saatlere göre hesaplanır.')}
             action={
               <button className={btnSecondary} onClick={onImport}>
-                <FileUp className="w-4 h-4" /> PDF’ten içe aktar
+                <FileUp className="w-4 h-4" />{' '}{t('PDF’ten içe aktar')}
               </button>
             }
           />
@@ -48,9 +49,9 @@ export function ScheduleTab({ courses, onAddCourse, onEditCourse, onImport }: Pr
       </Card>
 
       <Card>
-        <CardHeader title={`Dersler (${courses.length})`} />
+        <CardHeader title={t('Dersler ({length})', { length: courses.length })} />
         {courses.length === 0 ? (
-          <EmptyState title="Henüz ders eklenmedi" />
+          <EmptyState title={t('Henüz ders eklenmedi')} />
         ) : (
           <ul className="divide-y divide-line">
             {courses.map((c) => (
@@ -58,16 +59,16 @@ export function ScheduleTab({ courses, onAddCourse, onEditCourse, onImport }: Pr
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-fg truncate">
-                    {c.code && <span className="text-muted mr-1.5">{c.code}</span>}
-                    {c.name}
+                    {c.code && <span className="text-muted mr-1.5">{tx(c.code)}</span>}
+                    {tx(c.name)}
                   </p>
                   <p className="text-[11px] text-muted">
-                    {c.credit} kredi • {c.ects} AKTS • haftada {c.theoryHours} teorik
+                    {c.credit} kredi • {c.ects}{' '}{t('AKTS • haftada')}{' '}{c.theoryHours} teorik
                     {c.practiceHours ? ` + ${c.practiceHours} uygulama` : ''} saat
                     {c.instructor ? ` • ${c.instructor}` : ''}
                   </p>
                 </div>
-                <button className={btnGhost} onClick={() => onEditCourse(c)}>Düzenle</button>
+                <button className={btnGhost} onClick={() => onEditCourse(c)}>{t('Düzenle')}</button>
               </li>
             ))}
           </ul>
@@ -95,8 +96,8 @@ export function WeekGrid({ courses, onEditCourse }: { courses: Course[]; onEditC
       {days.map((day) => (
         <div key={day} className={`bg-surface min-w-0 ${byDay(day).length === 0 ? 'hidden md:block' : ''}`}>
           <div className={`px-3 py-2 text-xs font-semibold border-b border-line md:text-center ${day === todayIndex ? 'text-emerald-400' : 'text-subtle'}`}>
-            <span className="md:hidden">{DAYS[day]}</span>
-            <span className="hidden md:inline">{DAYS_SHORT[day]}</span>
+            <span className="md:hidden">{tx(DAYS[day])}</span>
+            <span className="hidden md:inline">{tx(DAYS_SHORT[day])}</span>
           </div>
           <div className="p-2 space-y-1.5 md:min-h-[120px]">
             {byDay(day).length === 0 ? (
@@ -110,11 +111,11 @@ export function WeekGrid({ courses, onEditCourse }: { courses: Course[]; onEditC
                   style={{ borderLeftColor: course.color }}
                 >
                   <p className="text-[11px] text-muted tabular-nums">
-                    {session.start}–{session.end}
+                    {tx(session.start)}–{tx(session.end)}
                   </p>
-                  <p className="text-xs font-medium text-fg truncate">{course.code || course.name}</p>
+                  <p className="text-xs font-medium text-fg truncate">{tx(course.code || course.name)}</p>
                   <p className="text-[11px] text-muted truncate">
-                    {session.kind === 'uygulama' ? 'Uyg.' : 'Teo.'}
+                    {session.kind === 'uygulama' ? t('Uyg.') : t('Teo.')}
                     {session.room ? ` • ${session.room}` : ''}
                   </p>
                 </button>

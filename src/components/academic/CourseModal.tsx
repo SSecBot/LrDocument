@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -92,13 +93,13 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
   const weightTotal = draft.assessments.filter((a) => a.type !== 'butunleme').reduce((s, a) => s + a.weight, 0);
 
   const handleSave = () => {
-    if (!draft.name.trim()) return setError('Ders adını giriniz.');
-    if (retakeOn && !draft.retake) return setError('Alttan aldığınız bu dersten daha önce neden kaldığınızı seçin.');
+    if (!draft.name.trim()) return setError(t('Ders adını giriniz.'));
+    if (retakeOn && !draft.retake) return setError(t('Alttan aldığınız bu dersten daha önce neden kaldığınızı seçin.'));
     for (const s of draft.sessions) {
-      if (s.end <= s.start) return setError(`${DAYS[s.day]} oturumunda bitiş saati başlangıçtan sonra olmalı.`);
+      if (s.end <= s.start) return setError(t('{v0} oturumunda bitiş saati başlangıçtan sonra olmalı.', { v0: DAYS[s.day] }));
     }
     if (!draft.manualLetter && draft.assessments.length > 0 && Math.abs(weightTotal - 100) > 0.01) {
-      return setError(`Değerlendirme ağırlıklarının toplamı %100 olmalı (şu an %${weightTotal}).`);
+      return setError(t('Değerlendirme ağırlıklarının toplamı %100 olmalı (şu an %{weightTotal}).', { weightTotal }));
     }
     onSave({
       ...draft,
@@ -118,20 +119,20 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
     .find((x) => x.status === 'kaldi' || x.status === 'devamsiz');
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={course ? 'Dersi düzenle' : 'Yeni ders'} maxWidth="max-w-2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={course ? t('Dersi düzenle') : t('Yeni ders')} maxWidth="max-w-2xl">
       <div className="space-y-5">
         {/* Basics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="col-span-2 sm:col-span-3">
-            <label className={labelCls}>Ders adı *</label>
-            <input className={inputCls} value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Ör. Matematik I" />
+            <label className={labelCls}>{t('Ders adı *')}</label>
+            <input className={inputCls} value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder={t('Ör. Matematik I')} />
           </div>
           <div>
-            <label className={labelCls}>Ders kodu</label>
+            <label className={labelCls}>{t('Ders kodu')}</label>
             <input className={inputCls} value={draft.code} onChange={(e) => set('code', e.target.value)} placeholder="MAT1001" />
           </div>
           <div>
-            <label className={labelCls}>Kredi</label>
+            <label className={labelCls}>{t('Kredi')}</label>
             <input type="number" min={0} step="0.5" className={inputCls} value={draft.credit} onChange={(e) => set('credit', Number(e.target.value) || 0)} />
           </div>
           <div>
@@ -139,20 +140,20 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
             <input type="number" min={0} step="0.5" className={inputCls} value={draft.ects} onChange={(e) => set('ects', Number(e.target.value) || 0)} />
           </div>
           <div className="col-span-2">
-            <label className={labelCls}>Öğretim elemanı</label>
-            <input className={inputCls} value={draft.instructor ?? ''} onChange={(e) => set('instructor', e.target.value)} placeholder="İsteğe bağlı" />
+            <label className={labelCls}>{t('Öğretim elemanı')}</label>
+            <input className={inputCls} value={draft.instructor ?? ''} onChange={(e) => set('instructor', e.target.value)} placeholder={t('İsteğe bağlı')} />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>Renk</label>
+          <label className={labelCls}>{t('Renk')}</label>
           <div className="flex gap-2">
             {COURSE_COLORS.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => set('color', c)}
-                aria-label={`Renk ${c}`}
+                aria-label={t('Renk {c}', { c })}
                 className={`w-7 h-7 rounded-full border-2 ${draft.color === c ? 'border-white' : 'border-transparent'}`}
                 style={{ backgroundColor: c }}
               />
@@ -163,7 +164,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
         {/* Schedule */}
         <section className="space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-body">Haftalık program</h4>
+            <h4 className="text-xs font-semibold text-body">{t('Haftalık program')}</h4>
             <button
               type="button"
               className={btnGhost}
@@ -171,28 +172,28 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                 setSessions([...draft.sessions, { id: newId(), day: 0, start: '09:00', end: '10:50', kind: 'teori', room: '' }])
               }
             >
-              <Plus className="w-3.5 h-3.5" /> Oturum ekle
+              <Plus className="w-3.5 h-3.5" />{' '}{t('Oturum ekle')}
             </button>
           </div>
-          {draft.sessions.length === 0 && <p className="text-xs text-muted">Ders saatlerini ekleyin; devamsızlık sınırı buna göre hesaplanır.</p>}
+          {draft.sessions.length === 0 && <p className="text-xs text-muted">{t('Ders saatlerini ekleyin; devamsızlık sınırı buna göre hesaplanır.')}</p>}
           {draft.sessions.map((s) => (
             <div key={s.id} className="grid grid-cols-[1fr_auto_auto_auto] sm:grid-cols-[1.2fr_0.8fr_0.8fr_1fr_1fr_auto] gap-2 items-center">
               <select className={inputCls} value={s.day} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, day: Number(e.target.value) } : x)))}>
                 {DAYS.map((d, i) => (
-                  <option key={d} value={i}>{d}</option>
+                  <option key={d} value={i}>{tx(d)}</option>
                 ))}
               </select>
               <input type="time" className={`${inputCls} w-[92px]`} value={s.start} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, start: e.target.value } : x)))} />
               <input type="time" className={`${inputCls} w-[92px]`} value={s.end} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, end: e.target.value } : x)))} />
-              <button type="button" onClick={async () => (await confirmDelete('Ders saati', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="sm:hidden w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
+              <button type="button" onClick={async () => (await confirmDelete(t('Ders saati'), t('Kaydet’e basana kadar değişiklik kalıcı olmaz.'))) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="sm:hidden w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label={t('Oturumu sil')}>
                 <Trash2 className="w-4 h-4" />
               </button>
               <select className={`${inputCls} col-span-2 sm:col-span-1`} value={s.kind} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, kind: e.target.value as CourseSession['kind'] } : x)))}>
-                <option value="teori">Teorik</option>
-                <option value="uygulama">Uygulama / Lab</option>
+                <option value="teori">{t('Teorik')}</option>
+                <option value="uygulama">{t('Uygulama / Lab')}</option>
               </select>
-              <input className={`${inputCls} col-span-2 sm:col-span-1`} value={s.room ?? ''} placeholder="Derslik" onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, room: e.target.value } : x)))} />
-              <button type="button" onClick={async () => (await confirmDelete('Ders saati', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="hidden sm:flex w-9 h-9 items-center justify-center text-muted hover:text-rose-400" aria-label="Oturumu sil">
+              <input className={`${inputCls} col-span-2 sm:col-span-1`} value={s.room ?? ''} placeholder={t('Derslik')} onChange={(e) => setSessions(draft.sessions.map((x) => (x.id === s.id ? { ...x, room: e.target.value } : x)))} />
+              <button type="button" onClick={async () => (await confirmDelete(t('Ders saati'), t('Kaydet’e basana kadar değişiklik kalıcı olmaz.'))) && setSessions(draft.sessions.filter((x) => x.id !== s.id))} className="hidden sm:flex w-9 h-9 items-center justify-center text-muted hover:text-rose-400" aria-label={t('Oturumu sil')}>
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -200,11 +201,11 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div>
-              <label className={labelCls}>Haftalık teorik saat</label>
+              <label className={labelCls}>{t('Haftalık teorik saat')}</label>
               <input type="number" min={0} className={inputCls} value={draft.theoryHours} disabled={autoHours} onChange={(e) => set('theoryHours', Math.max(0, Math.round(Number(e.target.value) || 0)))} />
             </div>
             <div>
-              <label className={labelCls}>Haftalık uygulama saati</label>
+              <label className={labelCls}>{t('Haftalık uygulama saati')}</label>
               <input type="number" min={0} className={inputCls} value={draft.practiceHours} disabled={autoHours} onChange={(e) => set('practiceHours', Math.max(0, Math.round(Number(e.target.value) || 0)))} />
             </div>
           </div>
@@ -220,7 +221,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                 }
               }}
             />
-            Saatleri programdan otomatik hesapla
+            {t('Saatleri programdan otomatik hesapla')}
           </label>
         </section>
 
@@ -228,23 +229,23 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-body">
-              Değerlendirme{' '}
+              {t('Değerlendirme')}{' '}
               <span className={Math.abs(weightTotal - 100) > 0.01 ? 'text-amber-400' : 'text-muted'}>(toplam %{weightTotal})</span>
             </h4>
             <button
               type="button"
               className={btnGhost}
-              onClick={() => set('assessments', [...draft.assessments, { id: newId(), name: 'Quiz', type: 'quiz', weight: 0, score: null }])}
+              onClick={() => set('assessments', [...draft.assessments, { id: newId(), name: t('Quiz'), type: 'quiz', weight: 0, score: null }])}
             >
-              <Plus className="w-3.5 h-3.5" /> Ekle
+              <Plus className="w-3.5 h-3.5" />{' '}{t('Ekle')}
             </button>
           </div>
           {draft.assessments.map((a) => (
             <div key={a.id} className="grid grid-cols-[1fr_88px_auto] sm:grid-cols-[1fr_1fr_88px_auto] gap-2 items-center pb-2 sm:pb-0 border-b border-line sm:border-0 last:border-0">
-              <input className={`${inputCls} col-span-3 sm:col-span-1`} value={a.name} aria-label="Değerlendirme adı" onChange={(e) => setAssessment(a.id, { name: e.target.value })} />
-              <select className={inputCls} aria-label="Değerlendirme türü" value={a.type} onChange={(e) => setAssessment(a.id, { type: e.target.value as AssessmentType })}>
+              <input className={`${inputCls} col-span-3 sm:col-span-1`} value={a.name} aria-label={t('Değerlendirme adı')} onChange={(e) => setAssessment(a.id, { name: e.target.value })} />
+              <select className={inputCls} aria-label={t('Değerlendirme türü')} value={a.type} onChange={(e) => setAssessment(a.id, { type: e.target.value as AssessmentType })}>
                 {Object.entries(ASSESSMENT_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                  <option key={k} value={k}>{tx(v)}</option>
                 ))}
               </select>
               {a.type === 'butunleme' ? (
@@ -255,7 +256,7 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">%</span>
                 </div>
               )}
-              <button type="button" onClick={async () => (await confirmDelete('Değerlendirme', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && set('assessments', draft.assessments.filter((x) => x.id !== a.id))} className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label="Değerlendirmeyi sil">
+              <button type="button" onClick={async () => (await confirmDelete(t('Değerlendirme'), t('Kaydet’e basana kadar değişiklik kalıcı olmaz.'))) && set('assessments', draft.assessments.filter((x) => x.id !== a.id))} className="w-9 h-9 flex items-center justify-center text-muted hover:text-rose-400" aria-label={t('Değerlendirmeyi sil')}>
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -273,22 +274,21 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                 if (!e.target.checked) set('retake', null);
               }}
             />
-            Alttan alınan ders (daha önce kalındı)
+            {t('Alttan alınan ders (daha önce kalındı)')}
           </label>
           {!retakeOn && previousFail && (
             <p className="text-[11px] text-amber-300/90">
-              Bu dersten önceki bir dönemde {previousFail.status === 'devamsiz' ? 'devamsızlıktan' : 'kalmış'} görünüyorsunuz. Alttan
-              alıyorsanız işaretleyin.
+              {t('Bu dersten önceki bir dönemde')}{' '}{previousFail.status === 'devamsiz' ? t('devamsızlıktan') : t('kalmış')}{' '}{t('görünüyorsunuz. Alttan alıyorsanız işaretleyin.')}
             </p>
           )}
           {retakeOn && (
             <div className="space-y-1.5">
-              <p className="text-[11px] text-subtle">Bu dersten daha önce neden kaldınız?</p>
+              <p className="text-[11px] text-subtle">{t('Bu dersten daha önce neden kaldınız?')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {(
                   [
-                    ['not', 'Nottan kaldım', 'Devam şartını sağlamıştım; devamsızlık takip edilmez.'],
-                    ['devamsizlik', 'Devamsızlıktan kaldım', 'Derse devam zorunlu; devamsızlık takip edilir.'],
+                    ['not', t('Nottan kaldım'), t('Devam şartını sağlamıştım; devamsızlık takip edilmez.')],
+                    ['devamsizlik', t('Devamsızlıktan kaldım'), t('Derse devam zorunlu; devamsızlık takip edilir.')],
                   ] as const
                 ).map(([value, title, text]) => (
                   <button
@@ -299,8 +299,8 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
                       draft.retake?.reason === value ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-line hover:bg-surface-2'
                     }`}
                   >
-                    <span className="block text-xs font-medium text-fg">{title}</span>
-                    <span className="block text-[11px] text-muted">{text}</span>
+                    <span className="block text-xs font-medium text-fg">{tx(title)}</span>
+                    <span className="block text-[11px] text-muted">{tx(text)}</span>
                   </button>
                 ))}
               </div>
@@ -311,21 +311,21 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
         {/* Completed course */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Transkript harf notu (tamamlanmış ders)</label>
+            <label className={labelCls}>{t('Transkript harf notu (tamamlanmış ders)')}</label>
             <select className={inputCls} value={draft.manualLetter ?? ''} onChange={(e) => set('manualLetter', e.target.value || null)}>
-              <option value="">Notlardan hesapla</option>
+              <option value="">{t('Notlardan hesapla')}</option>
               {[...letters, 'G', 'K'].map((l) => (
-                <option key={l} value={l}>{l}</option>
+                <option key={l} value={l}>{tx(l)}</option>
               ))}
             </select>
           </div>
           <label className="flex items-center gap-2 text-xs text-subtle sm:pt-6">
             <input type="checkbox" checked={!!draft.excludeFromGpa} onChange={(e) => set('excludeFromGpa', e.target.checked)} />
-            Ortalamaya katılmasın (kredisiz / seçmeli dışı)
+            {t('Ortalamaya katılmasın (kredisiz / seçmeli dışı)')}
           </label>
         </section>
 
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-400">{tx(error)}</p>}
 
         <div className="modal-actions flex items-center justify-between gap-2">
           {course && onDelete ? (
@@ -333,20 +333,20 @@ export function CourseModal({ isOpen, onClose, course, termId, grading, onSave, 
               type="button"
               className="h-9 px-3 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg inline-flex items-center gap-1.5"
               onClick={async () => {
-                if (await confirmDelete(`"${course.name}" dersi`, 'Dersin tüm devamsızlık, not ve çalışma kayıtları da silinir. Bu işlem geri alınamaz.')) {
+                if (await confirmDelete(`"${course.name}" dersi`, t('Dersin tüm devamsızlık, not ve çalışma kayıtları da silinir. Birkaç saniye içinde “Geri al” ile geri getirebilirsiniz.'))) {
                   onDelete(course.id);
                   onClose();
                 }
               }}
             >
-              <Trash2 className="w-4 h-4" /> Dersi sil
+              <Trash2 className="w-4 h-4" />{' '}{t('Dersi sil')}
             </button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
-            <button type="button" className={btnSecondary} onClick={onClose}>Vazgeç</button>
-            <button type="button" className={btnPrimary} onClick={handleSave}>Kaydet</button>
+            <button type="button" className={btnSecondary} onClick={onClose}>{t('Vazgeç')}</button>
+            <button type="button" className={btnPrimary} onClick={handleSave}>{t('Kaydet')}</button>
           </div>
         </div>
       </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { t, tx, intlLocale } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React, { useState } from 'react';
 import { CalendarDays, MapPin, Pencil, Plus } from 'lucide-react';
 import type { AcademicData, Course, Exam, Term } from '@/lib/academic/types';
@@ -12,12 +14,12 @@ interface Props {
   data: AcademicData;
   term: Term;
   courses: Course[];
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
 }
 
 export function formatExamDate(exam: Exam): string {
   const [y, m, d] = exam.date.split('-').map(Number);
-  const date = new Date(y, m - 1, d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' });
+  const date = new Date(y, m - 1, d).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', weekday: 'short' });
   const time = exam.start ? ` • ${exam.start}${exam.end ? `–${exam.end}` : ''}` : '';
   return date + time;
 }
@@ -32,7 +34,7 @@ export function CountdownChip({ exam }: { exam: Exam }) {
       : days <= 7
         ? 'bg-amber-500/15 text-amber-300'
         : 'bg-emerald-500/10 text-emerald-300';
-  return <span className={`text-[11px] px-2 py-0.5 rounded-md font-medium whitespace-nowrap tabular-nums ${cls}`}>{countdownLabel(exam)}</span>;
+  return <span className={`text-[11px] px-2 py-0.5 rounded-md font-medium whitespace-nowrap tabular-nums ${cls}`}>{tx(countdownLabel(exam))}</span>;
 }
 
 /** Compact exam row shared by the exams tab and overview cards. */
@@ -42,16 +44,16 @@ export function ExamRow({ exam, course, action }: { exam: Exam; course?: Course;
       <span className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: course?.color ?? '#64748b' }} />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-fg truncate">
-          {exam.title}
+          {tx(exam.title)}
           {!fold(exam.title).includes(fold(EXAM_TYPE_LABEL[exam.type])) && (
-            <span className="text-[11px] text-muted ml-1.5">{EXAM_TYPE_LABEL[exam.type]}</span>
+            <span className="text-[11px] text-muted ml-1.5">{tx(EXAM_TYPE_LABEL[exam.type])}</span>
           )}
         </p>
         <p className="text-[11px] text-muted truncate">
-          {formatExamDate(exam)}
+          {tx(formatExamDate(exam))}
           {exam.room && (
             <>
-              {' '}• <MapPin className="w-3 h-3 inline -mt-0.5" /> {exam.room}
+              {' '}• <MapPin className="w-3 h-3 inline -mt-0.5" /> {tx(exam.room)}
             </>
           )}
           {exam.note ? ` • ${exam.note}` : ''}
@@ -77,7 +79,11 @@ export function ExamsTab({ data, term, courses, update }: Props) {
       const list = d.exams ?? [];
       return { ...d, exams: list.some((e) => e.id === exam.id) ? list.map((e) => (e.id === exam.id ? exam : e)) : [...list, exam] };
     });
-  const deleteExam = (id: string) => update((d) => ({ ...d, exams: (d.exams ?? []).filter((e) => e.id !== id) }));
+  const deleteExam = (id: string) =>
+    update((d) => ({ ...d, exams: (d.exams ?? []).filter((e) => e.id !== id) }), {
+      title: t('Sınav silindi'),
+      message: data.exams?.find((e) => e.id === id)?.title || undefined,
+    });
 
   const setScore = (exam: Exam, score: number | null) =>
     update((d) => ({
@@ -90,7 +96,7 @@ export function ExamsTab({ data, term, courses, update }: Props) {
     }));
 
   const editBtn = (exam: Exam) => (
-    <button className={btnGhost} onClick={() => setModal({ open: true, exam })} aria-label="Sınavı düzenle">
+    <button className={btnGhost} onClick={() => setModal({ open: true, exam })} aria-label={t('Sınavı düzenle')}>
       <Pencil className="w-3.5 h-3.5" />
     </button>
   );
@@ -103,12 +109,12 @@ export function ExamsTab({ data, term, courses, update }: Props) {
         <div className="rounded-xl border border-line bg-surface p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="text-center sm:text-left sm:pr-4 sm:border-r border-line">
             <p className="text-3xl font-semibold text-fg tabular-nums leading-none">{Math.max(0, daysUntil(next.date))}</p>
-            <p className="text-[11px] text-muted mt-1">gün</p>
+            <p className="text-[11px] text-muted mt-1">{t('gün')}</p>
           </div>
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="text-[11px] text-muted">Sıradaki sınav</p>
-            <p className="text-sm font-semibold text-fg truncate">{next.title}</p>
-            <p className="text-xs text-subtle">{formatExamDate(next)}{next.room ? ` • ${next.room}` : ''}</p>
+            <p className="text-[11px] text-muted">{t('Sıradaki sınav')}</p>
+            <p className="text-sm font-semibold text-fg truncate">{tx(next.title)}</p>
+            <p className="text-xs text-subtle">{tx(formatExamDate(next))}{next.room ? ` • ${next.room}` : ''}</p>
           </div>
           <CountdownChip exam={next} />
         </div>
@@ -116,18 +122,18 @@ export function ExamsTab({ data, term, courses, update }: Props) {
 
       <Card>
         <CardHeader
-          title={`Yaklaşan sınavlar (${upcoming.length})`}
+          title={t('Yaklaşan sınavlar ({length})', { length: upcoming.length })}
           icon={<CalendarDays className="w-4 h-4 text-subtle" />}
           action={
             <button className={btnPrimary} onClick={() => setModal({ open: true, exam: null })}>
-              <Plus className="w-4 h-4" /> Sınav ekle
+              <Plus className="w-4 h-4" />{' '}{t('Sınav ekle')}
             </button>
           }
         />
         {upcoming.length === 0 ? (
           <EmptyState
-            title="Yaklaşan sınav yok"
-            text="Vize, final ve quiz tarihlerinizi ekleyin; kalan günleri burada ve genel bakışta görürsünüz."
+            title={t('Yaklaşan sınav yok')}
+            text={t('Vize, final ve quiz tarihlerinizi ekleyin; kalan günleri burada ve genel bakışta görürsünüz.')}
           />
         ) : (
           <div className="divide-y divide-line">
@@ -140,7 +146,7 @@ export function ExamsTab({ data, term, courses, update }: Props) {
 
       {past.length > 0 && (
         <Card>
-          <CardHeader title={`Geçmiş sınavlar (${past.length})`} />
+          <CardHeader title={t('Geçmiş sınavlar ({length})', { length: past.length })} />
           <div className="divide-y divide-line">
             {(showAllPast ? past : past.slice(0, 5)).map((e) => {
               const course = courseOf(e);
@@ -153,7 +159,7 @@ export function ExamsTab({ data, term, courses, update }: Props) {
                   action={
                     <>
                       {assessment && (
-                        <ScoreInput value={assessment.score} onChange={(v) => setScore(e, v)} placeholder="Not" className="w-16" />
+                        <ScoreInput value={assessment.score} onChange={(v) => setScore(e, v)} placeholder={t('Not')} className="w-16" />
                       )}
                       {editBtn(e)}
                     </>
@@ -164,7 +170,7 @@ export function ExamsTab({ data, term, courses, update }: Props) {
           </div>
           {past.length > 5 && (
             <button className="w-full h-9 text-xs text-subtle hover:text-fg border-t border-line" onClick={() => setShowAllPast((v) => !v)}>
-              {showAllPast ? 'Daha az göster' : `Tümünü göster (${past.length})`}
+              {showAllPast ? t('Daha az göster') : t('Tümünü göster ({length})', { length: past.length })}
             </button>
           )}
         </Card>

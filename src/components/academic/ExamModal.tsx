@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import type { Course, Exam, ExamType } from '@/lib/academic/types';
@@ -69,8 +70,8 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
   const set = (patch: Partial<Exam>) => setDraft((d) => ({ ...d, ...patch }));
 
   const handleSave = () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) return setError('Sınav tarihini seçiniz.');
-    if (draft.start && draft.end && draft.end <= draft.start) return setError('Bitiş saati başlangıçtan sonra olmalı.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) return setError(tl('Sınav tarihini seçiniz.'));
+    if (draft.start && draft.end && draft.end <= draft.start) return setError(tl('Bitiş saati başlangıçtan sonra olmalı.'));
     const title = draft.title.trim() || (course ? `${course.code || course.name} ${EXAM_TYPE_LABEL[draft.type]}` : EXAM_TYPE_LABEL[draft.type]);
     onSave({
       ...draft,
@@ -85,11 +86,11 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={exam ? 'Sınavı düzenle' : 'Sınav ekle'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={exam ? tl('Sınavı düzenle') : tl('Sınav ekle')}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 sm:col-span-1">
-            <label className={labelCls}>Ders</label>
+            <label className={labelCls}>{tl('Ders')}</label>
             <select
               className={inputCls}
               value={draft.courseId ?? ''}
@@ -101,14 +102,14 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code ? `${c.code} — ` : ''}
-                  {c.name}
+                  {tx(c.name)}
                 </option>
               ))}
-              <option value="">Ders dışı</option>
+              <option value="">{tl('Ders dışı')}</option>
             </select>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className={labelCls}>Tür</label>
+            <label className={labelCls}>{tl('Tür')}</label>
             <select
               className={inputCls}
               value={draft.type}
@@ -118,66 +119,66 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
               }}
             >
               {EXAM_TYPES.map((t) => (
-                <option key={t} value={t}>{EXAM_TYPE_LABEL[t]}</option>
+                <option key={t} value={t}>{tx(EXAM_TYPE_LABEL[t])}</option>
               ))}
             </select>
           </div>
           <div className="col-span-2">
-            <label className={labelCls}>Başlık</label>
+            <label className={labelCls}>{tl('Başlık')}</label>
             <input
               className={inputCls}
               value={draft.title}
               maxLength={120}
               onChange={(e) => set({ title: e.target.value })}
-              placeholder={course ? `${course.code || course.name} ${EXAM_TYPE_LABEL[draft.type]}` : 'Ör. YDS deneme'}
+              placeholder={course ? `${course.code || course.name} ${EXAM_TYPE_LABEL[draft.type]}` : tl('Ör. YDS deneme')}
             />
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className={labelCls}>Tarih *</label>
+            <label className={labelCls}>{tl('Tarih *')}</label>
             <input type="date" className={inputCls} value={draft.date} onChange={(e) => set({ date: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-2 col-span-2 sm:col-span-1">
             <div>
-              <label className={labelCls}>Başlangıç</label>
+              <label className={labelCls}>{tl('Başlangıç')}</label>
               <input type="time" className={inputCls} value={draft.start ?? ''} onChange={(e) => set({ start: e.target.value })} />
             </div>
             <div>
-              <label className={labelCls}>Bitiş</label>
+              <label className={labelCls}>{tl('Bitiş')}</label>
               <input type="time" className={inputCls} value={draft.end ?? ''} onChange={(e) => set({ end: e.target.value })} />
             </div>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className={labelCls}>Yer / derslik</label>
-            <input className={inputCls} value={draft.room ?? ''} maxLength={60} onChange={(e) => set({ room: e.target.value })} placeholder="Ör. D-201" />
+            <label className={labelCls}>{tl('Yer / derslik')}</label>
+            <input className={inputCls} value={draft.room ?? ''} maxLength={60} onChange={(e) => set({ room: e.target.value })} placeholder={tl('Ör. D-201')} />
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className={labelCls}>Not girişi</label>
+            <label className={labelCls}>{tl('Not girişi')}</label>
             <select
               className={inputCls}
               value={draft.assessmentId ?? ''}
               onChange={(e) => set({ assessmentId: e.target.value || null })}
               disabled={!course || course.assessments.length === 0}
-              title="Sınav sonrası notu buradan girilen değerlendirmeye yazılır"
+              title={tl('Sınav sonrası notu buradan girilen değerlendirmeye yazılır')}
             >
-              <option value="">Bağlama</option>
+              <option value="">{tl('Bağlama')}</option>
               {course?.assessments.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
+                <option key={a.id} value={a.id}>{tx(a.name)}</option>
               ))}
             </select>
           </div>
           <div className="col-span-2">
-            <label className={labelCls}>Not</label>
+            <label className={labelCls}>{tl('Not')}</label>
             <input
               className={inputCls}
               value={draft.note ?? ''}
               maxLength={300}
               onChange={(e) => set({ note: e.target.value })}
-              placeholder="Konular, getirilecekler…"
+              placeholder={tl('Konular, getirilecekler…')}
             />
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-400">{tx(error)}</p>}
 
         <div className="modal-actions flex items-center justify-between gap-2">
           {exam ? (
@@ -190,14 +191,14 @@ export function ExamModal({ isOpen, onClose, exam, termId, courses, onSave, onDe
                 onClose();
               }}
             >
-              Sınavı sil
+              {tl('Sınavı sil')}
             </button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
-            <button type="button" className={btnSecondary} onClick={onClose}>Vazgeç</button>
-            <button type="button" className={btnPrimary} onClick={handleSave}>Kaydet</button>
+            <button type="button" className={btnSecondary} onClick={onClose}>{tl('Vazgeç')}</button>
+            <button type="button" className={btnPrimary} onClick={handleSave}>{tl('Kaydet')}</button>
           </div>
         </div>
       </div>

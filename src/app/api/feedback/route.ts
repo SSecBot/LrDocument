@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ success: true, item: toFeedbackItem(row) }, { status: 201 });
   } catch (error) {
-    return handleRouteError(error, 'Feedback create error', 'Gönderilemedi.');
+    return handleRouteError(error, 'Feedback create error', 'Mesajınız gönderilemedi.');
   }
 }
 

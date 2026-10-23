@@ -55,6 +55,8 @@ const fields = {
   notificationVolume: z.number().min(0).max(1),
   /** The welcome screen with the user guide was shown once. */
   guideSeen: z.boolean(),
+  /** "Ana ekrana ekle" reminder: the person chose "Bir daha gösterme". */
+  installPromptOff: z.boolean(),
   dashboardWidgets: z
     .array(z.object({ id: z.enum(['student', 'stats', 'notes', 'events', 'tasks', 'payments', 'month', 'exchange', 'academic', 'financeSummary', 'pinned']), visible: z.boolean() }).strict())
     .max(20),
@@ -86,6 +88,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   keyboardShortcuts: true,
   touchGestures: true,
   guideSeen: false,
+  installPromptOff: false,
   pdfZoomMobile: null,
   notificationSound: 'default',
   notificationSoundFileId: null,

@@ -98,6 +98,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
   } catch (error) {
-    return handleRouteError(error, 'Push admin error', 'İşlem yapılamadı.');
+    return handleRouteError(error, 'Push admin error', 'Bildirim ayarı uygulanamadı.');
   }
 }

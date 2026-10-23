@@ -50,6 +50,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
     }
   } catch (error) {
-    return handleRouteError(error, 'Admin verification error', 'İşlem yapılamadı.');
+    return handleRouteError(error, 'Admin verification error', 'Doğrulama durumu değiştirilemedi.');
   }
 }

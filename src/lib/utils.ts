@@ -1,3 +1,4 @@
+import { intlLocale, t } from '@/lib/i18n';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -15,16 +16,8 @@ export function formatTurkishDate(dateString: string): string {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
 
-    const months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-    ];
-
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-
-    return `${day} ${month} ${year}`;
+    // "5 Ocak 2026" / "January 5, 2026"
+    return date.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
   } catch {
     return dateString;
   }
@@ -41,12 +34,12 @@ export function getRelativeTimeTurkish(dateString: string): string {
     const diffTime = target.getTime() - now.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Bugün';
-    if (diffDays === 1) return 'Yarın';
-    if (diffDays === 2) return '2 gün sonra';
-    if (diffDays === -1) return 'Dün';
-    if (diffDays < -1) return `${Math.abs(diffDays)} gün önce`;
-    if (diffDays > 2) return `${diffDays} gün kaldı`;
+    if (diffDays === 0) return t('Bugün');
+    if (diffDays === 1) return t('Yarın');
+    if (diffDays === 2) return t('2 gün sonra');
+    if (diffDays === -1) return t('Dün');
+    if (diffDays < -1) return t('{days} gün önce', { days: Math.abs(diffDays) });
+    if (diffDays > 2) return t('{days} gün kaldı', { days: diffDays });
 
     return formatTurkishDate(dateString);
   } catch {
@@ -55,7 +48,7 @@ export function getRelativeTimeTurkish(dateString: string): string {
 }
 
 export function formatCurrencyTRY(amount: number): string {
-  return new Intl.NumberFormat('tr-TR', {
+  return new Intl.NumberFormat(intlLocale(), {
     style: 'currency',
     currency: 'TRY',
     maximumFractionDigits: 0,

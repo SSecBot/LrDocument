@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, getLocale, intlLocale } from '@/lib/i18n';
 import { createContext, useContext, useState, useEffect } from 'react';
 import {
   Note,
@@ -26,6 +27,7 @@ import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } f
 import { formatCurrencyTRY, generateId, toLocalDateString } from '@/lib/utils';
 import { playNotificationSound, resetNotificationSound } from '@/lib/notificationSound';
 import { CORP_MODULE_LABEL, ENTITY_MODULE, canEdit, isCorporate, type CorpModule } from '@/lib/corporate';
+import { responseError, thrownError } from '@/lib/errors';
 import {
   DEFAULT_EXCHANGE_RATES,
   fetchLiveExchangeRates,
@@ -39,6 +41,10 @@ export interface ToastMessage {
   type: 'success' | 'info' | 'warning' | 'error';
   title: string;
   message?: string;
+  /** A button in the toast ("Geri al"). */
+  action?: { label: string; run: () => void };
+  /** How long the toast stays, in ms (default 4 s). */
+  duration?: number;
 }
 
 interface AppState {
@@ -249,7 +255,7 @@ type MutationEntity = 'note' | 'task' | 'kanban' | 'event' | 'finance' | 'folder
 function guardEdit(module: CorpModule, space: Space = 'shared'): boolean {
   // The private space is the person's own, outside the team permissions.
   if (space === 'personal' || canEdit(globalState.currentUser, module)) return true;
-  pushToast({ type: 'warning', title: 'Yetkiniz yok', message: `${CORP_MODULE_LABEL[module]} bölümünü yalnızca görüntüleyebilirsiniz.` });
+  pushToast({ type: 'warning', title: tl('Yetkiniz yok'), message: tl('{v0} bölümünü yalnızca görüntüleyebilirsiniz.', { v0: CORP_MODULE_LABEL[module] }) });
   return false;
 }
 
@@ -266,7 +272,7 @@ function reportSyncError(message: string) {
   const now = Date.now();
   if (now - lastSyncErrorAt < 5000) return;
   lastSyncErrorAt = now;
-  pushToast({ type: 'error', title: 'Kaydedilemedi', message });
+  pushToast({ type: 'error', title: tl('Kaydedilemedi'), message });
 }
 
 async function sendMutation(
@@ -287,22 +293,23 @@ async function sendMutation(
       // keepalive lets the request finish while the page unloads (browsers cap it at 64 KB).
       keepalive: keepalive && body.length < 60_000,
     });
-    if (res.status === 401) {
-      reportSyncError('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.');
-      return;
-    }
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      reportSyncError(errData.error || 'Değişiklik sunucuya kaydedilemedi.');
+      reportSyncError(responseError(res, errData, tl('Son değişikliğiniz kaydedilemedi.')));
     }
-  } catch {
-    reportSyncError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.');
+  } catch (err) {
+    reportSyncError(thrownError(err, tl('Son değişikliğiniz kaydedilemedi.')));
   } finally {
     inFlightMutations--;
   }
 }
 
 function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete', id?: string, data?: unknown, space: Space = 'shared') {
+  // Inside an undoable deletion: sent only when the undo window ends.
+  if (deferredWrites) {
+    deferredWrites.push(() => mutateDB(entity, action, id, data, space));
+    return;
+  }
   // Side effects into a module the member may not edit (e.g. a task's calendar entry) stay local.
   if (space === 'shared' && !canEdit(globalState.currentUser, ENTITY_MODULE[entity])) return;
   const key = `${space}:${entity}:${id}`;
@@ -323,7 +330,7 @@ function mutateDB(entity: MutationEntity, action: 'create' | 'upsert' | 'delete'
   }
 
   // Creates and deletes go out immediately; a pending upsert for a deleted record is simply dropped.
-  sendMutation(entity, action, id, data, false, space);
+  sendMutation(entity, action, id, data, unloading, space);
 }
 
 /** Sends all debounced writes immediately (before leaving the page; Ctrl+S in the editor). */
@@ -337,11 +344,17 @@ export function flushPendingMutations() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => {
+    unloading = true;
+    commitPendingUndos();
     flushPendingMutations();
     flushPreferences(true);
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
+      // A phone may close a hidden tab without warning: send waiting deletions now.
+      unloading = true;
+      commitPendingUndos();
+      unloading = false;
       flushPendingMutations();
       flushPreferences(true);
     }
@@ -361,7 +374,7 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
     if (existingEventIndex >= 0) {
       const updatedEvent = {
         ...globalState.events[existingEventIndex],
-        title: `Görev Teslimi: ${task.title}`,
+        title: tl('Görev Teslimi: {title}', { title: task.title }),
         date: task.dueDate,
         ...(task.dueTime ? { time: task.dueTime } : {}),
         status: (task.completed ? 'yayinlandi' : 'planlandi') as EventStatus,
@@ -372,8 +385,8 @@ function syncTaskToCalendar(task: Task, isDelete: boolean = false) {
     } else {
       const newEvent: CalendarEvent = {
         id: `event-task-${task.id}`,
-        title: `Görev Teslimi: ${task.title}`,
-        description: task.description || 'Görevler modülünden otomatik senkronize edildi.',
+        title: tl('Görev Teslimi: {title}', { title: task.title }),
+        description: task.description || tl('Görevler modülünden otomatik senkronize edildi.'),
         date: task.dueDate,
         time: task.dueTime ?? '12:00',
         durationMinutes: 45,
@@ -429,8 +442,8 @@ export function getComputedNotifications(): AppNotification[] {
     if (!task.completed && isTaskOverdue(task)) {
       notifs.push({
         id: `notif-task-${task.id}`,
-        title: `Gecikmiş Görev: ${task.title}`,
-        message: `Son teslim tarihi (${task.dueDate}) geçmiş ve henüz tamamlanmamış. Öncelik "Yüksek" olarak işaretlendi.`,
+        title: tl('Gecikmiş Görev: {title}', { title: task.title }),
+        message: tl('Son teslim tarihi ({dueDate}) geçmiş ve henüz tamamlanmamış. Öncelik "Yüksek" olarak işaretlendi.', { dueDate: task.dueDate }),
         type: 'task_overdue',
         priority: 'yuksek',
         isRead: globalState.preferences.readNotificationIds.includes(`notif-task-${task.id}`),
@@ -448,8 +461,8 @@ export function getComputedNotifications(): AppNotification[] {
     if (!trans.isConfirmed && isTransactionOverdue(trans)) {
       notifs.push({
         id: `notif-trans-${trans.id}`,
-        title: trans.type === 'gelir' ? `Gecikmiş Gelir Onayı: ${trans.title}` : `Vadesi Geçmiş Gider: ${trans.title}`,
-        message: `₺${trans.amount.toLocaleString('tr-TR')} tutarındaki ${trans.category} işlemi (${trans.date}) onay bekliyor. Öncelik "Yüksek" seviyesine yükseltildi.`,
+        title: trans.type === 'gelir' ? tl('Gecikmiş Gelir Onayı: {title}', { title: trans.title }) : tl('Vadesi Geçmiş Gider: {title}', { title: trans.title }),
+        message: tl('₺{v0} tutarındaki {category} işlemi ({date}) onay bekliyor. Öncelik "Yüksek" seviyesine yükseltildi.', { v0: trans.amount.toLocaleString(intlLocale()), category: trans.category, date: trans.date }),
         type: 'finance_overdue',
         priority: 'yuksek',
         isRead: globalState.preferences.readNotificationIds.includes(`notif-trans-${trans.id}`),
@@ -471,11 +484,11 @@ export function getComputedNotifications(): AppNotification[] {
     if (ev.status !== 'yayinlandi' && ev.status !== 'iptal') {
       if (ev.date === todayStr || ev.date === tomorrowStr) {
         const isToday = ev.date === todayStr;
-        const whenText = isToday ? 'Bugün' : 'Yarın';
+        const whenText = isToday ? tl('Bugün') : tl('Yarın');
 
         notifs.push({
           id: `notif-event-${ev.id}`,
-          title: `Takvim Hatırlatması (${whenText}): ${ev.title}`,
+          title: tl('Takvim Hatırlatması ({whenText}): {title}', { whenText, title: ev.title }),
           message: `${whenText} ${ev.time ? ev.time + ' saatinde' : ''} ${ev.platform ? '[' + ev.platform + '] ' : ''}${ev.description || 'Yayın ve içerik planı takvimde yer alıyor.'}`,
           type: 'calendar_upcoming',
           priority: isToday ? 'yuksek' : 'orta',
@@ -562,14 +575,31 @@ const checkAuth = async (force: boolean = false) => {
     // Refresh live currency exchange rates on session start
     fetchExchangeRates().catch(() => {});
 
+    // Cold start: the workspace data is requested together with the session check (one round trip
+    // less); it is simply dropped when nobody is signed in.
+    const dataRequest = fetch('/api/data');
+    dataRequest.catch(() => {});
     const res = await fetch('/api/auth/me');
     const data = await res.json();
 
     if (data.authenticated && data.user) {
+      // The account's language was changed on another device: /api/auth/me already updated the
+      // cookie, one reload shows the page in that language.
+      if (data.user.locale && data.user.locale !== getLocale() && typeof window !== 'undefined') {
+        let reloaded = false;
+        try {
+          reloaded = sessionStorage.getItem('lr-locale-sync') === data.user.locale;
+          sessionStorage.setItem('lr-locale-sync', data.user.locale);
+        } catch {}
+        if (!reloaded) {
+          window.location.reload();
+          return;
+        }
+      }
       globalState.currentUser = data.user;
       globalState.isAuthenticated = true;
       startPresence();
-      await loadUserData();
+      await loadUserData(false, dataRequest);
       startRealtime();
     } else {
       globalState.currentUser = null;
@@ -591,13 +621,13 @@ const checkAuth = async (force: boolean = false) => {
   }
 };
 
-const loadUserData = async (silent = false) => {
+const loadUserData = async (silent = false, request?: Promise<Response>) => {
   try {
     if (!silent) {
       globalState.isLoadingData = true;
       notify();
     }
-    const res = await fetch('/api/data');
+    const res = await (request ?? fetch('/api/data'));
     if (res.ok) {
       const json = await res.json();
       if (json.success && json.data) {
@@ -635,16 +665,16 @@ const loadUserData = async (silent = false) => {
     } else {
       pushToast({
         type: 'error',
-        title: 'Veriler yüklenemedi',
-        message: 'Çalışma alanı verileriniz alınamadı. Lütfen sayfayı yenileyin.',
+        title: tl('Veriler yüklenemedi'),
+        message: responseError(res, await res.json().catch(() => ({})), tl('Çalışma alanı verileriniz alınamadı.')),
       });
     }
   } catch (err) {
     console.error('Failed to load user data from database:', err);
     pushToast({
       type: 'error',
-      title: 'Bağlantı hatası',
-      message: 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip sayfayı yenileyin.',
+      title: tl('Bağlantı hatası'),
+      message: thrownError(err, tl('Çalışma alanı verileriniz alınamadı.')),
     });
   } finally {
     globalState.isLoadingData = false;
@@ -714,9 +744,9 @@ const switchAccount = async (userId: string): Promise<string | null> => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     });
-    if (!res.ok) return (await res.json().catch(() => ({}))).error || 'Hesap değiştirilemedi.';
-  } catch {
-    return 'Sunucuya ulaşılamadı.';
+    if (!res.ok) return responseError(res, await res.json().catch(() => ({})), tl('Hesap değiştirilemedi.'));
+  } catch (err) {
+    return thrownError(err, tl('Hesap değiştirilemedi.'));
   }
   leaveTo('/dashboard');
   return null;
@@ -761,25 +791,25 @@ function activityFor(evt: RealtimeEvent, before: Record<string, unknown> | undef
     const paidBefore = Array.isArray(before?.payments) ? before.payments.length : 0;
     const paid = Array.isArray(d.payments) ? (d.payments as CustomerPayment[]) : [];
     if (!before) {
-      title = `${evt.by} yeni müşteri ekledi`;
+      title = tl('{by} yeni müşteri ekledi', { by: evt.by });
       message = str(d.name);
     } else if (paid.length > paidBefore) {
       const last = [...paid].sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0];
-      title = `${evt.by} ödeme kaydetti`;
+      title = tl('{by} ödeme kaydetti', { by: evt.by });
       message = `${str(d.name)} · ${formatCurrencyTRY(last?.amount ?? 0)}`;
     } else return null;
     targetTab = 'customers';
   } else {
     if (before) return null; // only new records
-    if (evt.entity === 'task') [title, targetTab] = [`${evt.by} yeni görev ekledi`, 'tasks'];
+    if (evt.entity === 'task') [title, targetTab] = [tl('{by} yeni görev ekledi', { by: evt.by }), 'tasks'];
     else if (evt.entity === 'kanban') [title, targetTab] = [`${evt.by} panoya kart ekledi`, 'tasks'];
     else if (evt.entity === 'event') [title, targetTab] = [`${evt.by} takvime etkinlik ekledi`, 'calendar'];
     else if (evt.entity === 'note') [title, targetTab] = [`${evt.by} yeni not ekledi`, 'notes'];
     else if (evt.entity === 'finance') {
-      title = `${evt.by} yeni ${d.type === 'gider' ? 'gider' : 'gelir'} kaydı ekledi`;
+      title = tl('{by} yeni {v1} kaydı ekledi', { by: evt.by, v1: d.type === 'gider' ? 'gider' : 'gelir' });
       targetTab = 'finance';
     } else return null;
-    message = evt.entity === 'finance' ? `${str(d.title)} · ${formatCurrencyTRY(Number(d.amount) || 0)}` : str(d.title) || 'Başlıksız';
+    message = evt.entity === 'finance' ? `${str(d.title)} · ${formatCurrencyTRY(Number(d.amount) || 0)}` : str(d.title) || tl('Başlıksız');
   }
   return {
     id: `act-${evt.entity}-${evt.id}-${Date.now().toString(36)}`,
@@ -1027,8 +1057,8 @@ export async function enableDesktopNotifications(on: boolean): Promise<Notificat
   if (permission === 'granted' && !(await subscribePush(true))) {
     showSystemNotification({
       id: 'lr-test',
-      title: 'Bildirimler açık',
-      message: 'Yeni bildirimler artık burada da görünecek.',
+      title: tl('Bildirimler açık'),
+      message: tl('Yeni bildirimler artık burada da görünecek.'),
       type: 'system',
       priority: 'orta',
       isRead: false,
@@ -1051,16 +1081,141 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   });
 }
 
-const addToast = (toast: Omit<ToastMessage, 'id'>) => pushToast(toast);
+const addToast = (toast: Omit<ToastMessage, 'id'>) => void pushToast(toast);
+/** Shows a toast from outside React components. */
+export const showToast = addToast;
 
-function pushToast(toast: Omit<ToastMessage, 'id'>) {
+function pushToast(toast: Omit<ToastMessage, 'id'>): string {
   const id = generateId();
   globalState.toasts = [...globalState.toasts, { ...toast, id }];
   notify();
   setTimeout(() => {
     globalState.toasts = globalState.toasts.filter((t) => t.id !== id);
     notify();
-  }, 4000);
+  }, toast.duration ?? 4000);
+  return id;
+}
+
+// ---------------------------------------------------------------------------
+// Undo for deletions: the record leaves the screen at once, but the request to the server waits
+// UNDO_MS. "Geri al" puts everything back and nothing is ever sent, so nothing is lost on the server
+// either (a PDF note's file included). Leaving the page or hiding the tab sends the waiting deletions.
+// ---------------------------------------------------------------------------
+export const UNDO_MS = 6000;
+
+type PendingUndo = { toastId: string; timer: ReturnType<typeof setTimeout>; commit: () => void };
+const pendingUndos = new Map<string, PendingUndo>();
+/** While set, mutateDB calls are collected here instead of being sent (see undoable). */
+let deferredWrites: (() => void)[] | null = null;
+let unloading = false;
+
+/** Sends every waiting deletion now (page hidden or closing); their "Geri al" buttons disappear. */
+function commitPendingUndos() {
+  for (const [id, p] of pendingUndos) {
+    clearTimeout(p.timer);
+    pendingUndos.delete(id);
+    globalState.toasts = globalState.toasts.filter((t) => t.id !== p.toastId);
+    p.commit();
+  }
+}
+
+/**
+ * Shows an undo toast for a change that already happened on screen. `undo` puts it back; `commit`
+ * (optional) runs when the time is up, e.g. the delayed server request.
+ */
+export function offerUndo({ title, message, undo, commit }: { title: string; message?: string; undo: () => void; commit?: () => void }) {
+  const key = generateId();
+  const finish = () => {
+    pendingUndos.delete(key);
+    commit?.();
+  };
+  const timer = setTimeout(finish, UNDO_MS);
+  const toastId = pushToast({
+    type: 'info',
+    title,
+    message,
+    duration: UNDO_MS,
+    action: {
+      label: tl('Geri al'),
+      run: () => {
+        const p = pendingUndos.get(key);
+        if (!p) return;
+        clearTimeout(p.timer);
+        pendingUndos.delete(key);
+        globalState.toasts = globalState.toasts.filter((t) => t.id !== toastId);
+        undo();
+        pushToast({ type: 'success', title: tl('Geri alındı') });
+      },
+    },
+  });
+  pendingUndos.set(key, { toastId, timer, commit: finish });
+}
+
+const UNDO_LISTS = ['notes', 'folders', 'tasks', 'kanbanCards', 'events', 'transactions', 'customers', 'financeCategories'] as const;
+type ListSnapshot = { target: Record<string, unknown>; key: string; items: { id: string }[] }[];
+
+function snapshotLists(): ListSnapshot {
+  const out: ListSnapshot = [];
+  const shared = globalState as unknown as Record<string, unknown>;
+  const own = globalState.personal as unknown as Record<string, unknown>;
+  for (const key of UNDO_LISTS) {
+    out.push({ target: shared, key, items: shared[key] as { id: string }[] });
+    if (key in own) out.push({ target: own, key, items: own[key] as { id: string }[] });
+  }
+  return out;
+}
+
+/** Puts back what an undoable action removed or changed, keeping changes made since then elsewhere. */
+function restoreLists(before: ListSnapshot, after: ListSnapshot) {
+  before.forEach(({ target, key, items }, i) => {
+    const afterItems = after[i].items;
+    if (afterItems === items) return;
+    const afterById = new Map(afterItems.map((x) => [x.id, x]));
+    const current = (target[key] as { id: string }[]).slice();
+    items.forEach((old, index) => {
+      const atAfter = afterById.get(old.id);
+      if (atAfter === old) return;
+      const at = current.findIndex((x) => x.id === old.id);
+      if (at >= 0) {
+        // Changed by the action (a note moved out of a deleted folder): back to how it was.
+        if (current[at] === atAfter) current[at] = old;
+      } else {
+        current.splice(Math.min(index, current.length), 0, old);
+      }
+    });
+    // Records the action itself created (none of the deletions do) are left alone.
+    target[key] = current;
+  });
+}
+
+/**
+ * Runs a deletion with undo: its server writes wait for the undo window, and "Geri al" restores the
+ * lists as they were. Nothing happens (and no toast) when the action changed nothing, e.g. no permission.
+ */
+function undoable(title: string, run: () => void, message?: string) {
+  const before = snapshotLists();
+  const activeNotes = { shared: globalState.activeNoteId, personal: globalState.personal.activeNoteId };
+  const writes: (() => void)[] = [];
+  deferredWrites = writes;
+  try {
+    run();
+  } finally {
+    deferredWrites = null;
+  }
+  if (!writes.length) return;
+  const after = snapshotLists();
+  offerUndo({
+    title,
+    message,
+    commit: () => writes.forEach((w) => w()),
+    undo: () => {
+      restoreLists(before, after);
+      // The note that was open before the deletion opens again.
+      globalState.activeNoteId = activeNotes.shared;
+      globalState.personal.activeNoteId = activeNotes.personal;
+      notify();
+    },
+  });
 }
 
 const removeToast = (id: string) => {
@@ -1079,14 +1234,23 @@ const markAllNotificationsAsRead = () => {
   setPreference('readNotificationIds', Array.from(new Set([...globalState.preferences.readNotificationIds, ...allIds])).slice(-500));
 };
 
-const deleteNotification = (id: string) => {
+const dismissNotification = (id: string) => {
   if (!globalState.preferences.dismissedNotificationIds.includes(id)) {
     setPreference('dismissedNotificationIds', [...globalState.preferences.dismissedNotificationIds, id].slice(-500));
   }
 };
 
+const deleteNotification = (id: string) => {
+  if (globalState.preferences.dismissedNotificationIds.includes(id)) return;
+  dismissNotification(id);
+  offerUndo({
+    title: tl('Bildirim silindi'),
+    undo: () => setPreference('dismissedNotificationIds', globalState.preferences.dismissedNotificationIds.filter((x) => x !== id)),
+  });
+};
+
 const resolveNotificationAction = (notifId: string, actionType: string, targetId: string) => {
-  deleteNotification(notifId);
+  dismissNotification(notifId);
 
   if (actionType === 'complete_task') {
     const taskIndex = globalState.tasks.findIndex((t) => t.id === targetId);
@@ -1105,15 +1269,15 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
       mutateDB('task', 'upsert', updatedTask.id, updatedTask);
       addToast({
         type: 'success',
-        title: 'Görev Tamamlandı',
-        message: `"${updatedTask.title}" tamamlandı olarak işaretlendi.`,
+        title: tl('Görev Tamamlandı'),
+        message: tl('"{title}" tamamlandı olarak işaretlendi.', { title: updatedTask.title }),
       });
     }
   } else if (actionType === 'confirm_finance') {
     const own = globalState.personal.transactions.find((t) => t.id === targetId);
     if (own) {
       updateTransactionIn('personal', targetId, { isConfirmed: true });
-      addToast({ type: 'success', title: 'Finans Onaylandı', message: `"${own.title}" işlemi onaylandı.` });
+      addToast({ type: 'success', title: tl('Finans Onaylandı'), message: tl('"{title}" işlemi onaylandı.', { title: own.title }) });
     }
     const transIndex = globalState.transactions.findIndex((t) => t.id === targetId);
     if (transIndex >= 0) {
@@ -1129,8 +1293,8 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
       mutateDB('finance', 'upsert', updatedTrans.id, updatedTrans);
       addToast({
         type: 'success',
-        title: 'Finans Onaylandı',
-        message: `"${updatedTrans.title}" işlemi onaylandı.`,
+        title: tl('Finans Onaylandı'),
+        message: tl('"{title}" işlemi onaylandı.', { title: updatedTrans.title }),
       });
     }
   }
@@ -1142,7 +1306,7 @@ const resolveNotificationAction = (notifId: string, actionType: string, targetId
 // the space it works in. useAppStore() hands out the versions bound to the surrounding SpaceContext.
 // ---------------------------------------------------------------------------
 
-function addFolderIn(space: Space, name: string, description?: string, iconName = 'Folder'): string {
+function addFolderIn(space: Space, name: string, description?: string, iconName = tl('Folder')): string {
   if (!guardEdit('notes', space)) return '';
   const b = bucket(space);
   const id = generateId();
@@ -1163,6 +1327,11 @@ function updateFolderIn(space: Space, id: string, name: string, description?: st
 }
 
 function deleteFolderIn(space: Space, id: string, options?: { withNotes?: boolean }) {
+  const name = bucket(space).folders.find((f) => f.id === id)?.name;
+  undoable(tl('Klasör silindi'), () => removeFolder(space, id, options), name);
+}
+
+function removeFolder(space: Space, id: string, options?: { withNotes?: boolean }) {
   if (!guardEdit('notes', space)) return;
   const b = bucket(space);
   b.folders = b.folders.filter((f) => f.id !== id);
@@ -1192,7 +1361,7 @@ function addNoteIn(space: Space, partial?: Partial<Note>): string {
   const now = new Date().toISOString();
   const newNote: Note = {
     id,
-    title: partial?.title || (partial?.kind === 'table' ? 'Yeni Tablo' : 'Yeni Not'),
+    title: partial?.title || (partial?.kind === 'table' ? tl('Yeni Tablo') : tl('Yeni Not')),
     content: partial?.content || '',
     folder: partial?.folder ?? (isRealFolder(b.activeFolder) ? b.activeFolder : ''),
     tags: partial?.tags || [],
@@ -1220,13 +1389,16 @@ function updateNoteIn(space: Space, id: string, partial: Partial<Note>) {
 }
 
 function deleteNoteIn(space: Space, id: string) {
-  if (!guardEdit('notes', space)) return;
   const b = bucket(space);
-  b.notes = b.notes.filter((n) => n.id !== id);
-  if (b.activeNoteId === id) b.activeNoteId = b.notes[0]?.id || null;
-  // The server removes a PDF note's file together with the note.
-  mutateDB('note', 'delete', id, undefined, space);
-  notify();
+  const title = b.notes.find((n) => n.id === id)?.title;
+  undoable(tl('Not silindi'), () => {
+    if (!guardEdit('notes', space)) return;
+    b.notes = b.notes.filter((n) => n.id !== id);
+    if (b.activeNoteId === id) b.activeNoteId = b.notes[0]?.id || null;
+    // The server removes a PDF note's file together with the note (only once the undo window ends).
+    mutateDB('note', 'delete', id, undefined, space);
+    notify();
+  }, title || undefined);
 }
 
 function toggleFavoriteNoteIn(space: Space, id: string) {
@@ -1313,12 +1485,14 @@ const toggleTask = (id: string) => {
 };
 
 const deleteTask = (id: string) => {
-  if (!guardEdit('work')) return;
   const taskToDelete = globalState.tasks.find((t) => t.id === id);
-  if (taskToDelete) syncTaskToCalendar(taskToDelete, true);
-  globalState.tasks = globalState.tasks.filter((t) => t.id !== id);
-  mutateDB('task', 'delete', id);
-  notify();
+  undoable(tl('Görev silindi'), () => {
+    if (!guardEdit('work')) return;
+    if (taskToDelete) syncTaskToCalendar(taskToDelete, true);
+    globalState.tasks = globalState.tasks.filter((t) => t.id !== id);
+    mutateDB('task', 'delete', id);
+    notify();
+  }, taskToDelete?.title);
 };
 
 const addKanbanCard = (card: Omit<KanbanCard, 'id' | 'createdAt' | 'updatedAt'>): string => {
@@ -1348,10 +1522,12 @@ const updateKanbanCard = (id: string, partial: Partial<KanbanCard>) => {
 };
 
 const deleteKanbanCard = (id: string) => {
-  if (!guardEdit('work')) return;
-  globalState.kanbanCards = globalState.kanbanCards.filter((c) => c.id !== id);
-  mutateDB('kanban', 'delete', id);
-  notify();
+  undoable(tl('Kart silindi'), () => {
+    if (!guardEdit('work')) return;
+    globalState.kanbanCards = globalState.kanbanCards.filter((c) => c.id !== id);
+    mutateDB('kanban', 'delete', id);
+    notify();
+  }, globalState.kanbanCards.find((c) => c.id === id)?.title);
 };
 
 const moveKanbanCard = (id: string, columnId: KanbanColumnId) => {
@@ -1388,10 +1564,12 @@ const updateEvent = (id: string, partial: Partial<CalendarEvent>) => {
 };
 
 const deleteEvent = (id: string) => {
-  if (!guardEdit('calendar')) return;
-  globalState.events = globalState.events.filter((e) => e.id !== id);
-  mutateDB('event', 'delete', id);
-  notify();
+  undoable(tl('Etkinlik silindi'), () => {
+    if (!guardEdit('calendar')) return;
+    globalState.events = globalState.events.filter((e) => e.id !== id);
+    mutateDB('event', 'delete', id);
+    notify();
+  }, globalState.events.find((e) => e.id === id)?.title);
 };
 
 const updateEventStatus = (id: string, status: EventStatus) => {
@@ -1485,11 +1663,13 @@ function updateTransactionIn(space: Space, id: string, partial: Partial<FinanceT
 }
 
 function deleteTransactionIn(space: Space, id: string) {
-  if (!guardEdit('finance', space)) return;
   const b = bucket(space);
-  b.transactions = b.transactions.filter((t) => t.id !== id);
-  mutateDB('finance', 'delete', id, undefined, space);
-  notify();
+  undoable(tl('İşlem silindi'), () => {
+    if (!guardEdit('finance', space)) return;
+    b.transactions = b.transactions.filter((t) => t.id !== id);
+    mutateDB('finance', 'delete', id, undefined, space);
+    notify();
+  }, b.transactions.find((t) => t.id === id)?.title);
 }
 
 function toggleTransactionConfirmationIn(space: Space, id: string) {
@@ -1520,10 +1700,12 @@ const updateCustomer = (id: string, partial: Partial<Customer>) => {
 };
 
 const deleteCustomer = (id: string) => {
-  if (!guardEdit('customers')) return;
-  globalState.customers = globalState.customers.filter((c) => c.id !== id);
-  mutateDB('customer', 'delete', id);
-  notify();
+  undoable(tl('Müşteri silindi'), () => {
+    if (!guardEdit('customers')) return;
+    globalState.customers = globalState.customers.filter((c) => c.id !== id);
+    mutateDB('customer', 'delete', id);
+    notify();
+  }, globalState.customers.find((c) => c.id === id)?.name);
 };
 
 const addFinanceCategory = (name: string, type: FinanceTransactionType): string => {
@@ -1547,10 +1729,12 @@ const updateFinanceCategory = (id: string, name: string) => {
 };
 
 const deleteFinanceCategory = (id: string) => {
-  if (!guardEdit('finance')) return;
-  globalState.financeCategories = globalState.financeCategories.filter((c) => c.id !== id);
-  mutateDB('category', 'delete', id);
-  notify();
+  undoable(tl('Kategori silindi'), () => {
+    if (!guardEdit('finance')) return;
+    globalState.financeCategories = globalState.financeCategories.filter((c) => c.id !== id);
+    mutateDB('category', 'delete', id);
+    notify();
+  }, globalState.financeCategories.find((c) => c.id === id)?.name);
 };
 
 const setActiveTab = (tab: ActiveTab) => {

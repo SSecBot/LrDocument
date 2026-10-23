@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicData, Course, SessionKind } from '@/lib/academic/types';
@@ -11,7 +13,7 @@ import { confirmDelete } from '@/components/ui/ConfirmDialog';
 interface Props {
   data: AcademicData;
   courses: Course[];
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
   onEditCourse: (course: Course) => void;
 }
 
@@ -21,7 +23,7 @@ export function AttendanceTab({ data, courses, update, onEditCourse }: Props) {
   if (courses.length === 0) {
     return (
       <Card>
-        <EmptyState title="Bu dönem için ders yok" text="Önce Program sekmesinden ders ekleyin." />
+        <EmptyState title={tl('Bu dönem için ders yok')} text={tl('Önce Program sekmesinden ders ekleyin.')} />
       </Card>
     );
   }
@@ -29,11 +31,11 @@ export function AttendanceTab({ data, courses, update, onEditCourse }: Props) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
-        Devam zorunluluğu: teorik derslerde %{g.attendanceTheory}, uygulamalarda %{g.attendancePractice} •{' '}
+        {tl('Devam zorunluluğu: teorik derslerde %')}{g.attendanceTheory}, uygulamalarda %{g.attendancePractice} •{' '}
         {hasCalendar(term)
-          ? `akademik takvime göre ${calendarWeeks(term)} haftalık dönem; bayram, tatil ve sınav haftalarına denk gelen dersler sayılmaz`
-          : `${g.weeksPerTerm} haftalık dönem (akademik takvimi Ayarlar › Ders Takibi Ayarları’ndan ekleyebilirsiniz)`}
-        . Sınırı aşan derste final sınavına girilemez ve ders devamsızlıktan (D) kalınır.
+          ? tl('akademik takvime göre {v0} haftalık dönem; bayram, tatil ve sınav haftalarına denk gelen dersler sayılmaz', { v0: calendarWeeks(term) })
+          : tl('{weeksPerTerm} haftalık dönem (akademik takvimi Ayarlar › Ders Takibi Ayarları’ndan ekleyebilirsiniz)', { weeksPerTerm: g.weeksPerTerm })}
+        {tl('. Sınırı aşan derste final sınavına girilemez ve ders devamsızlıktan (D) kalınır.')}
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {courses.map((c) => (
@@ -64,8 +66,8 @@ function AttendanceCard({
   const [hours, setHours] = useState(2);
   const [showAll, setShowAll] = useState(false);
 
-  const mutate = (fn: (c: Course) => Course) =>
-    update((d) => ({ ...d, courses: d.courses.map((c) => (c.id === course.id ? fn(c) : c)) }));
+  const mutate = (fn: (c: Course) => Course, undo?: { title: string; message?: string }) =>
+    update((d) => ({ ...d, courses: d.courses.map((c) => (c.id === course.id ? fn(c) : c)) }), undo);
 
   const history = [...course.absences].sort((a, b) => b.date.localeCompare(a.date));
   const visible = showAll ? history : history.slice(0, 3);
@@ -76,7 +78,7 @@ function AttendanceCard({
         title={
           <span className="flex items-center gap-2 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: course.color }} />
-            <span className="truncate">{course.name}</span>
+            <span className="truncate">{tx(course.name)}</span>
           </span>
         }
         action={
@@ -90,13 +92,13 @@ function AttendanceCard({
       <div className="p-4 space-y-3">
         {exempt ? (
           <p className="text-xs text-muted">
-            Alttan alınan ders (daha önce nottan kalındı): devam zorunluluğu yok, devamsızlık takip edilmez.
+            {tl('Alttan alınan ders (daha önce nottan kalındı): devam zorunluluğu yok, devamsızlık takip edilmez.')}
           </p>
         ) : statuses.length === 0 ? (
           <p className="text-xs text-muted">
-            Haftalık ders saati girilmemiş.{' '}
+            {tl('Haftalık ders saati girilmemiş.')}{' '}
             <button className="text-emerald-400 hover:underline" onClick={() => onEditCourse(course)}>
-              Programı düzenle
+              {tl('Programı düzenle')}
             </button>
           </p>
         ) : (
@@ -104,9 +106,9 @@ function AttendanceCard({
             <div key={s.kind} className="space-y-1.5">
               <div className="flex items-baseline justify-between text-xs">
                 <span className="text-body">
-                  {s.kind === 'teori' ? 'Teorik' : 'Uygulama'}{' '}
+                  {s.kind === 'teori' ? tl('Teorik') : tl('Uygulama')}{' '}
                   <span className="text-muted">
-                    ({s.weeklyHours} saat/hafta • dönemde {s.totalHours} saat{s.basis === 'takvim' ? ', takvime göre' : ''})
+                    ({s.weeklyHours}{' '}{tl('saat/hafta • dönemde')}{' '}{s.totalHours} saat{s.basis === 'takvim' ? tl(', takvime göre') : ''})
                   </span>
                 </span>
                 <span className="tabular-nums text-subtle">
@@ -116,8 +118,8 @@ function AttendanceCard({
               <Progress value={s.used} max={s.allowed} state={s.state} />
               <p className={`text-[11px] ${s.state === 'over' ? 'text-rose-400' : s.state === 'warn' ? 'text-amber-400' : 'text-muted'}`}>
                 {s.state === 'over'
-                  ? `Sınır ${-s.remaining} saat aşıldı — devamsızlıktan kalma durumu`
-                  : `${s.remaining} saat hakkın kaldı${s.remainingWeeks > 0 ? ` (≈ ${s.remainingWeeks} hafta)` : ''}`}
+                  ? tl('Sınır {v0} saat aşıldı — devamsızlıktan kalma durumu', { v0: -s.remaining })
+                  : tl('{remaining} saat hakkın kaldı{v1}', { remaining: s.remaining, v1: s.remainingWeeks > 0 ? ` (≈ ${s.remainingWeeks} hafta)` : '' })}
               </p>
             </div>
           ))
@@ -127,8 +129,8 @@ function AttendanceCard({
           <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_70px_auto] gap-2 items-end pt-1">
             <input type="date" className={inputCls} value={date} max={toLocalDateString()} onChange={(e) => setDate(e.target.value)} />
             <select className={inputCls} value={kind} onChange={(e) => setKind(e.target.value as SessionKind)}>
-              <option value="teori">Teorik</option>
-              <option value="uygulama">Uygulama</option>
+              <option value="teori">{tl('Teorik')}</option>
+              <option value="uygulama">{tl('Uygulama')}</option>
             </select>
             <input
               type="number"
@@ -137,7 +139,7 @@ function AttendanceCard({
               className={inputCls}
               value={hours}
               onChange={(e) => setHours(Math.min(12, Math.max(1, Math.round(Number(e.target.value) || 1))))}
-              aria-label="Saat"
+              aria-label={tl('Saat')}
             />
             <button
               className={btnPrimary}
@@ -147,7 +149,7 @@ function AttendanceCard({
                 setAdding(false);
               }}
             >
-              Ekle
+              {tl('Ekle')}
             </button>
           </div>
         )}
@@ -158,12 +160,12 @@ function AttendanceCard({
               {visible.map((a) => (
                 <li key={a.id} className="flex items-center justify-between text-xs text-subtle">
                   <span>
-                    {formatTurkishDate(a.date)} • {a.hours} saat {a.kind === 'teori' ? 'teorik' : 'uygulama'}
+                    {tx(formatTurkishDate(a.date))} • {a.hours} saat {a.kind === 'teori' ? 'teorik' : 'uygulama'}
                   </span>
                   <button
                     className="w-7 h-7 flex items-center justify-center text-muted hover:text-rose-400"
-                    onClick={async () => (await confirmDelete('Devamsızlık kaydı')) && mutate((c) => ({ ...c, absences: c.absences.filter((x) => x.id !== a.id) }))}
-                    aria-label="Devamsızlığı sil"
+                    onClick={async () => (await confirmDelete(tl('Devamsızlık kaydı'))) && mutate((c) => ({ ...c, absences: c.absences.filter((x) => x.id !== a.id) }), { title: tl('Devamsızlık silindi'), message: course.name })}
+                    aria-label={tl('Devamsızlığı sil')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -172,7 +174,7 @@ function AttendanceCard({
             </ul>
             {history.length > 3 && (
               <button className="text-[11px] text-subtle hover:text-fg mt-1" onClick={() => setShowAll((v) => !v)}>
-                {showAll ? 'Daha az göster' : `Tümünü göster (${history.length})`}
+                {showAll ? tl('Daha az göster') : tl('Tümünü göster ({length})', { length: history.length })}
               </button>
             )}
           </div>

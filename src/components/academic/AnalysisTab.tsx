@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import type { AcademicUpdate } from './useAcademicData';
 import React, { useState } from 'react';
 import { Target, TrendingUp } from 'lucide-react';
 import type { AcademicData } from '@/lib/academic/types';
@@ -9,16 +11,16 @@ import { gpaTone } from './OverviewTab';
 
 interface Props {
   data: AcademicData;
-  update: (fn: (d: AcademicData) => AcademicData) => void;
+  update: AcademicUpdate;
 }
 
 function standing(gpa: number | null): string {
-  if (gpa === null) return 'Henüz notlandırılmış ders yok';
-  if (gpa >= 3.5) return 'Yüksek onur düzeyi';
-  if (gpa >= 3.0) return 'Onur düzeyi';
-  if (gpa >= 2.0) return 'Başarılı';
-  if (gpa >= 1.8) return 'Sınırda — 2.00 altında mezuniyet yapılamaz';
-  return 'Başarısız durum — üst dönem dersi alma kısıtı olabilir';
+  if (gpa === null) return tl('Henüz notlandırılmış ders yok');
+  if (gpa >= 3.5) return tl('Yüksek onur düzeyi');
+  if (gpa >= 3.0) return tl('Onur düzeyi');
+  if (gpa >= 2.0) return tl('Başarılı');
+  if (gpa >= 1.8) return tl('Sınırda — 2.00 altında mezuniyet yapılamaz');
+  return tl('Başarısız durum — üst dönem dersi alma kısıtı olabilir');
 }
 
 export function AnalysisTab({ data, update }: Props) {
@@ -44,28 +46,28 @@ export function AnalysisTab({ data, update }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <Stat label="Genel ortalama (AGNO)" value={all.gpa?.toFixed(2) ?? '—'} hint={standing(all.gpa)} tone={gpaTone(all.gpa)} />
-        <Stat label={`Notlanan ${basis}`} value={all.gradedWeight} hint="ortalamaya katılan" />
-        <Stat label={`Tamamlanan ${basis}`} value={all.earnedWeight} hint="başarıyla geçilen" />
-        <Stat label="Tekrar edilecek" value={openRetakes.length} hint="ders" tone={openRetakes.length ? 'bad' : 'good'} />
+        <Stat label={tl('Genel ortalama (AGNO)')} value={all.gpa?.toFixed(2) ?? '—'} hint={tx(standing(all.gpa))} tone={gpaTone(all.gpa)} />
+        <Stat label={tl('Notlanan {basis}', { basis })} value={all.gradedWeight} hint={tl('ortalamaya katılan')} />
+        <Stat label={tl('Tamamlanan {basis}', { basis })} value={all.earnedWeight} hint={tl('başarıyla geçilen')} />
+        <Stat label={tl('Tekrar edilecek')} value={openRetakes.length} hint={tl('ders')} tone={openRetakes.length ? 'bad' : 'good'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader title="Dönemler" icon={<TrendingUp className="w-4 h-4 text-subtle" />} />
+          <CardHeader title={tl('Dönemler')} icon={<TrendingUp className="w-4 h-4 text-subtle" />} />
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] text-muted text-left">
-                <th className="px-4 py-2 font-medium">Dönem</th>
-                <th className="px-2 py-2 font-medium text-right">Ders</th>
-                <th className="px-2 py-2 font-medium text-right">{basis}</th>
+                <th className="px-4 py-2 font-medium">{tl('Dönem')}</th>
+                <th className="px-2 py-2 font-medium text-right">{tl('Ders')}</th>
+                <th className="px-2 py-2 font-medium text-right">{tx(basis)}</th>
                 <th className="px-4 py-2 font-medium text-right">ANO</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {all.terms.map((t) => (
                 <tr key={t.term.id}>
-                  <td className="px-4 py-2 text-body">{t.term.name}</td>
+                  <td className="px-4 py-2 text-body">{tx(t.term.name)}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-subtle">{t.courses.length}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-subtle">{t.totalWeight}</td>
                   <td className={`px-4 py-2 text-right tabular-nums font-semibold ${t.gpa === null ? 'text-muted' : t.gpa >= 2 ? 'text-fg' : 'text-rose-400'}`}>
@@ -78,16 +80,16 @@ export function AnalysisTab({ data, update }: Props) {
         </Card>
 
         <Card>
-          <CardHeader title="Harf notu dağılımı" />
+          <CardHeader title={tl('Harf notu dağılımı')} />
           {Object.keys(all.letterCounts).length === 0 ? (
-            <EmptyState title="Notlandırılmış ders yok" />
+            <EmptyState title={tl('Notlandırılmış ders yok')} />
           ) : (
             <div className="p-4 space-y-1.5">
               {letterOrder
                 .filter((l) => all.letterCounts[l])
                 .map((l) => (
                   <div key={l} className="flex items-center gap-3 text-xs">
-                    <span className="w-7 text-subtle font-medium">{l}</span>
+                    <span className="w-7 text-subtle font-medium">{tx(l)}</span>
                     <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden">
                       <div
                         className={`h-full ${g.failingLetters.includes(l) || l === 'D' ? 'bg-rose-500' : g.conditionalLetters.includes(l) ? 'bg-amber-500' : 'bg-emerald-500'}`}
@@ -104,11 +106,11 @@ export function AnalysisTab({ data, update }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader title="Hedef ortalama hesaplayıcı" icon={<Target className="w-4 h-4 text-subtle" />} />
+          <CardHeader title={tl('Hedef ortalama hesaplayıcı')} icon={<Target className="w-4 h-4 text-subtle" />} />
           <div className="p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Hedef AGNO</label>
+                <label className={labelCls}>{tl('Hedef AGNO')}</label>
                 <input
                   type="number"
                   min={0}
@@ -123,21 +125,21 @@ export function AnalysisTab({ data, update }: Props) {
                 />
               </div>
               <div>
-                <label className={labelCls}>Önümüzdeki {basis}</label>
+                <label className={labelCls}>{tl('Önümüzdeki')}{' '}{tx(basis)}</label>
                 <input type="number" min={1} className={inputCls} value={upcoming} onChange={(e) => setUpcoming(Math.max(1, Number(e.target.value) || 1))} />
               </div>
             </div>
             <p className="text-sm text-body">
               {needed === null ? (
-                'Hesaplamak için gelecek dönem kredisini girin.'
+                tl('Hesaplamak için gelecek dönem kredisini girin.')
               ) : needed > 4 ? (
-                <>Bu kredi miktarıyla hedefe ulaşılamıyor (gereken ortalama {needed.toFixed(2)}). Daha fazla krediye yayın.</>
+                <>{tl('Bu kredi miktarıyla hedefe ulaşılamıyor (gereken ortalama')}{' '}{tx(needed.toFixed(2))}{tl('). Daha fazla krediye yayın.')}</>
               ) : needed <= 0 ? (
-                <>Mevcut ortalamanızla hedefin üzerindesiniz.</>
+                <>{tl('Mevcut ortalamanızla hedefin üzerindesiniz.')}</>
               ) : (
                 <>
-                  Önümüzdeki {upcoming} {basis} için dönem ortalaması en az{' '}
-                  <span className="font-semibold text-emerald-400 tabular-nums">{needed.toFixed(2)}</span> olmalı.
+                  {tl('Önümüzdeki')}{' '}{upcoming} {tx(basis)}{' '}{tl('için dönem ortalaması en az')}{' '}
+                  <span className="font-semibold text-emerald-400 tabular-nums">{tx(needed.toFixed(2))}</span>{' '}{tl('olmalı.')}
                 </>
               )}
             </p>
@@ -145,16 +147,16 @@ export function AnalysisTab({ data, update }: Props) {
         </Card>
 
         <Card>
-          <CardHeader title="Tekrar edilmesi gereken dersler" />
+          <CardHeader title={tl('Tekrar edilmesi gereken dersler')} />
           {openRetakes.length === 0 ? (
-            <EmptyState title="Tekrar edilecek ders yok" />
+            <EmptyState title={tl('Tekrar edilecek ders yok')} />
           ) : (
             <ul className="divide-y divide-line">
               {openRetakes.map((r) => (
                 <li key={r.course.id} className="px-4 py-2.5 flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-fg truncate">{r.course.name}</p>
-                    <p className="text-[11px] text-muted">{r.term.name}</p>
+                    <p className="text-sm text-fg truncate">{tx(r.course.name)}</p>
+                    <p className="text-[11px] text-muted">{tx(r.term.name)}</p>
                   </div>
                   <LetterBadge letter={r.grade.letter} failing />
                   <StatusBadge status={r.finalStatus} />
@@ -166,8 +168,8 @@ export function AnalysisTab({ data, update }: Props) {
       </div>
 
       <p className="text-[11px] text-muted">
-        AGNO, dersin {basis} değeriyle ağırlıklandırılır; tekrar alınan derslerde (aynı ders kodu) son alınan not geçerlidir.
-        {g.conditionalLetters.length > 0 && ` ${g.conditionalLetters.join(', ')} notları, o dönemin ortalaması ${g.conditionalGpa.toFixed(2)} ve üzerindeyse başarılı sayılır.`}
+        {tl('AGNO, dersin')}{' '}{tx(basis)}{' '}{tl('değeriyle ağırlıklandırılır; tekrar alınan derslerde (aynı ders kodu) son alınan not geçerlidir.')}
+        {g.conditionalLetters.length > 0 && tl(' {v0} notları, o dönemin ortalaması {v1} ve üzerindeyse başarılı sayılır.', { v0: g.conditionalLetters.join(', '), v1: g.conditionalGpa.toFixed(2) })}
       </p>
     </div>
   );

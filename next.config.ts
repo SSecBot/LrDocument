@@ -57,11 +57,12 @@ const nextConfig: NextConfig = {
       // Service worker of the installable app: always revalidated, allowed to control the whole site.
       { source: "/sw.js", headers: [{ key: "Service-Worker-Allowed", value: "/" }] },
       // Pages are never stored by the browser or proxies; only hashed build assets
-      // (/_next/static) and the public OCR engine files are cacheable.
+      // (/_next/static), the public OCR engine files and the versioned (?v=) dictionaries are cacheable.
       {
-        source: "/((?!_next/static|_next/image|ocr/).*)",
+        source: "/((?!_next/static|_next/image|ocr/|i18n/).*)",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
+      { source: "/i18n/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
     ];
   },
 };

@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx, intlLocale } from '@/lib/i18n';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
@@ -344,12 +345,12 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
     if (readOnly || doc.sheets.length >= 50) return;
     let n = doc.sheets.length + 1;
     while (doc.sheets.some((s) => s.name === `Sayfa${n}`)) n++;
-    commit({ ...doc, sheets: [...doc.sheets, newSheet(`Sayfa${n}`)], active: doc.sheets.length });
+    commit({ ...doc, sheets: [...doc.sheets, newSheet(t('Sayfa{n}', { n }))], active: doc.sheets.length });
     setSel({ r: 0, c: 0, r2: 0, c2: 0 });
   };
   const removeSheet = async (i: number) => {
     if (readOnly || doc.sheets.length < 2) return;
-    if (!(await confirmDelete(`"${doc.sheets[i].name}" sayfası`, 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.'))) return;
+    if (!(await confirmDelete(t('"{name}" sayfası', { name: doc.sheets[i].name }), t('Geri Al (Ctrl+Z) ile geri getirebilirsiniz.')))) return;
     const sheets = doc.sheets.filter((_, j) => j !== i);
     commit({ ...doc, sheets, active: Math.min(doc.active, sheets.length - 1) });
   };
@@ -388,21 +389,21 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
     <div className="flex flex-col h-full min-h-0 bg-app">
       {/* Toolbar */}
       {!readOnly && (
-        <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-line bg-surface overflow-x-auto no-scrollbar" role="toolbar" aria-label="Tablo araçları">
-          <button className={btn} onClick={undo} title="Geri al (Ctrl+Z)" aria-label="Geri al" disabled={!history.past.length}>
+        <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-line bg-surface overflow-x-auto no-scrollbar" role="toolbar" aria-label={t('Tablo araçları')}>
+          <button className={btn} onClick={undo} title={t('Geri al (Ctrl+Z)')} aria-label={t('Geri al')} disabled={!history.past.length}>
             <Undo2 className="w-4 h-4" />
           </button>
-          <button className={btn} onClick={redo} title="Yinele (Ctrl+Y)" aria-label="Yinele" disabled={!history.future.length}>
+          <button className={btn} onClick={redo} title={t('Yinele (Ctrl+Y)')} aria-label={t('Yinele')} disabled={!history.future.length}>
             <Redo2 className="w-4 h-4" />
           </button>
           <span className="w-px h-5 bg-line mx-1 shrink-0" />
-          <button className={`${btn} ${on(current?.s?.b)}`} onClick={() => toggle('b')} title="Kalın (Ctrl+B)" aria-label="Kalın" aria-pressed={!!current?.s?.b}>
+          <button className={`${btn} ${on(current?.s?.b)}`} onClick={() => toggle('b')} title={t('Kalın (Ctrl+B)')} aria-label={t('Kalın')} aria-pressed={!!current?.s?.b}>
             <Bold className="w-4 h-4" />
           </button>
-          <button className={`${btn} ${on(current?.s?.i)}`} onClick={() => toggle('i')} title="İtalik (Ctrl+I)" aria-label="İtalik" aria-pressed={!!current?.s?.i}>
+          <button className={`${btn} ${on(current?.s?.i)}`} onClick={() => toggle('i')} title={t('İtalik (Ctrl+I)')} aria-label={t('İtalik')} aria-pressed={!!current?.s?.i}>
             <Italic className="w-4 h-4" />
           </button>
-          <button className={`${btn} ${on(current?.s?.u)}`} onClick={() => toggle('u')} title="Altı çizili (Ctrl+U)" aria-label="Altı çizili" aria-pressed={!!current?.s?.u}>
+          <button className={`${btn} ${on(current?.s?.u)}`} onClick={() => toggle('u')} title={t('Altı çizili (Ctrl+U)')} aria-label={t('Altı çizili')} aria-pressed={!!current?.s?.u}>
             <Underline className="w-4 h-4" />
           </button>
           {(['l', 'c', 'r'] as const).map((al) => {
@@ -412,8 +413,8 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                 key={al}
                 className={`${btn} ${on(current?.s?.al === al)}`}
                 onClick={() => styleRange((s) => ({ ...s, al: s.al === al ? undefined : al }))}
-                aria-label={al === 'l' ? 'Sola hizala' : al === 'c' ? 'Ortala' : 'Sağa hizala'}
-                title={al === 'l' ? 'Sola hizala' : al === 'c' ? 'Ortala' : 'Sağa hizala'}
+                aria-label={al === 'l' ? t('Sola hizala') : al === 'c' ? t('Ortala') : t('Sağa hizala')}
+                title={al === 'l' ? t('Sola hizala') : al === 'c' ? t('Ortala') : t('Sağa hizala')}
               >
                 <Icon className="w-4 h-4" />
               </button>
@@ -423,50 +424,50 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
             value={current?.s?.nf ?? 'genel'}
             onChange={(e) => styleRange((s) => ({ ...s, nf: e.target.value === 'genel' ? undefined : (e.target.value as NumberFormat) }))}
             className="h-8 bg-surface-2 border border-line rounded-md px-1.5 text-xs text-body shrink-0"
-            aria-label="Sayı biçimi"
+            aria-label={t('Sayı biçimi')}
           >
             {Object.entries(NF_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
-                {v}
+                {tx(v)}
               </option>
             ))}
           </select>
-          <label className={`${btn} relative cursor-pointer`} title="Yazı rengi">
+          <label className={`${btn} relative cursor-pointer`} title={t('Yazı rengi')}>
             <Type className="w-4 h-4" style={{ color: current?.s?.fg }} />
-            <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" value={current?.s?.fg ?? '#e5e7eb'} onChange={(e) => styleRange((s) => ({ ...s, fg: e.target.value }))} aria-label="Yazı rengi" />
+            <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" value={current?.s?.fg ?? '#e5e7eb'} onChange={(e) => styleRange((s) => ({ ...s, fg: e.target.value }))} aria-label={t('Yazı rengi')} />
           </label>
-          <label className={`${btn} relative cursor-pointer`} title="Dolgu rengi">
+          <label className={`${btn} relative cursor-pointer`} title={t('Dolgu rengi')}>
             <PaintBucket className="w-4 h-4" style={{ color: current?.s?.bg }} />
-            <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" value={current?.s?.bg ?? '#1f2937'} onChange={(e) => styleRange((s) => ({ ...s, bg: e.target.value }))} aria-label="Dolgu rengi" />
+            <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" value={current?.s?.bg ?? '#1f2937'} onChange={(e) => styleRange((s) => ({ ...s, bg: e.target.value }))} aria-label={t('Dolgu rengi')} />
           </label>
-          <button className={btn} onClick={() => styleRange((s) => ({ ...s, fg: undefined, bg: undefined }))} title="Renkleri temizle" aria-label="Renkleri temizle">
+          <button className={btn} onClick={() => styleRange((s) => ({ ...s, fg: undefined, bg: undefined }))} title={t('Renkleri temizle')} aria-label={t('Renkleri temizle')}>
             <X className="w-4 h-4" />
           </button>
           <span className="w-px h-5 bg-line mx-1 shrink-0" />
-          <button className={btn} onClick={insertRow} title="Üste satır ekle" aria-label="Satır ekle">
+          <button className={btn} onClick={insertRow} title={t('Üste satır ekle')} aria-label={t('Satır ekle')}>
             <Rows3 className="w-4 h-4" />
             <Plus className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={async () => (await confirmDelete('Seçili satırlar', 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.')) && deleteRows()} title="Seçili satırları sil" aria-label="Satır sil">
+          <button className={btn} onClick={async () => (await confirmDelete(t('Seçili satırlar'), t('Geri Al (Ctrl+Z) ile geri getirebilirsiniz.'))) && deleteRows()} title={t('Seçili satırları sil')} aria-label={t('Satır sil')}>
             <Rows3 className="w-4 h-4" />
             <Trash2 className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={insertCol} title="Sola sütun ekle" aria-label="Sütun ekle">
+          <button className={btn} onClick={insertCol} title={t('Sola sütun ekle')} aria-label={t('Sütun ekle')}>
             <Columns3 className="w-4 h-4" />
             <Plus className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={async () => (await confirmDelete('Seçili sütunlar', 'Geri Al (Ctrl+Z) ile geri getirebilirsiniz.')) && deleteCols()} title="Seçili sütunları sil" aria-label="Sütun sil">
+          <button className={btn} onClick={async () => (await confirmDelete(t('Seçili sütunlar'), t('Geri Al (Ctrl+Z) ile geri getirebilirsiniz.'))) && deleteCols()} title={t('Seçili sütunları sil')} aria-label={t('Sütun sil')}>
             <Columns3 className="w-4 h-4" />
             <Trash2 className="w-3 h-3 -ml-0.5" />
           </button>
-          <button className={btn} onClick={() => sort(false)} title="Seçili sütuna göre A→Z sırala" aria-label="Artan sırala">
+          <button className={btn} onClick={() => sort(false)} title={t('Seçili sütuna göre A→Z sırala')} aria-label={t('Artan sırala')}>
             <ArrowDownAZ className="w-4 h-4" />
           </button>
-          <button className={btn} onClick={() => sort(true)} title="Seçili sütuna göre Z→A sırala" aria-label="Azalan sırala">
+          <button className={btn} onClick={() => sort(true)} title={t('Seçili sütuna göre Z→A sırala')} aria-label={t('Azalan sırala')}>
             <ArrowUpZA className="w-4 h-4" />
           </button>
           <div className="relative shrink-0">
-            <button className={btn} onClick={() => setFnOpen((v) => !v)} title="Formül ekle" aria-label="Formül ekle" aria-expanded={fnOpen}>
+            <button className={btn} onClick={() => setFnOpen((v) => !v)} title={t('Formül ekle')} aria-label={t('Formül ekle')} aria-expanded={fnOpen}>
               <Sigma className="w-4 h-4" />
             </button>
             {fnOpen && (
@@ -485,7 +486,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                         requestAnimationFrame(() => cellInput.current?.focus());
                       }}
                     >
-                      <span className="font-mono text-fg">{tr}</span> <span className="text-muted">({en})</span> — {label}
+                      <span className="font-mono text-fg">{tx(tr)}</span> <span className="text-muted">({tx(en)})</span> — {tx(label)}
                     </button>
                   </li>
                 ))}
@@ -514,8 +515,8 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
           }}
           onBlur={() => editing && !editing.inCell && finishEdit(true)}
           className="flex-1 min-w-0 h-8 bg-app border border-line rounded px-2 text-sm font-mono text-fg focus:outline-none focus:border-brand"
-          aria-label="Hücre içeriği / formül"
-          placeholder={readOnly ? '' : 'Değer veya =TOPLA(A1:A5) gibi formül'}
+          aria-label={t('Hücre içeriği / formül')}
+          placeholder={readOnly ? '' : t('Değer veya =TOPLA(A1:A5) gibi formül')}
         />
       </div>
 
@@ -565,7 +566,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                 }`}
                 style={{ width: widthOf(c) }}
               >
-                {colName(c)}
+                {tx(colName(c))}
                 <span
                   className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-brand/60"
                   onMouseDown={(e) => {
@@ -658,7 +659,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                           }}
                           onBlur={() => editing && finishEdit(true)}
                           className="absolute inset-0 w-full h-full px-1.5 bg-surface text-fg text-[13px] font-mono outline-none border-2 border-brand"
-                          aria-label={`${addr(r, c)} hücresi`}
+                          aria-label={t('{v0} hücresi', { v0: addr(r, c) })}
                         />
                       ) : (
                         text
@@ -686,7 +687,7 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                 if (e.key === 'Escape') setRenaming(null);
               }}
               className="h-8 w-28 bg-app border border-brand rounded px-2 text-xs text-fg"
-              aria-label="Sayfa adı"
+              aria-label={t('Sayfa adı')}
             />
           ) : (
             <div key={i} className={`flex items-center rounded-md shrink-0 ${i === si ? 'bg-surface-3' : 'hover:bg-surface-2'}`}>
@@ -701,12 +702,12 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
                 }}
                 onDoubleClick={() => !readOnly && setRenaming(i)}
                 className={`h-8 px-3 text-xs ${i === si ? 'text-fg font-medium' : 'text-subtle'}`}
-                title={readOnly ? s.name : 'Yeniden adlandırmak için çift tıklayın'}
+                title={readOnly ? s.name : t('Yeniden adlandırmak için çift tıklayın')}
               >
-                {s.name}
+                {tx(s.name)}
               </button>
               {i === si && !readOnly && doc.sheets.length > 1 && (
-                <button onClick={() => removeSheet(i)} className="h-8 w-7 inline-flex items-center justify-center text-muted hover:text-rose-400" aria-label={`${s.name} sayfasını sil`}>
+                <button onClick={() => removeSheet(i)} className="h-8 w-7 inline-flex items-center justify-center text-muted hover:text-rose-400" aria-label={t('{name} sayfasını sil', { name: s.name })}>
                   <X className="w-3 h-3" />
                 </button>
               )}
@@ -714,11 +715,11 @@ export function SpreadsheetEditor({ value, onChange, readOnly }: { value: string
           )
         )}
         {!readOnly && (
-          <button onClick={addSheet} className="h-8 w-8 rounded-md inline-flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2 shrink-0" aria-label="Sayfa ekle" title="Sayfa ekle">
+          <button onClick={addSheet} className="h-8 w-8 rounded-md inline-flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2 shrink-0" aria-label={t('Sayfa ekle')} title={t('Sayfa ekle')}>
             <Plus className="w-4 h-4" />
           </button>
         )}
-        <span className="ml-auto text-[11px] text-muted shrink-0 pl-2 hidden sm:inline">{selectionSummary(range, (r, c) => evaluator.value(si, r, c))}</span>
+        <span className="ml-auto text-[11px] text-muted shrink-0 pl-2 hidden sm:inline">{tx(selectionSummary(range, (r, c) => evaluator.value(si, r, c)))}</span>
       </div>
     </div>
   );
@@ -735,8 +736,8 @@ function selectionSummary(range: { r1: number; r2: number; c1: number; c2: numbe
   }
   if (!nums.length) return '';
   const sum = nums.reduce((a, b) => a + b, 0);
-  const f = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
-  return `Toplam: ${f(sum)} · Ortalama: ${f(sum / nums.length)} · Sayı: ${nums.length}`;
+  const f = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 2 });
+  return t('Toplam: {v0} · Ortalama: {v1} · Sayı: {length}', { v0: f(sum), v1: f(sum / nums.length), length: nums.length });
 }
 
 export { parseAddr };

@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
@@ -55,29 +56,29 @@ export const Header: React.FC = () => {
   const getModuleDetails = () => {
     switch (activeTab) {
       case 'dashboard':
-        return { title: 'Genel Bakış' };
+        return { title: t('Genel Bakış') };
       case 'notes':
-        return { title: isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar' };
+        return { title: isCorporate(currentUser) ? t('Ortak Notlar') : t('Notlar') };
       case 'customers':
-        return { title: 'Müşteriler' };
+        return { title: t('Müşteriler') };
       case 'team':
-        return { title: 'Kurum ve Ekip' };
+        return { title: t('Kurum ve Ekip') };
       case 'tasks':
-        return { title: 'Görevler' };
+        return { title: t('Görevler') };
       case 'calendar':
-        return { title: 'Takvim' };
+        return { title: t('Takvim') };
       case 'finance':
-        return { title: 'Finans' };
+        return { title: t('Finans') };
       case 'personalNotes':
-        return { title: 'Şahsi Notlar' };
+        return { title: t('Şahsi Notlar') };
       case 'personalFinance':
-        return { title: 'Şahsi Finans' };
+        return { title: t('Şahsi Finans') };
       case 'academic':
-        return { title: 'Ders Takibi' };
+        return { title: t('Ders Takibi') };
       case 'settings':
-        return { title: 'Ayarlar' };
+        return { title: t('Ayarlar') };
       case 'admin':
-        return { title: 'Yönetici Paneli' };
+        return { title: t('Yönetici Paneli') };
       default:
         return { title: 'LrDocument' };
     }
@@ -91,8 +92,8 @@ export const Header: React.FC = () => {
     setIsRefreshingRates(false);
     addToast({
       type: 'success',
-      title: 'Döviz Kurları Güncellendi',
-      message: `USD: ${(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺ | EUR: ${(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺`,
+      title: t('Döviz Kurları Güncellendi'),
+      message: t('USD: {v0} ₺ | EUR: {v1} ₺', { v0: (exchangeRates.USD + exchangeRates.markupTRY).toFixed(2), v1: (exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2) }),
     });
   };
 
@@ -103,15 +104,15 @@ export const Header: React.FC = () => {
         {/* Mobile Hamburger Toggle (md:hidden) */}
         <button
           onClick={() => setIsMobileSidebarOpen(true)}
-          className="md:hidden w-10 h-10 rounded-lg text-subtle hover:text-fg hover:bg-surface-2 flex items-center justify-center transition-colors shrink-0"
-          aria-label="Navigasyon Menüsünü Aç"
-          title="Menü"
+          className="[@media(min-width:768px)_and_(min-height:501px)]:hidden w-10 h-10 rounded-lg text-subtle hover:text-fg hover:bg-surface-2 flex items-center justify-center transition-colors shrink-0"
+          aria-label={t('Navigasyon Menüsünü Aç')}
+          title={t('Menü')}
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-fg truncate">{details.title}</h2>
+          <h2 className="text-sm font-semibold text-fg truncate">{tx(details.title)}</h2>
         </div>
       </div>
 
@@ -129,11 +130,11 @@ export const Header: React.FC = () => {
             className={`h-10 md:h-9 min-w-10 md:min-w-9 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-xs ${
               isCurrencyMenuOpen ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg hover:bg-surface-2'
             }`}
-            title="Canlı Döviz Kurları & Kur Marjı"
+            title={t('Canlı Döviz Kurları & Kur Marjı')}
           >
             <Coins className="w-4 h-4 shrink-0" />
             <span className="hidden lg:inline text-[11px] font-mono tabular-nums">
-              ${(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} · €{(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)}
+              ${tx((exchangeRates.USD + exchangeRates.markupTRY).toFixed(2))} · €{tx((exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2))}
             </span>
           </button>
 
@@ -144,7 +145,7 @@ export const Header: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-line pb-2">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white">{exchangeRates.markupTRY > 0 ? 'Canlı Kur & Marj Bilgisi' : 'Canlı Kur Bilgisi'}</span>
+                    <span className="text-xs font-bold text-white">{exchangeRates.markupTRY > 0 ? t('Canlı Kur & Marj Bilgisi') : t('Canlı Kur Bilgisi')}</span>
                   </div>
                   <button
                     onClick={handleRefreshRates}
@@ -152,44 +153,44 @@ export const Header: React.FC = () => {
                     className="p-1.5 rounded-lg bg-surface-2 hover:bg-surface-4 text-emerald-400 text-[10px] flex items-center gap-1 font-medium transition-colors"
                   >
                     <RefreshCw className={`w-3 h-3 ${isRefreshingRates ? 'animate-spin' : ''}`} />
-                    <span>Yenile</span>
+                    <span>{t('Yenile')}</span>
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-lg bg-app border border-line space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-sky-400 font-bold">
-                      <span>🇺🇸 USD / TRY</span>
-                      <span className="font-mono">{exchangeRates.USD.toFixed(2)} ₺</span>
+                      <span>{t('🇺🇸 USD / TRY')}</span>
+                      <span className="font-mono">{tx(exchangeRates.USD.toFixed(2))} ₺</span>
                     </div>
                     {exchangeRates.markupTRY > 0 && (
                       <>
                         <div className="text-xs font-mono font-bold text-white">
-                          → {(exchangeRates.USD + exchangeRates.markupTRY).toFixed(2)} ₺
+                          → {tx((exchangeRates.USD + exchangeRates.markupTRY).toFixed(2))} ₺
                         </div>
-                        <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                        <span className="text-[9px] text-muted block">+{tx(exchangeRates.markupTRY.toFixed(2))}{' '}{t('TL Marjlı')}</span>
                       </>
                     )}
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-app border border-line space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-purple-400 font-bold">
-                      <span>🇪🇺 EUR / TRY</span>
-                      <span className="font-mono">{exchangeRates.EUR.toFixed(2)} ₺</span>
+                      <span>{t('🇪🇺 EUR / TRY')}</span>
+                      <span className="font-mono">{tx(exchangeRates.EUR.toFixed(2))} ₺</span>
                     </div>
                     {exchangeRates.markupTRY > 0 && (
                       <>
                         <div className="text-xs font-mono font-bold text-white">
-                          → {(exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2)} ₺
+                          → {tx((exchangeRates.EUR + exchangeRates.markupTRY).toFixed(2))} ₺
                         </div>
-                        <span className="text-[9px] text-muted block">+{exchangeRates.markupTRY.toFixed(2)} TL Marjlı</span>
+                        <span className="text-[9px] text-muted block">+{tx(exchangeRates.markupTRY.toFixed(2))}{' '}{t('TL Marjlı')}</span>
                       </>
                     )}
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-surface border border-emerald-900/60 text-[11px] text-emerald-300 flex items-center justify-between">
-                  <span>Gelir / Gider Yönetimine Git</span>
+                  <span>{t('Gelir / Gider Yönetimine Git')}</span>
                   <button
                     onClick={() => {
                       setActiveTab('finance');
@@ -197,7 +198,7 @@ export const Header: React.FC = () => {
                     }}
                     className="px-2 py-1 bg-brand hover:bg-brand-hover text-white rounded-lg text-[10px] font-bold transition-colors"
                   >
-                    Aç →
+                    {t('Aç →')}
                   </button>
                 </div>
               </div>
@@ -209,8 +210,8 @@ export const Header: React.FC = () => {
         <button
           onClick={() => setIsCommandPaletteOpen(true)}
           className="h-10 md:h-9 min-w-10 md:min-w-9 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-subtle hover:text-fg hover:bg-surface-2"
-          title="Hızlı Arama (Ctrl+K)"
-          aria-label="Ara"
+          title={t('Hızlı Arama (Ctrl+K)')}
+          aria-label={t('Ara')}
         >
           <Search className="w-4 h-4 shrink-0" />
         </button>
@@ -227,8 +228,8 @@ export const Header: React.FC = () => {
             className={`relative h-10 md:h-9 min-w-10 md:min-w-9 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors ${
               isNotificationPanelOpen ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg hover:bg-surface-2'
             }`}
-            title="Bildirim & Hatırlatma Merkezi"
-            aria-label="Bildirimler"
+            title={t('Bildirim & Hatırlatma Merkezi')}
+            aria-label={t('Bildirimler')}
           >
             <Bell className="w-4 h-4" />
 
@@ -257,12 +258,12 @@ export const Header: React.FC = () => {
               setIsNotificationPanelOpen(false);
             }}
             className="h-10 md:h-9 min-w-10 md:min-w-9 justify-center flex items-center gap-1.5 px-2.5 sm:px-3 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg transition-colors"
-            title="Yeni Ekle"
-            aria-label="Yeni Ekle"
+            title={t('Yeni Ekle')}
+            aria-label={t('Yeni Ekle')}
             aria-expanded={isNewMenuOpen}
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Yeni</span>
+            <span className="hidden sm:inline">{t('Yeni')}</span>
           </button>
 
           {isNewMenuOpen && (
@@ -283,7 +284,7 @@ export const Header: React.FC = () => {
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Yeni Not</span>
+                  <span>{t('Yeni Not')}</span>
                 </button>
                 )}
 
@@ -291,11 +292,11 @@ export const Header: React.FC = () => {
                 <button
                   onClick={() => {
                     addKanbanCard({
-                      title: 'Yeni Proje Kartı',
+                      title: t('Yeni Proje Kartı'),
                       projectType: 'genel',
                       columnId: 'fikir',
                       priority: 'orta',
-                      tags: ['Yeni'],
+                      tags: [t('Yeni')],
                     });
                     setPreference('tasksView', 'pano');
                     setActiveTab('tasks');
@@ -304,14 +305,14 @@ export const Header: React.FC = () => {
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <Kanban className="w-4 h-4 text-emerald-400" />
-                  <span>Yeni Kanban Kartı</span>
+                  <span>{t('Yeni Kanban Kartı')}</span>
                 </button>
                 )}
 
                 {canEdit(currentUser, 'work') && (
                 <button
                   onClick={() => {
-                    addTask({ title: 'Yeni Görev', completed: false, priority: systemSettings.tasks.defaultPriority });
+                    addTask({ title: t('Yeni Görev'), completed: false, priority: systemSettings.tasks.defaultPriority });
                     setPreference('tasksView', 'liste');
                     setActiveTab('tasks');
                     setIsNewMenuOpen(false);
@@ -319,7 +320,7 @@ export const Header: React.FC = () => {
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <CheckSquare className="w-4 h-4 text-amber-400" />
-                  <span>Yeni Görev</span>
+                  <span>{t('Yeni Görev')}</span>
                 </button>
                 )}
 
@@ -332,7 +333,7 @@ export const Header: React.FC = () => {
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <Calendar className="w-4 h-4 text-purple-400" />
-                  <span>Takvime Etkinlik Ekle</span>
+                  <span>{t('Takvime Etkinlik Ekle')}</span>
                 </button>
                 )}
 
@@ -345,7 +346,7 @@ export const Header: React.FC = () => {
                   className="w-full min-h-[40px] flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-body hover:text-white hover:bg-surface-2 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <Wallet className="w-4 h-4 text-emerald-400" />
-                  <span>Yeni Gelir / Gider</span>
+                  <span>{t('Yeni Gelir / Gider')}</span>
                 </button>
                 )}
               </div>
@@ -366,11 +367,11 @@ export const Header: React.FC = () => {
               className={`h-10 md:h-9 pl-1 pr-1 sm:pr-2 rounded-lg flex items-center gap-1.5 transition-colors ${
                 isProfileMenuOpen ? 'bg-surface-3' : 'hover:bg-surface-2'
               }`}
-              title="Profil & Ayarlar Menüsü"
-              aria-label="Profil menüsü"
+              title={t('Profil & Ayarlar Menüsü')}
+              aria-label={t('Profil menüsü')}
             >
               <div className="w-7 h-7 rounded-full bg-surface-3 text-body flex items-center justify-center font-semibold text-xs shrink-0">
-                {currentUser.name.charAt(0).toUpperCase()}
+                {tx(currentUser.name.charAt(0).toUpperCase())}
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-muted hidden sm:block" />
             </button>
@@ -388,7 +389,7 @@ export const Header: React.FC = () => {
                       className="w-full min-h-[40px] flex items-center gap-2.5 px-2.5 text-[13px] text-body hover:bg-surface-2 rounded-md text-left"
                     >
                       <Settings className="w-4 h-4 text-muted" />
-                      Ayarlar
+                      {t('Ayarlar')}
                     </button>
                     {currentUser.role === 'ADMIN' && (
                       <button
@@ -399,7 +400,7 @@ export const Header: React.FC = () => {
                         className="w-full min-h-[40px] flex items-center gap-2.5 px-2.5 text-[13px] text-body hover:bg-surface-2 rounded-md text-left"
                       >
                         <ShieldAlert className="w-4 h-4 text-muted" />
-                        Yönetici Paneli
+                        {t('Yönetici Paneli')}
                       </button>
                     )}
                   </AccountSwitcher>

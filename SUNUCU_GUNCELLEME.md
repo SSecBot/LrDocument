@@ -29,7 +29,64 @@ Derleme sırasında site 1–3 dakika kapalı kalabilir. Son 20 yedek `/var/lib/
 
 ---
 
-## Bu güncellemede gelenler (Big Update 3, yasal sayfalar, hesap silme)
+## Bu güncellemede gelenler (Big Update 4: dil desteği, geri alma, klavye, hızlı açılış)
+
+`update.sh` User ve OrgMember tablolarına `locale` alanı ekler (varsayılan `tr`: mevcut tüm hesaplar Türkçe kalır).
+Derleme sırasında `scripts/build-i18n.mjs` İngilizce sözlüğü `public/i18n/en.js` olarak üretir (otomatik; ek ayar yok).
+
+- **Dil (Türkçe / English):** kayıtta seçilir; giriş sayfasından ve Ayarlar › Tercihler › Dil’den değiştirilir. Dil hesaba
+  kaydedilir; bildirimler ve e-postalar da bu dilde gider. Yönetici paneli ve yasal metinler Türkçe kalır. Açılış sayfasında
+  yönetici panelinden **değiştirilmiş** metinler İngilizcede de yazıldığı gibi (Türkçe) görünür.
+- **Silmelere geri alma:** silinen kayıt 6 saniye boyunca “Geri al” ile geri getirilebilir; sunucuya silme isteği bu süre
+  bitince gider.
+- **Hata mesajları:** genel “bir hata oluştu” yerine ne olduğunu ve ne yapılacağını anlatan mesajlar; çökme / 404 sayfaları.
+- **Bildirim izni:** izin istenmeden önce nedeni anlatılır; karşılama penceresinden doğrudan açılabilir.
+- **“Ana ekrana ekle” hatırlatması:** uygulama yüklü değilken her açılışta; “Bir daha gösterme” seçeneğiyle.
+- **Fiyatlar:** aylık fiyatların altında “Otomatik yenilenir · İstediğiniz an iptal”, ömür boyunun altında “Tek seferlik ödeme”.
+- **Klavye:** telefon ve tabletlerde klavye açılınca yazı alanları klavyenin üstünde kalır.
+- **Hızlı açılış:** uygulama yalnızca açık bölümün kodunu indirir; diğerleri arka planda hazırlanır.
+
+---
+
+## Önceki güncellemede gelenler (güvenlik yükseltmesi, Node.js 24)
+
+**Önce Node.js'i yükseltin** (aşağıdaki bölüm). Sunucuda Node 20 varsa `update.sh` hiçbir şeye dokunmadan durur
+ve site eski sürümle çalışmaya devam eder.
+
+- **Next.js 16.4.0 → 16.4.2:** görsel uç noktasındaki (SVG) uzaktan kod çalıştırma ve Server Actions
+  hizmet engelleme açıkları kapandı.
+- **ESLint 9 → 10**, `eslint-config-next` 16.4.2; eslint eklentisindeki `braces` açığı (düzeltilmiş sürümü yok)
+  bağımlılık ağacından tamamen çıkarıldı. `npm audit`: 0 açık.
+- `package.json` artık Node 22.13+ istiyor (`engines`), proje köküne `.nvmrc` (24) eklendi.
+
+### Node.js'i 24'e yükseltme (bir kez)
+
+Hangi kurulumu kullandığınızı görmek için: `which node` (`/root/.nvm/...` ise nvm, `/usr/bin/node` ise apt/NodeSource).
+
+**apt / NodeSource ile kurulduysa:**
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v            # v24.x.x görmelisiniz
+pm2 update         # PM2'yi yeni Node ile yeniden başlatır (süreçler korunur)
+bash /var/www/LrDocument/scripts/update.sh
+```
+
+**nvm ile kurulduysa:**
+
+```bash
+nvm install 24 && nvm alias default 24
+npm install -g pm2 # nvm her Node sürümü için ayrı global paket tutar
+pm2 update
+bash /var/www/LrDocument/scripts/update.sh
+```
+
+`pm2 update` adımı önemlidir: atlanırsa PM2 uygulamayı eski Node ile çalıştırmaya devam eder.
+
+---
+
+## Önceki güncellemede gelenler (Big Update 3, yasal sayfalar, hesap silme)
 
 `update.sh` Task tablosuna boş bir `dueTime` alanı ekler; mevcut veriye dokunulmaz. Ek ayar gerekmez.
 

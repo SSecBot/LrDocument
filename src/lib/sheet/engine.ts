@@ -1,3 +1,4 @@
+import { intlLocale } from '@/lib/i18n';
 // ---------------------------------------------------------------------------
 // Tablo notları: the spreadsheet model (stored as JSON in Note.content) and its formula engine.
 // Formulas use the Excel syntax (=A1+B2, =SUM(A1:A9), =Sayfa2!B3, =IF(A1>0;"+";"-")) with English
@@ -719,17 +720,17 @@ export function formatValue(v: Scalar, nf: NumberFormat = 'genel'): string {
   if (typeof v === 'string') return v;
   switch (nf) {
     case 'sayi':
-      return v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return v.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     case 'tamsayi':
-      return Math.round(v).toLocaleString('tr-TR');
+      return Math.round(v).toLocaleString(intlLocale());
     case 'para':
-      return `${v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+      return `${v.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
     case 'yuzde':
-      return `%${(v * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
+      return `%${(v * 100).toLocaleString(intlLocale(), { maximumFractionDigits: 2 })}`;
     case 'tarih':
-      return serialToDate(v).toLocaleDateString('tr-TR', { timeZone: 'UTC' });
+      return serialToDate(v).toLocaleDateString(intlLocale(), { timeZone: 'UTC' });
     default:
-      return Math.abs(v) >= 1e15 || (Math.abs(v) < 1e-9 && v !== 0) ? v.toExponential(4) : v.toLocaleString('tr-TR', { maximumFractionDigits: 10 });
+      return Math.abs(v) >= 1e15 || (Math.abs(v) < 1e-9 && v !== 0) ? v.toExponential(4) : v.toLocaleString(intlLocale(), { maximumFractionDigits: 10 });
   }
 }
 

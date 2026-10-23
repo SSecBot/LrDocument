@@ -1,3 +1,4 @@
+import { t, tx, intlLocale } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { FinanceTransaction, FinanceTransactionType, RecurringFrequency, TaskPriority, CurrencyCode } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -44,7 +45,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     fetchExchangeRates,
     systemSettings,
   } = useAppStore();
-  const DEBT_CATEGORY = 'Kredi / Borç';
+  const DEBT_CATEGORY = t('Kredi / Borç');
 
   const [type, setType] = useState<FinanceTransactionType>('gelir');
   const [title, setTitle] = useState('');
@@ -146,7 +147,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       amount: numericAmount,
       currency,
       type,
-      category: debtMode ? DEBT_CATEGORY : shownCategory || (type === 'gelir' ? 'Genel gelir' : 'Genel gider'),
+      category: debtMode ? DEBT_CATEGORY : shownCategory || (type === 'gelir' ? t('Genel gelir') : t('Genel gider')),
       date,
       endDate: !debtMode && isRecurring ? (endDate.trim() || undefined) : undefined,
       isRecurring: !debtMode && isRecurring,
@@ -158,7 +159,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     });
 
     if (debtMode && (rateNum < 0 || rateNum > 50 || minRateNum < 0 || minRateNum > 100)) {
-      setFormErrors({ rates: 'Aylık faiz %0–50, asgari ödeme %0–100 arasında olmalıdır.' });
+      setFormErrors({ rates: t('Aylık faiz %0–50, asgari ödeme %0–100 arasında olmalıdır.') });
       return;
     }
     const debtFields = debtMode
@@ -231,8 +232,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={editTransaction ? 'Finans Kaydını Düzenle' : 'Yeni Gelir / Gider Kaydı Ekle'}
-        subtitle="Çoklu para birimi (TRY, USD, EUR), canlı kur marjı ve bütçe planlaması"
+        title={editTransaction ? t('Finans Kaydını Düzenle') : t('Yeni Gelir / Gider Kaydı Ekle')}
+        subtitle={t('Çoklu para birimi (TRY, USD, EUR), canlı kur marjı ve bütçe planlaması')}
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -241,10 +242,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <span className="font-bold block">Lütfen aşağıdaki form hatalarını düzeltiniz:</span>
+                <span className="font-bold block">{t('Lütfen aşağıdaki form hatalarını düzeltiniz:')}</span>
                 <ul className="list-disc list-inside text-[11px] space-y-0.5">
                   {Object.values(formErrors).map((msg, idx) => (
-                    <li key={idx}>{msg}</li>
+                    <li key={idx}>{tx(msg)}</li>
                   ))}
                 </ul>
               </div>
@@ -263,7 +264,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               }`}
             >
               <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span>+ Gelir Kaydı</span>
+              <span>{t('+ Gelir Kaydı')}</span>
             </button>
 
             <button
@@ -276,16 +277,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               }`}
             >
               <TrendingDown className="w-4 h-4 text-rose-400" />
-              <span>- Gider Kaydı</span>
+              <span>{t('- Gider Kaydı')}</span>
             </button>
           </div>
 
           {type === 'gider' && (
-            <div className="flex rounded-md border border-line bg-surface-2 p-0.5" role="group" aria-label="Gider türü">
+            <div className="flex rounded-md border border-line bg-surface-2 p-0.5" role="group" aria-label={t('Gider türü')}>
               {(
                 [
-                  [false, 'Normal gider'],
-                  [true, 'Kredi / borç'],
+                  [false, t('Normal gider')],
+                  [true, t('Kredi / borç')],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -298,7 +299,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   }`}
                 >
                   {value && <Landmark className="w-3.5 h-3.5" />}
-                  {label}
+                  {tx(label)}
                 </button>
               ))}
             </div>
@@ -306,7 +307,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">İşlem Başlığı *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{t('İşlem Başlığı *')}</label>
             <input
               type="text"
               required
@@ -315,13 +316,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 setTitle(e.target.value);
                 if (formErrors.title) setFormErrors((prev) => ({ ...prev, title: '' }));
               }}
-              placeholder={type === 'gelir' ? 'Örn: Yurtdışı Sponsorluk Hakedişi ($ USD)' : 'Örn: Claude API + AWS Cloud Render (€ EUR)'}
+              placeholder={type === 'gelir' ? t('Örn: Yurtdışı Sponsorluk Hakedişi ($ USD)') : t('Örn: Claude API + AWS Cloud Render (€ EUR)')}
               className={`w-full bg-surface-2 border rounded-lg px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none ${
                 formErrors.title ? 'border-rose-500' : 'border-line-strong focus:border-brand'
               }`}
             />
             {formErrors.title && (
-              <p className="text-[11px] text-rose-400 font-semibold mt-1">{formErrors.title}</p>
+              <p className="text-[11px] text-rose-400 font-semibold mt-1">{tx(formErrors.title)}</p>
             )}
           </div>
 
@@ -330,7 +331,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <Coins className="w-3.5 h-3.5 text-amber-400" />
-                <span>{debtMode ? 'Kalan borç *' : 'Para Birimi & Tutar *'}</span>
+                <span>{debtMode ? t('Kalan borç *') : t('Para Birimi & Tutar *')}</span>
               </label>
 
               {/* Currency Selector Tabs */}
@@ -346,7 +347,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         : 'text-subtle hover:text-white'
                     }`}
                   >
-                    {curr === 'TRY' ? '₺ TRY' : curr === 'USD' ? '$ USD' : '€ EUR'}
+                    {curr === 'TRY' ? t('₺ TRY') : curr === 'USD' ? t('$ USD') : t('€ EUR')}
                   </button>
                 ))}
               </div>
@@ -375,26 +376,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   />
                 </div>
                 {formErrors.amount && (
-                  <p className="text-[11px] text-rose-400 font-semibold mt-1">{formErrors.amount}</p>
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1">{tx(formErrors.amount)}</p>
                 )}
               </div>
 
               {debtMode ? (
                 <div>
-                  <label className="block text-xs font-semibold text-white mb-1">Kategori</label>
-                  <div className="h-[34px] px-3 flex items-center rounded-lg bg-surface-2 border border-line text-xs text-subtle">{DEBT_CATEGORY}</div>
+                  <label className="block text-xs font-semibold text-white mb-1">{t('Kategori')}</label>
+                  <div className="h-[34px] px-3 flex items-center rounded-lg bg-surface-2 border border-line text-xs text-subtle">{tx(DEBT_CATEGORY)}</div>
                 </div>
               ) : (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-white">Kategori *</label>
+                  <label className="text-xs font-semibold text-white">{t('Kategori *')}</label>
                   <button
                     type="button"
                     onClick={() => setIsCategoryModalOpen(true)}
                     className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-medium"
                   >
                     <Settings className="w-3 h-3" />
-                    <span>Yönet</span>
+                    <span>{t('Yönet')}</span>
                   </button>
                 </div>
                 <select
@@ -404,12 +405,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 >
                   {availableCategories.map((c) => (
                     <option key={c.id} value={c.name}>
-                      {c.name}
+                      {tx(c.name)}
                     </option>
                   ))}
                   {/* A record whose category was renamed or deleted keeps it. */}
-                  {shownCategory && !availableCategories.some((c) => c.name === shownCategory) && <option value={shownCategory}>{shownCategory}</option>}
-                  {!shownCategory && <option value="">{type === 'gelir' ? 'Genel gelir' : 'Genel gider'}</option>}
+                  {shownCategory && !availableCategories.some((c) => c.name === shownCategory) && <option value={shownCategory}>{tx(shownCategory)}</option>}
+                  {!shownCategory && <option value="">{type === 'gelir' ? t('Genel gelir') : t('Genel gider')}</option>}
                 </select>
               </div>
               )}
@@ -420,7 +421,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="p-3 rounded-lg bg-surface border border-line space-y-3">
               <div className="grid grid-cols-2 gap-2.5">
                 <label className="block">
-                  <span className="block text-xs font-semibold text-white mb-1">Aylık faiz (%)</span>
+                  <span className="block text-xs font-semibold text-white mb-1">{t('Aylık faiz (%)')}</span>
                   <input
                     type="number"
                     min="0"
@@ -432,7 +433,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-xs font-semibold text-white mb-1">Asgari ödeme (%)</span>
+                  <span className="block text-xs font-semibold text-white mb-1">{t('Asgari ödeme (%)')}</span>
                   <input
                     type="number"
                     min="0"
@@ -445,18 +446,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </label>
               </div>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                <dt className="text-muted">Bu ayın faizi</dt>
-                <dd className="text-right font-mono text-body">{formatCurrencyTRY(debtInterest)}</dd>
-                <dt className="text-muted">Asgari ödeme</dt>
-                <dd className="text-right font-mono text-fg">{formatCurrencyTRY(debtMinimum)}</dd>
+                <dt className="text-muted">{t('Bu ayın faizi')}</dt>
+                <dd className="text-right font-mono text-body">{tx(formatCurrencyTRY(debtInterest))}</dd>
+                <dt className="text-muted">{t('Asgari ödeme')}</dt>
+                <dd className="text-right font-mono text-fg">{tx(formatCurrencyTRY(debtMinimum))}</dd>
               </dl>
               <p className="text-[11px] text-subtle">
                 {debtBalance <= 0
-                  ? 'Kalan borcu girin.'
+                  ? t('Kalan borcu girin.')
                   : debtPlan
-                    ? `Her ay ${formatCurrencyTRY(debtMinimum)} ödenirse borç yaklaşık ${debtPlan.months} ayda kapanır; toplam faiz ${formatCurrencyTRY(debtPlan.totalInterest)}.`
-                    : 'Asgari ödeme faizi karşılamıyor; bu tutarla borç kapanmaz.'}{' '}
-                Varsayılan oranları yönetici belirler; bu borç için değiştirebilirsiniz.
+                    ? t('Her ay {v0} ödenirse borç yaklaşık {months} ayda kapanır; toplam faiz {v2}.', { v0: formatCurrencyTRY(debtMinimum), months: debtPlan.months, v2: formatCurrencyTRY(debtPlan.totalInterest) })
+                    : t('Asgari ödeme faizi karşılamıyor; bu tutarla borç kapanmaz.')}{' '}
+                {t('Varsayılan oranları yönetici belirler; bu borç için değiştirebilirsiniz.')}
               </p>
             </div>
           )}
@@ -467,30 +468,30 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
                   <Coins className="w-4 h-4 text-emerald-400" />
-                  <span>Canlı Kur & Özel Marj</span>
+                  <span>{t('Canlı Kur & Özel Marj')}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => fetchExchangeRates()}
                   className="text-[10px] text-subtle hover:text-white flex items-center gap-1 bg-surface-2 px-2 py-0.5 rounded-md border border-line-strong"
-                  title="Canlı Kurları Yenile"
+                  title={t('Canlı Kurları Yenile')}
                 >
                   <RefreshCw className="w-3 h-3 text-emerald-400" />
-                  <span>Kuru Güncelle</span>
+                  <span>{t('Kuru Güncelle')}</span>
                 </button>
               </div>
 
               {/* Rate Breakdown Grid */}
               <div className="grid grid-cols-3 gap-1.5 text-center">
                 <div className="p-1.5 rounded-lg bg-surface border border-line">
-                  <span className="text-[9px] text-muted block">Canlı Kur</span>
+                  <span className="text-[9px] text-muted block">{t('Canlı Kur')}</span>
                   <span className="text-xs font-mono font-bold text-white">
-                    1 {currency} = {conversion.liveRate.toFixed(2)} ₺
+                    1 {tx(currency)} = {tx(conversion.liveRate.toFixed(2))} ₺
                   </span>
                 </div>
 
                 <div className="p-1.5 rounded-lg bg-surface border border-line">
-                  <span className="text-[9px] text-muted block">Özel Marj</span>
+                  <span className="text-[9px] text-muted block">{t('Özel Marj')}</span>
                   <div className="flex items-center justify-center gap-1 font-mono font-bold text-amber-400 text-xs">
                     <span>+</span>
                     <input
@@ -507,18 +508,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
 
                 <div className="p-1.5 rounded-lg bg-brand-soft border border-brand-hover">
-                  <span className="text-[9px] text-emerald-400 block">Uygulanan</span>
+                  <span className="text-[9px] text-emerald-400 block">{t('Uygulanan')}</span>
                   <span className="text-xs font-mono font-bold text-emerald-300">
-                    {conversion.effectiveRate.toFixed(2)} ₺
+                    {tx(conversion.effectiveRate.toFixed(2))} ₺
                   </span>
                 </div>
               </div>
 
               {/* Conversion Result Preview */}
               <div className="pt-1.5 border-t border-brand-line flex items-center justify-between text-xs">
-                <span className="text-subtle text-[11px]">Hesaplanan TL Karşılığı:</span>
+                <span className="text-subtle text-[11px]">{t('Hesaplanan TL Karşılığı:')}</span>
                 <span className="font-mono font-bold text-xs sm:text-sm text-emerald-400">
-                  ₺{conversion.baseAmountTRY.toLocaleString('tr-TR')} TRY
+                  ₺{conversion.baseAmountTRY.toLocaleString(intlLocale())} TRY
                 </span>
               </div>
             </div>
@@ -528,7 +529,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label className="block text-xs font-semibold text-white mb-1">
-                {debtMode ? 'Sonraki ödeme tarihi *' : isRecurring ? 'Başlangıç Tarihi *' : 'İşlem / Vade Tarihi *'}
+                {debtMode ? t('Sonraki ödeme tarihi *') : isRecurring ? t('Başlangıç Tarihi *') : t('İşlem / Vade Tarihi *')}
               </label>
               <input
                 type="date"
@@ -543,23 +544,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 }`}
               />
               {formErrors.date && (
-                <p className="text-[11px] text-rose-400 font-semibold mt-1">{formErrors.date}</p>
+                <p className="text-[11px] text-rose-400 font-semibold mt-1">{tx(formErrors.date)}</p>
               )}
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span>Öncelik Derecesi</span>
+                <span>{t('Öncelik Derecesi')}</span>
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                 className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
               >
-                <option value="yuksek">Yüksek — kira, fatura</option>
-                <option value="orta">Orta — düzenli giderler</option>
-                <option value="dusuk">Düşük — isteğe bağlı</option>
+                <option value="yuksek">{t('Yüksek — kira, fatura')}</option>
+                <option value="orta">{t('Orta — düzenli giderler')}</option>
+                <option value="dusuk">{t('Düşük — isteğe bağlı')}</option>
               </select>
             </div>
           </div>
@@ -586,7 +587,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 />
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                   <Repeat className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Düzenli / Tekrarlayan İşlem (Abonelik, Maaş, Düzenli Gelir)</span>
+                  <span>{t('Düzenli / Tekrarlayan İşlem (Abonelik, Maaş, Düzenli Gelir)')}</span>
                 </div>
               </label>
             </div>
@@ -594,7 +595,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             {isRecurring && (
               <div className="pt-2 border-t border-line space-y-3 animate-fade-in">
                 <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
-                  <span className="text-xs text-subtle">Tekrarlama Sıklığı:</span>
+                  <span className="text-xs text-subtle">{t('Tekrarlama Sıklığı:')}</span>
                   {(['gunluk', 'haftalik', 'aylik', 'yillik'] as const).map((freq) => (
                     <label key={freq} className="flex items-center gap-1.5 text-xs text-white cursor-pointer min-h-[32px]">
                       <input
@@ -605,7 +606,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         onChange={() => setRecurringFrequency(freq)}
                         className="text-emerald-500 bg-surface-2 border-line-strong"
                       />
-                      <span>{FREQ_LABEL[freq]}</span>
+                      <span>{tx(FREQ_LABEL[freq])}</span>
                     </label>
                   ))}
                 </div>
@@ -615,8 +616,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-white flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Bitiş Tarihi (Vade Sonu)</span>
-                      <span className="text-[10px] text-muted font-normal">(isteğe bağlı)</span>
+                      <span>{t('Bitiş Tarihi (Vade Sonu)')}</span>
+                      <span className="text-[10px] text-muted font-normal">{t('(isteğe bağlı)')}</span>
                     </label>
                   </div>
 
@@ -642,10 +643,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   {formErrors.endDate ? (
                     <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      <span>{formErrors.endDate}</span>
+                      <span>{tx(formErrors.endDate)}</span>
                     </p>
                   ) : (
-                    <p className="text-[10px] text-subtle mt-1">Boş bırakılırsa süresiz tekrarlar (ör. maaş, kira).</p>
+                    <p className="text-[10px] text-subtle mt-1">{t('Boş bırakılırsa süresiz tekrarlar (ör. maaş, kira).')}</p>
                   )}
                 </div>
               </div>
@@ -659,10 +660,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <CheckCircle2 className={`w-4 h-4 ${isConfirmed ? 'text-emerald-400' : 'text-muted'}`} />
-                {type === 'gelir' ? 'Gelir Geldi (Onayla)' : 'Gider Ödendi (Onayla)'}
+                {type === 'gelir' ? t('Gelir Geldi (Onayla)') : t('Gider Ödendi (Onayla)')}
               </span>
               <p className="text-[11px] text-muted">
-                İşlem hesaba geçtiğinde veya ödendiğinde onaylayın.
+                {t('İşlem hesaba geçtiğinde veya ödendiğinde onaylayın.')}
               </p>
             </div>
 
@@ -680,12 +681,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Açıklama & Notlar</label>
+            <label className="block text-xs font-semibold text-white mb-1">{t('Açıklama & Notlar')}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              placeholder="Fatura no, döviz işlem referansı veya ek ayrıntılar..."
+              placeholder={t('Fatura no, döviz işlem referansı veya ek ayrıntılar...')}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
             />
           </div>
@@ -697,13 +698,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
             >
-              İptal
+              {t('İptal')}
             </button>
             <button
               type="submit"
               className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all cursor-pointer"
             >
-              {editTransaction ? 'Değişiklikleri Kaydet' : 'İşlemi Kaydet'}
+              {editTransaction ? t('Değişiklikleri Kaydet') : t('İşlemi Kaydet')}
             </button>
           </div>
         </form>

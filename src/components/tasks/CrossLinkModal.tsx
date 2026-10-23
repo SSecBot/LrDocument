@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { Task } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -24,7 +25,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
     updateTask(task.id, {
       linkedNoteId: selectedNoteId || undefined,
     });
-    addToast({ type: 'success', title: 'Bağlantılar Güncellendi', message: 'Görev dökümanlarla başarıyla ilişkilendirildi.' });
+    addToast({ type: 'success', title: t('Bağlantılar Güncellendi'), message: t('Görev dökümanlarla başarıyla ilişkilendirildi.') });
     onClose();
   };
 
@@ -32,8 +33,8 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Görevi bir notla ilişkilendir"
-      subtitle="Bu görevi tamamlamak için gereken dökümanı bağlayın."
+      title={t('Görevi bir notla ilişkilendir')}
+      subtitle={t('Bu görevi tamamlamak için gereken dökümanı bağlayın.')}
       maxWidth="max-w-md"
     >
       <div className="space-y-5">
@@ -41,7 +42,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
         <div>
           <label className="block text-xs font-semibold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span>Matematik Notu Bağla</span>
+            <span>{t('Matematik Notu Bağla')}</span>
           </label>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             <div
@@ -52,7 +53,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
                   : 'bg-surface-2 border-line text-subtle hover:text-white'
               }`}
             >
-              <span>(Not Bağlantısı Yok)</span>
+              <span>{t('(Not Bağlantısı Yok)')}</span>
               {!selectedNoteId && <Check className="w-4 h-4 text-emerald-400" />}
             </div>
 
@@ -66,7 +67,7 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
                     : 'bg-surface-2 border-line text-subtle hover:text-white hover:bg-surface-2'
                 }`}
               >
-                <span className="truncate">{n.title}</span>
+                <span className="truncate">{tx(n.title)}</span>
                 {selectedNoteId === n.id && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
               </div>
             ))}
@@ -80,13 +81,13 @@ export const CrossLinkModal: React.FC<CrossLinkModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
           >
-            İptal
+            {t('İptal')}
           </button>
           <button
             onClick={handleSave}
             className="px-4 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-colors"
           >
-            Bağlantıları Kaydet
+            {t('Bağlantıları Kaydet')}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -147,11 +148,11 @@ export const Modal: React.FC<ModalProps> = ({
         <header className="flex items-start gap-3 px-4 sm:px-5 pt-2 pb-3 sm:pt-4 sm:pb-3.5 border-b border-line shrink-0">
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-[15px] sm:text-base font-semibold text-fg leading-snug">
-              {title}
+              {tx(title)}
             </h2>
             {subtitle && (
               <p id={subtitleId} className="text-xs text-subtle mt-0.5 leading-relaxed line-clamp-2">
-                {subtitle}
+                {tx(subtitle)}
               </p>
             )}
           </div>
@@ -159,7 +160,7 @@ export const Modal: React.FC<ModalProps> = ({
             type="button"
             onClick={onClose}
             className="-mr-1.5 -mt-0.5 w-10 h-10 shrink-0 flex items-center justify-center rounded-lg text-subtle hover:text-fg hover:bg-surface-2 active:bg-surface-3 transition-colors"
-            aria-label="Kapat"
+            aria-label={t('Kapat')}
           >
             <X className="w-[18px] h-[18px]" />
           </button>

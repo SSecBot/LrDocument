@@ -1,7 +1,7 @@
 // LrDocument service worker: makes the site installable as an app (Windows, Android, macOS) and
 // shows a friendly page when there is no connection. Only the offline page, the icons and hashed
 // build files (/_next/static) are cached — never pages, API responses or personal data.
-const CACHE = 'lr-shell-v2';
+const CACHE = 'lr-shell-v3';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/icons/icon-512.png', '/icons/badge-96.png'];
 

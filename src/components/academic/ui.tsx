@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 import { Check, CloudOff, Loader2 } from 'lucide-react';
 import type { CourseStatus } from '@/lib/academic/grading';
@@ -41,7 +42,7 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
   const toneCls = tone === 'good' ? 'text-emerald-400' : tone === 'warn' ? 'text-amber-400' : tone === 'bad' ? 'text-rose-400' : 'text-fg';
   return (
     <div className="bg-surface border border-line rounded-lg px-3 py-2.5">
-      <div className="text-[11px] text-muted">{label}</div>
+      <div className="text-[11px] text-muted">{tx(label)}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${toneCls}`}>{value}</div>
       {hint && <div className="text-[11px] text-muted">{hint}</div>}
     </div>
@@ -59,7 +60,7 @@ const STATUS_CLS: Record<CourseStatus, string> = {
 export function StatusBadge({ status }: { status: CourseStatus }) {
   return (
     <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${STATUS_CLS[status]}`}>
-      {STATUS_LABEL[status]}
+      {tx(STATUS_LABEL[status])}
     </span>
   );
 }
@@ -71,7 +72,7 @@ export function LetterBadge({ letter, failing, conditional }: { letter: string |
     : conditional
       ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
       : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-  return <span className={`inline-flex min-w-9 justify-center text-xs font-semibold px-1.5 py-0.5 rounded border ${cls}`}>{letter}</span>;
+  return <span className={`inline-flex min-w-9 justify-center text-xs font-semibold px-1.5 py-0.5 rounded border ${cls}`}>{tx(letter)}</span>;
 }
 
 export function Progress({ value, max, state }: { value: number; max: number; state: 'ok' | 'warn' | 'over' }) {
@@ -87,8 +88,8 @@ export function Progress({ value, max, state }: { value: number; max: number; st
 export function EmptyState({ title, text, action }: { title: string; text?: string; action?: React.ReactNode }) {
   return (
     <div className="px-4 py-10 text-center space-y-2">
-      <p className="text-sm font-medium text-body">{title}</p>
-      {text && <p className="text-xs text-muted max-w-sm mx-auto">{text}</p>}
+      <p className="text-sm font-medium text-body">{tx(title)}</p>
+      {text && <p className="text-xs text-muted max-w-sm mx-auto">{tx(text)}</p>}
       {action && <div className="pt-1">{action}</div>}
     </div>
   );
@@ -116,7 +117,7 @@ export function ScoreInput({
       max={max}
       step="any"
       value={value ?? ''}
-      placeholder={placeholder}
+      placeholder={tx(placeholder)}
       onChange={(e) => {
         const raw = e.target.value;
         if (raw === '') return onChange(null);
@@ -132,19 +133,19 @@ export function SaveIndicator({ state, error, onRetry }: { state: string; error:
   if (state === 'saving')
     return (
       <span className="text-[11px] text-muted inline-flex items-center gap-1 whitespace-nowrap">
-        <Loader2 className="w-3 h-3 animate-spin" /> Kaydediliyor
+        <Loader2 className="w-3 h-3 animate-spin" />{' '}{t('Kaydediliyor')}
       </span>
     );
   if (state === 'error')
     return (
       <button onClick={onRetry} className="text-[11px] text-rose-400 inline-flex items-center gap-1 hover:underline whitespace-nowrap" title={error ?? ''}>
-        <CloudOff className="w-3 h-3" /> Kaydedilemedi — tekrar dene
+        <CloudOff className="w-3 h-3" />{' '}{t('Kaydedilemedi — tekrar dene')}
       </button>
     );
   if (state === 'saved')
     return (
       <span className="text-[11px] text-muted inline-flex items-center gap-1 whitespace-nowrap">
-        <Check className="w-3 h-3 text-emerald-400" /> Kaydedildi
+        <Check className="w-3 h-3 text-emerald-400" />{' '}{t('Kaydedildi')}
       </span>
     );
   return null;

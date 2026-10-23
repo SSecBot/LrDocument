@@ -1,5 +1,7 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
+import { ERR, responseError } from '@/lib/errors';
 import React, { useEffect, useState } from 'react';
 import { BadgeCheck, GraduationCap, LogIn } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -43,13 +45,13 @@ export function StudentEmailSection() {
       const res = await fetch('/api/student/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMsg({ kind: 'error', text: data.error || 'İşlem yapılamadı.' });
+        setMsg({ kind: 'error', text: responseError(res, data, t('Öğrenci e-postası doğrulanamadı.')) });
         return null;
       }
       if (data.emailConfirmed !== undefined) setStatus(data);
       return data;
     } catch {
-      setMsg({ kind: 'error', text: 'Sunucuya ulaşılamadı.' });
+      setMsg({ kind: 'error', text: ERR.network });
       return null;
     } finally {
       setBusy(false);
@@ -60,24 +62,24 @@ export function StudentEmailSection() {
 
   if (!status.studentEmail) {
     return (
-      <Panel title="Öğrenci e-postası">
-        <p className="text-sm text-subtle">Önce Öğrenci bilgileri sekmesinden öğrenci e-postanızı kaydedin.</p>
+      <Panel title={t('Öğrenci e-postası')}>
+        <p className="text-sm text-subtle">{t('Önce Öğrenci bilgileri sekmesinden öğrenci e-postanızı kaydedin.')}</p>
       </Panel>
     );
   }
 
   if (status.emailConfirmed) {
     return (
-      <Panel title="Öğrenci e-postası">
+      <Panel title={t('Öğrenci e-postası')}>
         <div className="space-y-2 text-sm">
           <p className="text-emerald-300 flex items-center gap-2">
-            <BadgeCheck className="w-4 h-4 shrink-0" /> {status.studentEmail} doğrulandı.
+            <BadgeCheck className="w-4 h-4 shrink-0" /> {tx(status.studentEmail)}{' '}{t('doğrulandı.')}
           </p>
           <p className="text-xs text-subtle flex items-start gap-2">
             <LogIn className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             {status.sameAsAccount
-              ? 'Bu adres aynı zamanda hesap e-postanız.'
-              : 'Giriş yaparken hesap e-postanızı ya da bu öğrenci e-postasını kullanabilirsiniz; şifreniz aynıdır. Şifremi unuttum kodu da hangi adresi yazarsanız oraya gider.'}
+              ? t('Bu adres aynı zamanda hesap e-postanız.')
+              : t('Giriş yaparken hesap e-postanızı ya da bu öğrenci e-postasını kullanabilirsiniz; şifreniz aynıdır. Şifremi unuttum kodu da hangi adresi yazarsanız oraya gider.')}
           </p>
         </div>
       </Panel>
@@ -86,44 +88,44 @@ export function StudentEmailSection() {
 
   return (
     <Panel
-      title="Öğrenci e-postası"
-      description="Öğrenci e-postanıza gelen kodla adresinizi doğrulayın: öğrenciliğiniz onaylanır ve bu adresle de giriş yapabilirsiniz."
+      title={t('Öğrenci e-postası')}
+      description={t('Öğrenci e-postanıza gelen kodla adresinizi doğrulayın: öğrenciliğiniz onaylanır ve bu adresle de giriş yapabilirsiniz.')}
     >
       <div className="space-y-4 max-w-xl">
         {!status.academic ? (
           <p className="text-xs text-muted">
-            Kayıtlı öğrenci e-postanız üniversite uzantılı değil.{' '}
+            {t('Kayıtlı öğrenci e-postanız üniversite uzantılı değil.')}{' '}
             <button type="button" className="text-sky-300 hover:underline" onClick={() => setSettingsSection('ogrenci')}>
-              Öğrenci bilgilerinden düzeltin
+              {t('Öğrenci bilgilerinden düzeltin')}
             </button>{' '}
-            ya da öğrenci belgesi yükleyin.
+            {t('ya da öğrenci belgesi yükleyin.')}
           </p>
         ) : codeSent ? (
           <form
             onSubmit={async (e) => {
               e.preventDefault();
               const r = await call({ action: 'confirm', code });
-              if (r) setMsg({ kind: 'ok', text: 'Öğrenci e-postanız doğrulandı.' });
+              if (r) setMsg({ kind: 'ok', text: t('Öğrenci e-postanız doğrulandı.') });
             }}
             className="flex flex-wrap items-end gap-2"
           >
             <label className="block">
-              <span className={labelCls}>{status.studentEmail} adresine gelen kod</span>
+              <span className={labelCls}>{tx(status.studentEmail)} adresine gelen kod</span>
               <input
                 className={`${fieldCls} font-mono tracking-[0.3em] text-center w-[180px]`}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                aria-label="Öğrenci e-postası doğrulama kodu"
+                aria-label={t('Öğrenci e-postası doğrulama kodu')}
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               />
             </label>
             <button type="submit" disabled={busy || code.length !== 6} className={primaryBtn}>
-              Doğrula
+              {t('Doğrula')}
             </button>
             <button type="button" disabled={busy} onClick={() => call({ action: 'send' }).then((r) => r && setMsg({ kind: 'ok', text: r.message }))} className={secondaryBtn}>
-              Yeniden gönder
+              {t('Yeniden gönder')}
             </button>
           </form>
         ) : (
@@ -138,7 +140,7 @@ export function StudentEmailSection() {
             }}
             className={primaryBtn}
           >
-            <GraduationCap className="w-4 h-4" /> {status.studentEmail} adresine kod gönder
+            <GraduationCap className="w-4 h-4" /> {tx(status.studentEmail)}{' '}{t('adresine kod gönder')}
           </button>
         )}
         {msg && <Message {...msg} />}

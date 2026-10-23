@@ -1,12 +1,15 @@
 'use client';
 
+import { getLocale, t as tl, tx } from '@/lib/i18n';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ERR, responseError } from '@/lib/errors';
 import React, { Suspense, useEffect, useState } from 'react';
 import { DEFAULT_SYSTEM_SETTINGS, resolveSystemSettings, type SystemSettings } from '@/lib/systemSettings';
 import { useSearchParams } from 'next/navigation';
 import { EmailCodeStep } from '@/components/auth/EmailCodeStep';
 import { UniversityPicker } from '@/components/academic/UniversityPicker';
 import { CLASS_YEARS, isAcademicEmail } from '@/lib/studentProfile';
-import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, clampSeats, formatTL, planLabel, seatPrice, type AccountType } from '@/lib/pricing';
+import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPES, ONE_TIME_NOTE, RENEWAL_NOTE, billingNote, clampSeats, formatTL, planLabel, seatPrice, type AccountType } from '@/lib/pricing';
 import Link from 'next/link';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import {
@@ -76,27 +79,27 @@ function RegisterForm() {
     setErrorMessage(null);
 
     if (password !== passwordConfirm) {
-      setErrorMessage('Şifreler birbiriyle eşleşmiyor.');
+      setErrorMessage(tl('Şifreler birbiriyle eşleşmiyor.'));
       return;
     }
 
     if (password.length < minPassword) {
-      setErrorMessage(`Şifreniz en az ${minPassword} karakter olmalıdır.`);
+      setErrorMessage(tl('Şifreniz en az {minPassword} karakter olmalıdır.', { minPassword }));
       return;
     }
 
     if (isCorporate && organization.trim().length < 2) {
-      setErrorMessage('Lütfen kurum adını giriniz.');
+      setErrorMessage(tl('Lütfen kurum adını giriniz.'));
       return;
     }
 
     if (isStudent) {
       if (!university.trim() || !department.trim()) {
-        setErrorMessage('Lütfen üniversite ve bölüm bilgilerinizi giriniz.');
+        setErrorMessage(tl('Lütfen üniversite ve bölüm bilgilerinizi giriniz.'));
         return;
       }
       if (!isAcademicEmail(studentEmail)) {
-        setErrorMessage('Öğrenci e-postanız üniversite uzantılı olmalıdır (ör. 123456@ogr.universite.edu.tr).');
+        setErrorMessage(tl('Öğrenci e-postanız üniversite uzantılı olmalıdır (ör. 123456@ogr.universite.edu.tr).'));
         return;
       }
     }
@@ -113,6 +116,7 @@ function RegisterForm() {
           password,
           subscriptionPlan,
           accountType,
+          locale: getLocale(),
           ...(isStudent ? { student: { university, universityId, studentEmail, department, classYear } } : {}),
           ...(isCorporate ? { organization: organization.trim(), seats } : {}),
         }),
@@ -121,16 +125,16 @@ function RegisterForm() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErrorMessage(data.error || 'Kayıt sırasında bir hata oluştu.');
+        setErrorMessage(responseError(res, data, tl('Kayıt tamamlanamadı.')));
         setLoading(false);
         return;
       }
 
-      setMailError(data.verification && !data.verification.sent ? data.verification.error || 'Doğrulama e-postası gönderilemedi.' : null);
+      setMailError(data.verification && !data.verification.sent ? data.verification.error || tl('Doğrulama e-postası gönderilemedi.') : null);
       setIsSubmitted(true);
       setLoading(false);
     } catch {
-      setErrorMessage('Bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
+      setErrorMessage(ERR.network);
       setLoading(false);
     }
   };
@@ -147,7 +151,7 @@ function RegisterForm() {
             LrDocument
           </h1>
           <p className="text-sm text-neutral-400 mt-1">
-            Kayıt talebi oluşturun
+            {tl('Kayıt talebi oluşturun')}
           </p>
         </div>
 
@@ -155,7 +159,7 @@ function RegisterForm() {
         <div className="bg-surface/90 border border-line backdrop-blur-xl rounded-xl p-6 relative">
           {isSubmitted && !emailVerified ? (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-fg">E-postanızı doğrulayın</h2>
+              <h2 className="text-lg font-semibold text-fg">{tl('E-postanızı doğrulayın')}</h2>
               <EmailCodeStep email={email.trim().toLowerCase()} initialError={mailError} onVerified={() => setEmailVerified(true)} />
             </div>
           ) : isSubmitted ? (
@@ -166,21 +170,21 @@ function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-white">E-postanız doğrulandı</h2>
+                <h2 className="text-xl font-bold text-white">{tl('E-postanız doğrulandı')}</h2>
                 <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm font-semibold">
-                  Talebiniz oluşturuldu. Mail üzerinden iletişime geçilecektir.
+                  {tl('Talebiniz oluşturuldu. Mail üzerinden iletişime geçilecektir.')}
                 </div>
               </div>
 
               <p className="text-xs text-neutral-400">
-                Hesap başvurunuz yönetici onayına sunuldu. Onay süreci tamamlandığında bilgilendirme yapılacaktır.
+                {tl('Hesap başvurunuz yönetici onayına sunuldu. Onay süreci tamamlandığında bilgilendirme yapılacaktır.')}
               </p>
 
               <Link
                 href="/login"
                 className="w-full inline-flex items-center justify-center gap-2 bg-surface-3 hover:bg-neutral-700 text-white font-medium py-3 px-4 rounded-lg border border-line-strong transition-colors"
               >
-                <span>Giriş Sayfasına Dön</span>
+                <span>{tl('Giriş Sayfasına Dön')}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -190,16 +194,21 @@ function RegisterForm() {
               {errorMessage && (
                 <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-3 text-sm animate-in fade-in">
                   <AlertCircle className="w-5 h-5 text-rose-400 mt-0.5 shrink-0" />
-                  <span>{errorMessage}</span>
+                  <span>{tx(errorMessage)}</span>
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
+                  <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">{tl('Uygulama dili')}</span>
+                  <LanguageSwitcher />
+                  <p className="mt-1.5 text-[11px] text-muted">{tl('Uygulama, bildirimler ve e-postalar bu dilde olur. Daha sonra Ayarlar’dan değiştirebilirsiniz.')}</p>
+                </div>
+                <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Hesap Tipi
+                    {tl('Hesap Tipi')}
                   </label>
-                  <div className="grid grid-cols-3 gap-1 p-1 bg-app rounded-lg border border-line" role="group" aria-label="Hesap tipi">
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-app rounded-lg border border-line" role="group" aria-label={tl('Hesap tipi')}>
                     {ACCOUNT_TYPES.map((t) => (
                       <button
                         key={t}
@@ -212,19 +221,18 @@ function RegisterForm() {
                       >
                         {t === 'STUDENT' && <GraduationCap className="w-4 h-4" />}
                         {t === 'CORPORATE' && <Building2 className="w-4 h-4" />}
-                        {ACCOUNT_TYPE_LABEL[t]}
+                        {tx(ACCOUNT_TYPE_LABEL[t])}
                       </button>
                     ))}
                   </div>
                   {isStudent && (
                     <p className="mt-2 text-[11px] text-subtle">
-                      Öğrencilere tüm paketlerde %{settings.pricing.studentDiscountPercent} indirim. Ders takibi, devamsızlık ve not ortalaması hesaplama araçları dahildir.
+                      {tl('Öğrencilere tüm paketlerde %')}{settings.pricing.studentDiscountPercent}{' '}{tl('indirim. Ders takibi, devamsızlık ve not ortalaması hesaplama araçları dahildir.')}
                     </p>
                   )}
                   {isCorporate && (
                     <p className="mt-2 text-[11px] text-subtle">
-                      Kurumsal hesabı yönetici inceleyip açar. Açıldıktan sonra ekibinizi siz eklersiniz; her kişiye özel bir kurumsal kod verilir.
-                      Ücret, kişi başı normal fiyatın %{settings.pricing.corporatePercent}’i üzerinden eklediğiniz kişi sayısına göre güncellenir.
+                      {tl('Kurumsal hesabı yönetici inceleyip açar. Açıldıktan sonra ekibinizi siz eklersiniz; her kişiye özel bir kurumsal kod verilir. Ücret, kişi başı normal fiyatın %')}{settings.pricing.corporatePercent}{tl('’i üzerinden eklediğiniz kişi sayısına göre güncellenir.')}
                     </p>
                   )}
                 </div>
@@ -232,12 +240,12 @@ function RegisterForm() {
                 {isCorporate && (
                   <div className="space-y-3 p-3 rounded-lg border border-line bg-app/50">
                     <div>
-                      <label className="block text-[11px] font-semibold text-subtle mb-1.5">Kurum adı</label>
-                      <input className={fieldCls} required minLength={2} maxLength={120} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Ör. Örnek Eğitim A.Ş." autoComplete="organization" />
+                      <label className="block text-[11px] font-semibold text-subtle mb-1.5">{tl('Kurum adı')}</label>
+                      <input className={fieldCls} required minLength={2} maxLength={120} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder={tl('Ör. Örnek Eğitim A.Ş.')} autoComplete="organization" />
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-subtle mb-1.5">
-                        Tahmini kişi sayısı ({settings.pricing.corporateMinSeats}–{settings.pricing.corporateMaxSeats}, siz dahil)
+                        {tl('Tahmini kişi sayısı (')}{settings.pricing.corporateMinSeats}–{settings.pricing.corporateMaxSeats}{tl(', siz dahil)')}
                       </label>
                       <input
                         className={fieldCls}
@@ -252,13 +260,15 @@ function RegisterForm() {
                       />
                     </div>
                     <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-xs">
-                      <dt className="text-muted">Aylık</dt>
+                      <dt className="text-muted">{tl('Aylık')}</dt>
                       <dd className="text-body tabular-nums text-right">
-                        {seats} × {formatTL(seatPrice('Aylık', 'CORPORATE', settings.pricing))} = {formatTL(seats * seatPrice('Aylık', 'CORPORATE', settings.pricing))} / ay
+                        {seats} × {formatTL(seatPrice('Aylık', 'CORPORATE', settings.pricing))} = {formatTL(seats * seatPrice('Aylık', 'CORPORATE', settings.pricing))} {tl('/ ay')}
+                        <span className="block text-[11px] text-muted">{tx(RENEWAL_NOTE)}</span>
                       </dd>
-                      <dt className="text-muted">Ömür boyu</dt>
+                      <dt className="text-muted">{tl('Ömür boyu')}</dt>
                       <dd className="text-body tabular-nums text-right">
                         {seats} × {formatTL(seatPrice('Tek Seferlik', 'CORPORATE', settings.pricing))} = {formatTL(seats * seatPrice('Tek Seferlik', 'CORPORATE', settings.pricing))}
+                        <span className="block text-[11px] text-muted">{tx(ONE_TIME_NOTE)}</span>
                       </dd>
                     </dl>
                   </div>
@@ -267,7 +277,7 @@ function RegisterForm() {
                 {isStudent && (
                   <div className="space-y-3 p-3 rounded-lg border border-line bg-app/50">
                     <div>
-                      <label htmlFor="kayit-universite" className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Üniversite</label>
+                      <label htmlFor="kayit-universite" className="block text-[11px] font-semibold text-neutral-400 mb-1.5">{tl('Üniversite')}</label>
                       <UniversityPicker
                         id="kayit-universite"
                         required
@@ -282,19 +292,19 @@ function RegisterForm() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Öğrenci e-postası</label>
+                      <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">{tl('Öğrenci e-postası')}</label>
                       <input className={fieldCls} type="email" required value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} placeholder="ogrencino@ogr.universite.edu.tr" />
                     </div>
                     <div className="grid grid-cols-[1fr_120px] gap-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Bölüm</label>
-                        <input className={fieldCls} required value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ör. Bilgisayar Müh." />
+                        <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">{tl('Bölüm')}</label>
+                        <input className={fieldCls} required value={department} onChange={(e) => setDepartment(e.target.value)} placeholder={tl('Ör. Bilgisayar Müh.')} />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">Sınıf</label>
+                        <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5">{tl('Sınıf')}</label>
                         <select className={fieldCls} value={classYear} onChange={(e) => setClassYear(Number(e.target.value))}>
                           {CLASS_YEARS.map((c) => (
-                            <option key={c.value} value={c.value}>{c.label}</option>
+                            <option key={c.value} value={c.value}>{tx(c.label)}</option>
                           ))}
                         </select>
                       </div>
@@ -304,7 +314,7 @@ function RegisterForm() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Abonelik Tercihi
+                    {tl('Abonelik Tercihi')}
                   </label>
                   <div className="grid grid-cols-2 gap-2 p-1 bg-app rounded-lg border border-line">
                     <button
@@ -328,11 +338,12 @@ function RegisterForm() {
                       {planLabel('Tek Seferlik', accountType, settings.pricing, seats)}
                     </button>
                   </div>
+                  <p className="mt-1.5 text-[11px] text-muted" aria-live="polite">{tx(billingNote(subscriptionPlan))}</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Ad Soyad
+                    {tl('Ad Soyad')}
                   </label>
                   <div className="relative">
                     <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -341,7 +352,7 @@ function RegisterForm() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Örn: Ali Yılmaz"
+                      placeholder={tl('Örn: Ali Yılmaz')}
                       className="w-full bg-app border border-line rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-line-strong focus:ring-1 focus:ring-brand/40 transition-colors"
                     />
                   </div>
@@ -349,7 +360,7 @@ function RegisterForm() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    E-Posta Adresi
+                    {tl('E-Posta Adresi')}
                   </label>
                   <div className="relative">
                     <Mail className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -367,7 +378,7 @@ function RegisterForm() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Şifre (En az {minPassword} karakter)
+                    {tl('Şifre (En az')}{' '}{minPassword} karakter)
                   </label>
                   <div className="relative">
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -385,7 +396,7 @@ function RegisterForm() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
-                    Şifre Tekrarı
+                    {tl('Şifre Tekrarı')}
                   </label>
                   <div className="relative">
                     <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -402,27 +413,27 @@ function RegisterForm() {
                 </div>
 
                 <p className="text-[11px] text-muted leading-relaxed">
-                  Kayıt talebi göndererek{' '}
+                  {tl('Kayıt talebi göndererek')}{' '}
                   <Link href="/kullanim-sartlari" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    Kullanım Şartları
+                    {tl('Kullanım Şartları')}
                   </Link>
                   ,{' '}
                   <Link href="/mesafeli-satis" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    Mesafeli Satış Sözleşmesi
+                    {tl('Mesafeli Satış Sözleşmesi')}
                   </Link>{' '}
-                  ve{' '}
+                  {tl('ve')}{' '}
                   <Link href="/teslimat-ve-iade" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    Teslimat ve İade Şartları
+                    {tl('Teslimat ve İade Şartları')}
                   </Link>
-                  ’nı kabul etmiş olursunuz; kişisel verilerinizin{' '}
+                  {tl('’nı kabul etmiş olursunuz; kişisel verilerinizin')}{' '}
                   <Link href="/kvkk" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    KVKK Aydınlatma Metni
+                    {tl('KVKK Aydınlatma Metni')}
                   </Link>{' '}
-                  ve{' '}
+                  {tl('ve')}{' '}
                   <Link href="/gizlilik" target="_blank" className="text-brand-light hover:text-fg underline underline-offset-2">
-                    Gizlilik Politikası
+                    {tl('Gizlilik Politikası')}
                   </Link>{' '}
-                  kapsamında işleneceğini bildiğinizi onaylarsınız.
+                  {tl('kapsamında işleneceğini bildiğinizi onaylarsınız.')}
                 </p>
 
                 <button
@@ -434,7 +445,7 @@ function RegisterForm() {
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Kayıt Talebini Gönder</span>
+                      <span>{tl('Kayıt Talebini Gönder')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -448,12 +459,12 @@ function RegisterForm() {
         {!isSubmitted && (
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-400">
-              Zaten bir hesabınız var mı?{' '}
+              {tl('Zaten bir hesabınız var mı?')}{' '}
               <Link
                 href="/login"
                 className="text-brand-light hover:text-fg font-medium transition-colors"
               >
-                Giriş Yap
+                {tl('Giriş Yap')}
               </Link>
             </p>
           </div>

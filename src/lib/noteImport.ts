@@ -1,5 +1,6 @@
 'use client';
 
+import { t } from '@/lib/i18n';
 // Turns an uploaded file into note content (Markdown). Everything runs in the browser:
 // PDF via pdf.js (OCR when the PDF has no text layer), Word .docx via mammoth, .md/.txt as-is.
 
@@ -30,12 +31,12 @@ export function importKindOf(file: File): ImportKind | null {
   return null;
 }
 
-const titleOf = (file: File) => file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 200) || 'İçe aktarılan not';
+const titleOf = (file: File) => file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 200) || t('İçe aktarılan not');
 
 export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) => void, options: { handwriting?: boolean } = {}): Promise<ImportedNote> {
   const kind = importKindOf(file);
-  if (!kind) throw new ImportError('Desteklenmeyen dosya türü. PDF, Word (.docx), Markdown (.md) veya metin (.txt) seçin.');
-  if (file.size > MAX_IMPORT_BYTES) throw new ImportError('Dosya en fazla 20 MB olabilir.');
+  if (!kind) throw new ImportError(t('Desteklenmeyen dosya türü. PDF, Word (.docx), Markdown (.md) veya metin (.txt) seçin.'));
+  if (file.size > MAX_IMPORT_BYTES) throw new ImportError(t('Dosya en fazla 20 MB olabilir.'));
 
   const notes: string[] = [];
   let content: string;
@@ -48,7 +49,7 @@ export async function importNoteFile(file: File, onProgress?: (p: OcrProgress) =
   }
 
   content = content.replace(/\r\n?/g, '\n').replace(/\u0000/g, '').trim();
-  if (!content) throw new ImportError('Dosyada okunabilir metin bulunamadı.');
+  if (!content) throw new ImportError(t('Dosyada okunabilir metin bulunamadı.'));
   if (content.length > MAX_NOTE_CHARS) {
     content = content.slice(0, MAX_NOTE_CHARS);
     notes.push('Metin çok uzundu; ilk 200.000 karakter alındı.');
@@ -66,7 +67,7 @@ export async function pdfToText(data: Uint8Array, notes: string[], onProgress?: 
   const pdfjs = await loadPdfJs<PdfJsRenderLike>();
   const result = await readCalendarRows(pdfjs, data, onProgress ?? (() => {}), MAX_PDF_PAGES, { handwriting });
   if (result.usedOcr) {
-    notes.push(handwriting ? 'El yazısı metin tanıma ile okundu; okunamayan kelimeleri kontrol edin.' : 'Taranmış sayfalar metin tanıma (OCR) ile okundu; metni kontrol edin.');
+    notes.push(handwriting ? t('El yazısı metin tanıma ile okundu; okunamayan kelimeleri kontrol edin.') : t('Taranmış sayfalar metin tanıma (OCR) ile okundu; metni kontrol edin.'));
   }
   if (result.pages > MAX_PDF_PAGES) notes.push(`PDF ${result.pages} sayfa; ilk ${MAX_PDF_PAGES} sayfa alındı.`);
   return rowsToParagraphs(result.rows);

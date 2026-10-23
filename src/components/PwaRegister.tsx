@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+// Imported here (root layout) so the browser's install offer is caught as early as possible.
+import '@/lib/pwaInstall';
 
 /** Registers the service worker (public/sw.js) that makes LrDocument installable as an app. */
 export function PwaRegister() {

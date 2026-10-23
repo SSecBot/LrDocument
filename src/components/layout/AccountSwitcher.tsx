@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, Loader2, LogOut, UserPlus } from 'lucide-react';
@@ -49,12 +50,12 @@ export function AccountSwitcher({ onClose, children }: { onClose?: () => void; c
   const itemCls = 'w-full min-h-[40px] flex items-center gap-2.5 px-2.5 rounded-md text-left text-[13px] transition-colors';
 
   return (
-    <div className="w-64 max-w-[calc(100vw-24px)] p-1.5 bg-surface border border-line-strong rounded-lg shadow-xl" role="menu" aria-label="Hesaplar">
+    <div className="w-64 max-w-[calc(100vw-24px)] p-1.5 bg-surface border border-line-strong rounded-lg shadow-xl" role="menu" aria-label={t('Hesaplar')}>
       {children && <div className="pb-1 mb-1 border-b border-line">{children}</div>}
-      <p className="px-2.5 pt-1.5 pb-1 text-[11px] text-muted">Hesaplar</p>
+      <p className="px-2.5 pt-1.5 pb-1 text-[11px] text-muted">{t('Hesaplar')}</p>
       {accounts === null && (
         <div className="px-2.5 py-2 text-xs text-muted flex items-center gap-2">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Yükleniyor…
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />{' '}{t('Yükleniyor…')}
         </div>
       )}
       {list.map((a) => (
@@ -66,27 +67,27 @@ export function AccountSwitcher({ onClose, children }: { onClose?: () => void; c
           className={`${itemCls} ${a.active ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
         >
           <span className="w-7 h-7 rounded-full bg-surface-3 text-body flex items-center justify-center text-xs font-semibold shrink-0">
-            {a.name.charAt(0).toUpperCase()}
+            {tx(a.name.charAt(0).toUpperCase())}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-fg truncate">{a.name}</span>
-            <span className="block text-[11px] text-muted truncate">{a.email}</span>
+            <span className="block text-fg truncate">{tx(a.name)}</span>
+            <span className="block text-[11px] text-muted truncate">{tx(a.email)}</span>
           </span>
           {a.active && <Check className="w-4 h-4 text-brand-light shrink-0" />}
           {busy === a.id && <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />}
         </button>
       ))}
-      {error && <p className="px-2.5 py-1.5 text-[11px] text-rose-300" role="alert">{error}</p>}
+      {error && <p className="px-2.5 py-1.5 text-[11px] text-rose-300" role="alert">{tx(error)}</p>}
       <div className="my-1 border-t border-line" />
       <Link href="/login?ekle=1" onClick={onClose} role="menuitem" className={`${itemCls} text-body hover:bg-surface-2`}>
-        <UserPlus className="w-4 h-4 text-muted" /> Hesap ekle
+        <UserPlus className="w-4 h-4 text-muted" />{' '}{t('Hesap ekle')}
       </Link>
       <button role="menuitem" onClick={() => logout()} className={`${itemCls} text-body hover:bg-surface-2`}>
-        <LogOut className="w-4 h-4 text-muted" /> {list.length > 1 ? 'Bu hesaptan çık' : 'Çıkış yap'}
+        <LogOut className="w-4 h-4 text-muted" /> {list.length > 1 ? t('Bu hesaptan çık') : t('Çıkış yap')}
       </button>
       {list.length > 1 && (
         <button role="menuitem" onClick={() => logout(true)} className={`${itemCls} text-rose-300 hover:bg-surface-2`}>
-          <LogOut className="w-4 h-4" /> Tüm hesaplardan çık
+          <LogOut className="w-4 h-4" />{' '}{t('Tüm hesaplardan çık')}
         </button>
       )}
     </div>

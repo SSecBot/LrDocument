@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarCheck2, CalendarX2, FileUp, Loader2, MapPin, Plus, Search, Trash2, Users } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -224,12 +225,12 @@ function CalendarEditor({ university, students, onClose, onSaved }: { university
         body: JSON.stringify({ terms, sourceUrl }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Kaydedilemedi.');
+      if (!res.ok) throw new Error(responseError(res, json, 'Kaydedilemedi.'));
       addToast({ type: 'success', title: 'Takvim yayınlandı', message: `${university.name} öğrencilerinin ders takibine eklenecek.` });
       onSaved();
       onClose();
     } catch (err) {
-      setError((err as Error).message);
+      setError(thrownError(err));
     } finally {
       setBusy(false);
     }

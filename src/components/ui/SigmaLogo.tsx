@@ -1,3 +1,4 @@
+import { t, tx } from '@/lib/i18n';
 import React from 'react';
 
 interface SigmaLogoProps {
@@ -65,7 +66,7 @@ interface SigmaBrandProps {
 
 export function SigmaBrand({
   size = 'md',
-  subtitle = 'Matematik & İçerik Üretim Alanı',
+  subtitle = t('Matematik & İçerik Üretim Alanı'),
   showBadge = true,
   className = '',
 }: SigmaBrandProps) {
@@ -88,7 +89,7 @@ export function SigmaBrand({
         </div>
         {subtitle && (
           <p className={`text-brand-light font-medium tracking-tight ${isLarge ? 'text-xs' : 'text-[11px]'}`}>
-            {subtitle}
+            {tx(subtitle)}
           </p>
         )}
       </div>

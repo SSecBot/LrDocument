@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ExternalLink, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -31,7 +32,7 @@ export function LandingEditorPanel() {
         setSaved(JSON.stringify(d.content));
         setDefaults(d.defaults ?? null);
       })
-      .catch((err) => !ctrl.signal.aborted && setError(err instanceof Error ? err.message : 'İçerik alınamadı.'));
+      .catch((err) => !ctrl.signal.aborted && setError(thrownError(err, 'İçerik alınamadı.')));
     return () => ctrl.abort();
   }, []);
 
@@ -57,12 +58,12 @@ export function LandingEditorPanel() {
         body: JSON.stringify({ content: draft }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Kaydedilemedi.');
+      if (!res.ok) throw new Error(responseError(res, data, 'Kaydedilemedi.'));
       setDraft(data.content);
       setSaved(JSON.stringify(data.content));
       addToast({ type: 'success', title: 'Açılış sayfası güncellendi', message: 'Değişiklikler yayında.' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kaydedilemedi.');
+      setError(thrownError(err, 'Kaydedilemedi.'));
     } finally {
       setSaving(false);
     }

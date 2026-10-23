@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { clearSessionCookie, COOKIE_NAME, getCurrentSession } from '@/lib/auth';
+import { LOCALE_COOKIE, setLocaleCookie } from '@/lib/i18n/server';
 
 export async function GET() {
   try {
@@ -23,10 +24,14 @@ export async function GET() {
     // A corporate member is identified by its member key; `userId` is the shared data owner.
     const user = { id: rest.memberId ? `m:${rest.memberId}` : userId, ...rest };
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { authenticated: true, user },
       { headers: { 'Cache-Control': 'no-store' } }
     );
+    // Language changed on another device: this browser follows the account (the page reloads once).
+    const locale = session.locale ?? 'tr';
+    if (((await cookies()).get(LOCALE_COOKIE)?.value ?? 'tr') !== locale) setLocaleCookie(response, locale);
+    return response;
   } catch (error) {
     console.error('Session verification error:', error);
     return NextResponse.json({ authenticated: false, user: null }, { status: 500 });

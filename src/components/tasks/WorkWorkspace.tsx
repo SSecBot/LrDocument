@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React from 'react';
 import { Kanban, ListChecks } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -14,14 +15,14 @@ export function WorkWorkspace() {
   const openCards = kanbanCards.filter((c) => c.columnId !== 'tamamlandi').length;
 
   const tabs = [
-    { id: 'liste' as const, label: 'Liste', icon: ListChecks, count: openTasks },
-    { id: 'pano' as const, label: 'Pano', icon: Kanban, count: openCards },
+    { id: 'liste' as const, label: tl('Liste'), icon: ListChecks, count: openTasks },
+    { id: 'pano' as const, label: tl('Pano'), icon: Kanban, count: openCards },
   ];
 
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
       <div className="h-11 shrink-0 px-4 sm:px-6 border-b border-line bg-surface flex items-center">
-        <div className="inline-flex rounded-md border border-line bg-surface-2 p-0.5" role="tablist" aria-label="Görünüm">
+        <div className="inline-flex rounded-md border border-line bg-surface-2 p-0.5" role="tablist" aria-label={tl('Görünüm')}>
           {tabs.map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
@@ -33,7 +34,7 @@ export function WorkWorkspace() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {label}
+              {tx(label)}
               {count > 0 && <span className="tabular-nums text-muted">{count}</span>}
             </button>
           ))}

@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState, useRef } from 'react';
 import { CalendarEvent } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -39,8 +40,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
     downloadICSFile(events, 'lrdocument-tum-yayin-takvimi.ics');
     addToast({
       type: 'success',
-      title: 'Tüm Takvim İndirildi (.ics)',
-      message: 'iCalendar veya Google Takvim’e içe aktarabilirsiniz.',
+      title: t('Tüm Takvim İndirildi (.ics)'),
+      message: t('iCalendar veya Google Takvim’e içe aktarabilirsiniz.'),
     });
     onClose();
   };
@@ -51,8 +52,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
     downloadICSFile([selectedEvent], filename);
     addToast({
       type: 'success',
-      title: 'Etkinlik İndirildi (.ics)',
-      message: `"${selectedEvent.title}" dosyası kaydedildi.`,
+      title: t('Etkinlik İndirildi (.ics)'),
+      message: t('"{title}" dosyası kaydedildi.', { title: selectedEvent.title }),
     });
     onClose();
   };
@@ -62,8 +63,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
     addToast({
       type: 'info',
-      title: 'Google Takvim Açıldı',
-      message: 'Etkinlik yeni sekmede Google Takvim’e aktarılıyor.',
+      title: t('Google Takvim Açıldı'),
+      message: t('Etkinlik yeni sekmede Google Takvim’e aktarılıyor.'),
     });
   };
 
@@ -74,8 +75,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
     if (file.size > MAX_ICS_FILE_BYTES) {
       addToast({
         type: 'error',
-        title: 'Dosya Çok Büyük',
-        message: 'En fazla 2 MB boyutundaki .ics dosyaları içe aktarılabilir.',
+        title: t('Dosya Çok Büyük'),
+        message: t('En fazla 2 MB boyutundaki .ics dosyaları içe aktarılabilir.'),
       });
       e.target.value = '';
       return;
@@ -89,8 +90,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
         if (parsed.length === 0) {
           addToast({
             type: 'warning',
-            title: 'Etkinlik Bulunamadı',
-            message: 'Yüklenen .ics dosyasında geçerli VEVENT kaydı bulunamadı.',
+            title: t('Etkinlik Bulunamadı'),
+            message: t('Yüklenen .ics dosyasında geçerli VEVENT kaydı bulunamadı.'),
           });
           return;
         }
@@ -103,15 +104,15 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
 
         addToast({
           type: 'success',
-          title: 'Takvim İçe Aktarıldı',
-          message: `${addedCount} adet takvim etkinliği başarıyla takviminize eklendi.`,
+          title: t('Takvim İçe Aktarıldı'),
+          message: t('{addedCount} adet takvim etkinliği başarıyla takviminize eklendi.', { addedCount }),
         });
         onClose();
       } catch {
         addToast({
           type: 'error',
-          title: 'İçe Aktarma Hatası',
-          message: 'Dosya okunurken bir hata oluştu. Lütfen geçerli bir .ics dosyası seçin.',
+          title: t('Takvim dosyası okunamadı'),
+          message: t('Dosya bir takvim dosyası (.ics) gibi görünmüyor ya da bozuk. Google Takvim, Outlook veya Apple Takvim’den “dışa aktar” ile aldığınız .ics dosyasını seçin.'),
         });
       }
     };
@@ -123,8 +124,8 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Takvim Senkronizasyonu & .ICS İçe/Dışa Aktarım"
-      subtitle="iCalendar (.ics), Google Takvim veya Outlook ile takviminizi senkronize edin."
+      title={t('Takvim Senkronizasyonu & .ICS İçe/Dışa Aktarım')}
+      subtitle={t('iCalendar (.ics), Google Takvim veya Outlook ile takviminizi senkronize edin.')}
       maxWidth="max-w-md"
     >
       <div className="space-y-5">
@@ -137,7 +138,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
             }`}
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Dışa Aktar (.ICS & Google)</span>
+            <span>{t('Dışa Aktar (.ICS & Google)')}</span>
           </button>
           <button
             onClick={() => setActiveTab('import')}
@@ -146,7 +147,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>.ICS Dosyası Yükle</span>
+            <span>{t('.ICS Dosyası Yükle')}</span>
           </button>
         </div>
 
@@ -160,9 +161,9 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                     <Calendar className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Standart iCalendar (.ics) Dosyası</h4>
+                    <h4 className="text-sm font-bold text-white">{t('Standart iCalendar (.ics) Dosyası')}</h4>
                     <p className="text-xs text-subtle mt-0.5">
-                      iCalendar, Microsoft Outlook ve Google Takvim ile tam uyumlu RFC 5545 formatı.
+                      {t('iCalendar, Microsoft Outlook ve Google Takvim ile tam uyumlu RFC 5545 formatı.')}
                     </p>
                   </div>
                 </div>
@@ -175,7 +176,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                     className="min-h-[44px] px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Bu Etkinliği İndir (.ics)</span>
+                    <span>{t('Bu Etkinliği İndir (.ics)')}</span>
                   </button>
                 ) : null}
 
@@ -184,7 +185,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                   className="min-h-[44px] px-4 py-2 bg-surface-2 hover:bg-brand/30 border border-brand/50 text-emerald-300 text-xs font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Tüm Takvimi İndir ({events.length} Yayın)</span>
+                  <span>{t('Tüm Takvimi İndir (')}{events.length}{' '}{t('Yayın)')}</span>
                 </button>
               </div>
             </div>
@@ -196,9 +197,9 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                   <ExternalLink className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Google Takvim’e Doğrudan Ekle</h4>
+                  <h4 className="text-sm font-bold text-white">{t('Google Takvim’e Doğrudan Ekle')}</h4>
                   <p className="text-xs text-subtle mt-0.5">
-                    Tarayıcınızda doğrudan Google Takvim etkinlik oluşturma ekranını açar.
+                    {t('Tarayıcınızda doğrudan Google Takvim etkinlik oluşturma ekranını açar.')}
                   </p>
                 </div>
               </div>
@@ -210,14 +211,14 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                     className="flex items-center justify-between p-2.5 rounded-lg bg-surface-2 border border-line"
                   >
                     <div className="truncate flex-1 mr-3">
-                      <span className="text-xs font-semibold text-white block truncate">{ev.title}</span>
-                      <span className="text-[10px] text-muted">{ev.date} {ev.time || '09:00'} • {ev.platform}</span>
+                      <span className="text-xs font-semibold text-white block truncate">{tx(ev.title)}</span>
+                      <span className="text-[10px] text-muted">{tx(ev.date)} {ev.time || '09:00'} • {tx(ev.platform)}</span>
                     </div>
                     <button
                       onClick={() => handleOpenGoogleCalendar(ev)}
                       className="min-h-[36px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-800/40 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
                     >
-                      <span>Google’a Aktar</span>
+                      <span>{t('Google’a Aktar')}</span>
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
@@ -244,9 +245,9 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                 <FileUp className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">.ICS Dosyasını Seçin veya Sürükleyin</h4>
+                <h4 className="text-sm font-bold text-white">{t('.ICS Dosyasını Seçin veya Sürükleyin')}</h4>
                 <p className="text-xs text-subtle mt-1 max-w-sm mx-auto">
-                  Standart <strong>.ics</strong> takvim dosyasını yükleyin.
+                  {t('Standart')}{' '}<strong>.ics</strong>{' '}{t('takvim dosyasını yükleyin.')}
                 </p>
               </div>
               <button
@@ -254,7 +255,7 @@ export const ExportSyncModal: React.FC<ExportSyncModalProps> = ({
                 className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5"
               >
                 <Upload className="w-4 h-4" />
-                <span>Dosya Seç</span>
+                <span>{t('Dosya Seç')}</span>
               </button>
             </div>
           </div>

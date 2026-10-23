@@ -1,5 +1,6 @@
 'use client';
 
+import { t } from '@/lib/i18n';
 import React, { useEffect, useState } from 'react';
 import { GraduationCap, MailWarning } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -29,18 +30,18 @@ export function VerificationBanner() {
       {emailMissing && (
         <div className={`${item} border-amber-500/30 bg-amber-500/5`}>
           <MailWarning className="w-4 h-4 text-amber-300 shrink-0" />
-          <p className="flex-1 text-body">E-posta adresiniz doğrulanmadı. Hesabınızı korumak için adresinize gelen kodla doğrulayın.</p>
+          <p className="flex-1 text-body">{t('E-posta adresiniz doğrulanmadı. Hesabınızı korumak için adresinize gelen kodla doğrulayın.')}</p>
           <button onClick={() => openSettings('guvenlik')} className={btn}>
-            Doğrula
+            {t('Doğrula')}
           </button>
         </div>
       )}
       {studentPending && (
         <div className={`${item} border-sky-500/30 bg-sky-500/5`}>
           <GraduationCap className="w-4 h-4 text-sky-300 shrink-0" />
-          <p className="flex-1 text-body">Öğrenciliğinizi doğrulayın: üniversite e-postanıza gelen kodla ya da öğrenci belgesiyle.</p>
+          <p className="flex-1 text-body">{t('Öğrenciliğinizi doğrulayın: üniversite e-postanıza gelen kodla ya da öğrenci belgesiyle.')}</p>
           <button onClick={() => openSettings('ogrenci')} className={btn}>
-            Doğrula
+            {t('Doğrula')}
           </button>
         </div>
       )}

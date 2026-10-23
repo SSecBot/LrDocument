@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl } from '@/lib/i18n';
 import React, { useRef, useState } from 'react';
 import { useNewItemRequest } from '@/lib/shortcuts';
 import { useAppStore, getEffectiveTaskPriority } from '@/store/useAppStore';
@@ -84,14 +85,14 @@ export const TasksWorkspace: React.FC = () => {
         {/* Top Header & Stats */}
         <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
           <div>
-            <h2 className="text-sm font-semibold text-fg">Görevler</h2>
-            <p className="text-xs text-muted mt-0.5">Son tarihi geçen görevlerin önceliği kendiliğinden yükselir.</p>
+            <h2 className="text-sm font-semibold text-fg">{tl('Görevler')}</h2>
+            <p className="text-xs text-muted mt-0.5">{tl('Son tarihi geçen görevlerin önceliği kendiliğinden yükselir.')}</p>
           </div>
 
           {/* Progress Card */}
           <div className="bg-surface border border-line px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center gap-3 sm:gap-4">
             <div className="flex flex-col">
-              <span className="text-[10px] text-muted font-medium uppercase">Tamamlanma</span>
+              <span className="text-[10px] text-muted font-medium uppercase">{tl('Tamamlanma')}</span>
               <span className="text-sm sm:text-base font-bold text-white">
                 %{completionPercentage} <span className="text-xs font-normal text-subtle">({completedCount}/{totalCount})</span>
               </span>
@@ -115,7 +116,7 @@ export const TasksWorkspace: React.FC = () => {
             type="text"
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}
-            placeholder="Yeni bir görev ekleyin..."
+            placeholder={tl('Yeni bir görev ekleyin...')}
             className="flex-1 min-w-[200px] bg-transparent text-xs sm:text-sm text-white placeholder-muted px-3 py-2 focus:outline-none min-h-[40px]"
           />
 
@@ -125,9 +126,9 @@ export const TasksWorkspace: React.FC = () => {
             onChange={(e) => setQuickPriority(e.target.value as TaskPriority)}
             className="min-h-[40px] bg-surface-2 text-xs text-body border border-line-strong rounded-lg px-2.5 py-2 focus:outline-none focus:border-brand"
           >
-            <option value="yuksek">Yüksek</option>
-            <option value="orta">Orta</option>
-            <option value="dusuk">Düşük</option>
+            <option value="yuksek">{tl('Yüksek')}</option>
+            <option value="orta">{tl('Orta')}</option>
+            <option value="dusuk">{tl('Düşük')}</option>
           </select>
 
           {/* Due date, or a date range (Aralık) */}
@@ -141,7 +142,7 @@ export const TasksWorkspace: React.FC = () => {
                   max={quickDueDate || undefined}
                   onChange={(e) => setQuickStartDate(e.target.value)}
                   className="bg-transparent text-xs text-white focus:outline-none"
-                  aria-label="Başlangıç tarihi"
+                  aria-label={tl('Başlangıç tarihi')}
                 />
                 <span className="text-muted" aria-hidden="true">–</span>
               </>
@@ -152,7 +153,7 @@ export const TasksWorkspace: React.FC = () => {
               min={quickRange ? quickStartDate || undefined : undefined}
               onChange={(e) => setQuickDueDate(e.target.value)}
               className="bg-transparent text-xs text-white focus:outline-none"
-              aria-label={quickRange ? 'Bitiş tarihi' : 'Son tarih'}
+              aria-label={quickRange ? tl('Bitiş tarihi') : tl('Son tarih')}
             />
             <span className="w-px h-4 bg-line-strong mx-0.5" aria-hidden="true" />
             <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -165,8 +166,8 @@ export const TasksWorkspace: React.FC = () => {
                 if (e.target.value && !quickDueDate) setQuickDueDate(todayStr);
               }}
               className="bg-transparent text-xs text-white focus:outline-none w-[76px]"
-              aria-label="Saat (isteğe bağlı)"
-              title="Saat (isteğe bağlı)"
+              aria-label={tl('Saat (isteğe bağlı)')}
+              title={tl('Saat (isteğe bağlı)')}
             />
           </div>
           <button
@@ -176,9 +177,9 @@ export const TasksWorkspace: React.FC = () => {
             className={`min-h-[40px] px-2.5 rounded-lg border text-xs transition-colors ${
               quickRange ? 'border-brand bg-brand-soft text-fg' : 'border-line-strong bg-surface-2 text-subtle hover:text-fg'
             }`}
-            title="Görevi bir tarih aralığına yay (başlangıç – bitiş)"
+            title={tl('Görevi bir tarih aralığına yay (başlangıç – bitiş)')}
           >
-            Aralık
+            {tl('Aralık')}
           </button>
 
           {/* Submit button */}
@@ -187,7 +188,7 @@ export const TasksWorkspace: React.FC = () => {
             className="min-h-[40px] px-4 py-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>Görev Ekle</span>
+            <span>{tl('Görev Ekle')}</span>
           </button>
         </form>
 
@@ -201,7 +202,7 @@ export const TasksWorkspace: React.FC = () => {
                 activeFilter === 'all' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
-              Tümü ({tasks.length})
+              {tl('Tümü (')}{tasks.length})
             </button>
             <button
               onClick={() => setActiveFilter('pending')}
@@ -209,7 +210,7 @@ export const TasksWorkspace: React.FC = () => {
                 activeFilter === 'pending' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
-              Bekleyen ({tasks.filter(t => !t.completed).length})
+              {tl('Bekleyen (')}{tasks.filter(t => !t.completed).length})
             </button>
             <button
               onClick={() => setActiveFilter('high')}
@@ -217,7 +218,7 @@ export const TasksWorkspace: React.FC = () => {
                 activeFilter === 'high' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
-              Yüksek Öncelik ({tasks.filter(t => getEffectiveTaskPriority(t) === 'yuksek' && !t.completed).length})
+              {tl('Yüksek Öncelik (')}{tasks.filter(t => getEffectiveTaskPriority(t) === 'yuksek' && !t.completed).length})
             </button>
             <button
               onClick={() => setActiveFilter('completed')}
@@ -225,7 +226,7 @@ export const TasksWorkspace: React.FC = () => {
                 activeFilter === 'completed' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
             >
-              Tamamlananlar ({completedCount})
+              {tl('Tamamlananlar (')}{completedCount})
             </button>
           </div>
 
@@ -236,7 +237,7 @@ export const TasksWorkspace: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Görevlerde ara..."
+              placeholder={tl('Görevlerde ara...')}
               className="w-full min-h-[38px] bg-surface border border-line focus:border-brand rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-muted focus:outline-none"
             />
           </div>
@@ -250,12 +251,12 @@ export const TasksWorkspace: React.FC = () => {
                 <CheckSquare className="w-6 h-6" />
               </div>
               <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                {tasks.length === 0 ? 'Henüz Kayıtlı Bir Görev Bulunmuyor' : 'Seçili Filtrede Görev Bulunamadı'}
+                {tasks.length === 0 ? tl('Henüz Kayıtlı Bir Görev Bulunmuyor') : tl('Seçili Filtrede Görev Bulunamadı')}
               </h3>
               <p className="text-xs text-subtle max-w-sm mx-auto leading-relaxed">
                 {tasks.length === 0
-                  ? 'Yukarıdaki hızlı ekleme çubuğunu kullanarak yeni bir görev, araştırma adımı veya video çekim teslimi oluşturun.'
-                  : 'Filtre kriterlerinizi değiştirin veya tüm görevleri görüntülemek için "Tümü" sekmesine tıklayın.'}
+                  ? tl('Yukarıdaki hızlı ekleme çubuğunu kullanarak yeni bir görev, araştırma adımı veya video çekim teslimi oluşturun.')
+                  : tl('Filtre kriterlerinizi değiştirin veya tüm görevleri görüntülemek için "Tümü" sekmesine tıklayın.')}
               </p>
             </div>
           ) : (

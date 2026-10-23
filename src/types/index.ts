@@ -240,6 +240,8 @@ export interface UserProfile {
   permissions?: CorpPermissions;
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
+  /** Interface language of the account. */
+  locale?: 'tr' | 'en';
 }
 
 export interface AdminUserItem {

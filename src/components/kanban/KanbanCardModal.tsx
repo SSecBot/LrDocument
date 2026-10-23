@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { KanbanCard, KanbanColumnId, KanbanProjectType, TaskPriority } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -114,20 +115,20 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editCard ? 'Kanban Kartını Düzenle' : 'Yeni Kanban Kartı Oluştur'}
-      subtitle="Genel görevler, matematik araştırmaları, içerik veya finans için kart ekleyin."
+      title={editCard ? tl('Kanban Kartını Düzenle') : tl('Yeni Kanban Kartı Oluştur')}
+      subtitle={tl('Genel görevler, matematik araştırmaları, içerik veya finans için kart ekleyin.')}
       maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1">Kart Başlığı *</label>
+          <label className="block text-xs font-semibold text-white mb-1">{tl('Kart Başlığı *')}</label>
           <input
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Örn: Riemann Hipotezi için numerik hesaplama betiği yaz"
+            placeholder={tl('Örn: Riemann Hipotezi için numerik hesaplama betiği yaz')}
             className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none"
           />
         </div>
@@ -135,7 +136,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         {/* Project Type & Column */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Proje Türü *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Proje Türü *')}</label>
             <select
               value={projectType}
               onChange={(e) => setProjectType(e.target.value as KanbanProjectType)}
@@ -143,14 +144,14 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             >
               {PROJECT_TYPES.map((pt) => (
                 <option key={pt.id} value={pt.id}>
-                  {pt.icon} {pt.label}
+                  {tx(pt.icon)} {tx(pt.label)}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Kanban Aşaması *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Kanban Aşaması *')}</label>
             <select
               value={columnId}
               onChange={(e) => setColumnId(e.target.value as KanbanColumnId)}
@@ -158,7 +159,7 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             >
               {COLUMNS.map((col) => (
                 <option key={col.id} value={col.id}>
-                  {col.label}
+                  {tx(col.label)}
                 </option>
               ))}
             </select>
@@ -168,20 +169,20 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
         {/* Priority & Due Date */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Öncelik Seviyesi</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Öncelik Seviyesi')}</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
-              <option value="yuksek">Yüksek Öncelik</option>
-              <option value="orta">Orta Öncelik</option>
-              <option value="dusuk">Düşük Öncelik</option>
+              <option value="yuksek">{tl('Yüksek Öncelik')}</option>
+              <option value="orta">{tl('Orta Öncelik')}</option>
+              <option value="dusuk">{tl('Düşük Öncelik')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Hedef / Teslim Tarihi</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Hedef / Teslim Tarihi')}</label>
             <input
               type="date"
               value={dueDate}
@@ -193,24 +194,24 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1">Açıklama & Detaylar</label>
+          <label className="block text-xs font-semibold text-white mb-1">{tl('Açıklama & Detaylar')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            placeholder="Kartın detayları, hedefler veya notlar..."
+            placeholder={tl('Kartın detayları, hedefler veya notlar...')}
             className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
           />
         </div>
 
         {/* Tags */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1">Etiketler (Virgülle ayırın)</label>
+          <label className="block text-xs font-semibold text-white mb-1">{tl('Etiketler (Virgülle ayırın)')}</label>
           <input
             type="text"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="Örn: Araştırma, Analiz, Manim, Python"
+            placeholder={tl('Örn: Araştırma, Analiz, Manim, Python')}
             className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none"
           />
         </div>
@@ -220,17 +221,17 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
           <div>
             <label className="block text-xs font-semibold text-white mb-1 flex items-center gap-1">
               <FileText className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Bağlı Not (Opsiyonel)</span>
+              <span>{tl('Bağlı Not (Opsiyonel)')}</span>
             </label>
             <select
               value={linkedNoteId}
               onChange={(e) => setLinkedNoteId(e.target.value)}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
-              <option value="">(Bağlantı Yok)</option>
+              <option value="">{tl('(Bağlantı Yok)')}</option>
               {notes.map((n) => (
                 <option key={n.id} value={n.id}>
-                  {n.title}
+                  {tx(n.title)}
                 </option>
               ))}
             </select>
@@ -244,13 +245,13 @@ export const KanbanCardModal: React.FC<KanbanCardModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
           >
-            İptal
+            {tl('İptal')}
           </button>
           <button
             type="submit"
             className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all"
           >
-            {editCard ? 'Kartı Güncelle' : 'Kartı Kaydet'}
+            {editCard ? tl('Kartı Güncelle') : tl('Kartı Kaydet')}
           </button>
         </div>
       </form>

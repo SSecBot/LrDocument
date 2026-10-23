@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/Modal';
@@ -153,7 +154,7 @@ export function Shortcuts() {
     let start: { x: number; y: number; t: number } | null = null;
     const onStart = (e: TouchEvent) => {
       start = null;
-      if (!state.current.preferences.touchGestures || e.touches.length !== 1 || window.innerWidth >= 768) return;
+      if (!state.current.preferences.touchGestures || e.touches.length !== 1 || (window.innerWidth >= 768 && window.innerHeight > 500)) return;
       const t = e.touches[0];
       if (t.clientX > 24 || (e.target as HTMLElement)?.closest?.('[data-edge-back], [role="dialog"]')) return;
       start = { x: t.clientX, y: t.clientY, t: Date.now() };
@@ -176,38 +177,38 @@ export function Shortcuts() {
   }, [setIsMobileSidebarOpen]);
 
   return (
-    <Modal isOpen={helpOpen} onClose={() => setHelpOpen(false)} title="Kısayollar" subtitle="Klavye ve dokunmatik kısayollar" maxWidth="max-w-2xl">
+    <Modal isOpen={helpOpen} onClose={() => setHelpOpen(false)} title={tl('Kısayollar')} subtitle={tl('Klavye ve dokunmatik kısayollar')} maxWidth="max-w-2xl">
       <div className="grid gap-5 sm:grid-cols-2">
         <section>
-          <h3 className="text-xs font-semibold text-fg mb-2">Klavye</h3>
+          <h3 className="text-xs font-semibold text-fg mb-2">{tl('Klavye')}</h3>
           <dl className="space-y-1.5">
             {KEYBOARD_SHORTCUTS.map(([k, v]) => (
               <div key={k} className="flex items-start justify-between gap-3 text-xs">
                 <dt>
-                  <kbd className="px-1.5 py-0.5 rounded border border-line-strong bg-surface-2 text-body font-mono text-[11px] whitespace-nowrap">{k}</kbd>
+                  <kbd className="px-1.5 py-0.5 rounded border border-line-strong bg-surface-2 text-body font-mono text-[11px] whitespace-nowrap">{tx(k)}</kbd>
                 </dt>
-                <dd className="text-subtle text-right">{v}</dd>
+                <dd className="text-subtle text-right">{tx(v)}</dd>
               </div>
             ))}
           </dl>
-          {!preferences.keyboardShortcuts && <p className="mt-2 text-[11px] text-amber-300">Klavye kısayolları Ayarlar › Tercihler’den kapatılmış.</p>}
+          {!preferences.keyboardShortcuts && <p className="mt-2 text-[11px] text-amber-300">{tl('Klavye kısayolları Ayarlar › Tercihler’den kapatılmış.')}</p>}
         </section>
         <section>
-          <h3 className="text-xs font-semibold text-fg mb-2">Dokunmatik (telefon ve tablet)</h3>
+          <h3 className="text-xs font-semibold text-fg mb-2">{tl('Dokunmatik (telefon ve tablet)')}</h3>
           <dl className="space-y-2">
             {TOUCH_GESTURES.map(([k, v]) => (
               <div key={k} className="text-xs">
-                <dt className="text-body">{k}</dt>
-                <dd className="text-subtle">{v}</dd>
+                <dt className="text-body">{tx(k)}</dt>
+                <dd className="text-subtle">{tx(v)}</dd>
               </div>
             ))}
           </dl>
-          {!preferences.touchGestures && <p className="mt-2 text-[11px] text-amber-300">Dokunmatik hareketler Ayarlar › Tercihler’den kapatılmış.</p>}
+          {!preferences.touchGestures && <p className="mt-2 text-[11px] text-amber-300">{tl('Dokunmatik hareketler Ayarlar › Tercihler’den kapatılmış.')}</p>}
         </section>
       </div>
       <div className="modal-actions flex justify-end">
         <button onClick={() => setHelpOpen(false)} className="h-10 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white text-sm font-semibold">
-          Tamam
+          {tl('Tamam')}
         </button>
       </div>
     </Modal>

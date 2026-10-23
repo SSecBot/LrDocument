@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError } from './auth';
+import { SERVER_HINT } from './errors';
 
 /** Converts thrown errors into a safe JSON response without leaking internals. */
 export function handleRouteError(error: unknown, logLabel: string, fallbackMessage: string) {
@@ -10,7 +11,18 @@ export function handleRouteError(error: unknown, logLabel: string, fallbackMessa
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
   console.error(`${logLabel}:`, error);
-  return NextResponse.json({ error: fallbackMessage }, { status: 500 });
+  // Prisma's known request errors have a cause the person can act on.
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 'P2025') {
+    return NextResponse.json({ error: `${fallbackMessage} Kayıt bulunamadı; başka bir cihazda silinmiş olabilir. Sayfayı yenileyip tekrar deneyin.` }, { status: 404 });
+  }
+  if (code === 'P2002') {
+    return NextResponse.json({ error: `${fallbackMessage} Aynı bilgilerle bir kayıt zaten var.` }, { status: 409 });
+  }
+  if (code === 'P1008' || code === 'P2024' || /SQLITE_BUSY|database is locked/i.test(String((error as Error)?.message))) {
+    return NextResponse.json({ error: `${fallbackMessage} Sunucu şu an çok yoğun; birkaç saniye sonra tekrar deneyin.` }, { status: 503 });
+  }
+  return NextResponse.json({ error: `${fallbackMessage} ${SERVER_HINT}` }, { status: 500 });
 }
 
 export class BadRequestError extends Error {
@@ -28,7 +40,7 @@ export const DEFAULT_MAX_BODY_BYTES = 3 * 1024 * 1024;
  * The size is checked before parsing so a huge body cannot tie up the server.
  */
 export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_BYTES): Promise<Record<string, unknown>> {
-  const tooLarge = () => new BadRequestError('İstek gövdesi çok büyük.', 413);
+  const tooLarge = () => new BadRequestError(`Gönderdiğiniz içerik çok büyük (en fazla ${Math.round(maxBytes / 1024 / 1024)} MB). Büyük görselleri küçültüp ya da içeriği bölerek tekrar deneyin.`, 413);
   const declared = Number(req.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
 
@@ -50,10 +62,10 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
         raw += decoder.decode(value, { stream: true });
       }
       raw += decoder.decode();
-      if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('İstek eksik geldi; tekrar deneyin.');
+      if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('Bağlantı yarıda kesildi ve bilgiler eksik geldi. Tekrar deneyin.');
     } catch (err) {
       if (err instanceof BadRequestError) throw err;
-      throw new BadRequestError('Geçersiz istek gövdesi.');
+      throw new BadRequestError('Gönderilen bilgiler okunamadı. Sayfayı yenileyip tekrar deneyin.');
     }
   }
 
@@ -61,10 +73,10 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
   try {
     body = JSON.parse(raw);
   } catch {
-    throw new BadRequestError('Geçersiz istek gövdesi.');
+    throw new BadRequestError('Gönderilen bilgiler okunamadı. Sayfayı yenileyip tekrar deneyin.');
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new BadRequestError('Geçersiz istek gövdesi.');
+    throw new BadRequestError('Gönderilen bilgiler okunamadı. Sayfayı yenileyip tekrar deneyin.');
   }
   return body as Record<string, unknown>;
 }
@@ -72,7 +84,7 @@ export async function readJsonObject(req: Request, maxBytes = DEFAULT_MAX_BODY_B
 /** Raw request body (uploads), read in chunks and refused as soon as it grows past `maxBytes`. */
 export async function readBodyBytes(req: Request, maxBytes: number): Promise<Buffer> {
   const declared = Number(req.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) throw new BadRequestError('Dosya çok büyük.', 413);
+  if (Number.isFinite(declared) && declared > maxBytes) throw new BadRequestError(`Dosya çok büyük (en fazla ${Math.round(maxBytes / 1024 / 1024)} MB). Daha küçük bir dosya seçin ya da sıkıştırıp tekrar deneyin.`, 413);
   if (!req.body) return Buffer.alloc(0);
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -83,12 +95,12 @@ export async function readBodyBytes(req: Request, maxBytes: number): Promise<Buf
     received += value.byteLength;
     if (received > maxBytes) {
       await reader.cancel().catch(() => {});
-      throw new BadRequestError('Dosya çok büyük.', 413);
+      throw new BadRequestError(`Dosya çok büyük (en fazla ${Math.round(maxBytes / 1024 / 1024)} MB). Daha küçük bir dosya seçin ya da sıkıştırıp tekrar deneyin.`, 413);
     }
     chunks.push(value);
   }
   // A body shorter than announced (connection cut, or cut by a proxy) must not be stored as a file.
-  if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('Dosya eksik geldi; tekrar deneyin.');
+  if (Number.isFinite(declared) && declared > 0 && received !== declared) throw new BadRequestError('Bağlantı yarıda kesildi ve dosya eksik yüklendi. Tekrar deneyin.');
   return Buffer.concat(chunks);
 }
 

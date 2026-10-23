@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import {
@@ -104,7 +105,7 @@ export const CommandPalette: React.FC = () => {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Notlarda, kanbanda, medyada veya finansta arayın..."
+            placeholder={tl('Notlarda, kanbanda, medyada veya finansta arayın...')}
             className="w-full bg-transparent text-white placeholder-muted text-sm focus:outline-none"
           />
           <kbd className="text-[11px] font-mono bg-surface-3 text-muted px-2 py-0.5 rounded-md border border-line-strong">
@@ -116,7 +117,7 @@ export const CommandPalette: React.FC = () => {
         <div className="p-4 overflow-y-auto space-y-4 flex-1">
           {/* Quick Actions */}
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Hızlı İşlemler</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">{tl('Hızlı İşlemler')}</span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
               <button
                 onClick={() => {
@@ -126,7 +127,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <Plus className="w-4 h-4 text-emerald-400" />
-                <span>Yeni Not Oluştur</span>
+                <span>{tl('Yeni Not Oluştur')}</span>
               </button>
 
               <button
@@ -134,7 +135,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <CheckSquare className="w-4 h-4 text-sky-400" />
-                <span>Görevleri Aç</span>
+                <span>{tl('Görevleri Aç')}</span>
               </button>
 
               <button
@@ -142,7 +143,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-semibold text-white transition-colors text-left"
               >
                 <Kanban className="w-4 h-4 text-emerald-400" />
-                <span>Kanban Panosunu Aç</span>
+                <span>{tl('Kanban Panosunu Aç')}</span>
               </button>
             </div>
           </div>
@@ -150,7 +151,7 @@ export const CommandPalette: React.FC = () => {
           {/* Notes */}
           {matchingNotes.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Notlar</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">{tl('Notlar')}</span>
               <div className="space-y-1 pt-1">
                 {matchingNotes.map((n) => (
                   <button
@@ -160,10 +161,10 @@ export const CommandPalette: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate">{n.title}</span>
+                      <span className="truncate">{tx(n.title)}</span>
                     </div>
                     <span className="text-[10px] text-muted bg-surface-3 px-2 py-0.5 rounded">
-                      {n.folder}
+                      {tx(n.folder)}
                     </span>
                   </button>
                 ))}
@@ -174,7 +175,7 @@ export const CommandPalette: React.FC = () => {
           {/* Kanban Cards */}
           {matchingKanban.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Kanban Kartları</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">{tl('Kanban Kartları')}</span>
               <div className="space-y-1 pt-1">
                 {matchingKanban.map((k) => (
                   <button
@@ -184,10 +185,10 @@ export const CommandPalette: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Kanban className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate">{k.title}</span>
+                      <span className="truncate">{tx(k.title)}</span>
                     </div>
                     <span className="text-[10px] text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded">
-                      {k.columnId}
+                      {tx(k.columnId)}
                     </span>
                   </button>
                 ))}
@@ -199,7 +200,7 @@ export const CommandPalette: React.FC = () => {
           {/* Finance Records */}
           {matchingTransactions.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Finans İşlemleri</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">{tl('Finans İşlemleri')}</span>
               <div className="space-y-1 pt-1">
                 {matchingTransactions.map((t) => (
                   <button
@@ -209,10 +210,10 @@ export const CommandPalette: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Wallet className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate">{t.title}</span>
+                      <span className="truncate">{tx(t.title)}</span>
                     </div>
                     <span className={`text-[11px] font-mono font-bold ${t.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {t.type === 'gelir' ? '+' : '-'}{formatCurrencyTRY(t.amount)}
+                      {t.type === 'gelir' ? '+' : '-'}{tx(formatCurrencyTRY(t.amount))}
                     </span>
                   </button>
                 ))}
@@ -222,14 +223,14 @@ export const CommandPalette: React.FC = () => {
 
           {/* Navigation Links */}
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">Modüllere Git</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted px-2">{tl('Modüllere Git')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
               <button
                 onClick={handleSelectKanban}
                 className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Kanban className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Kanban ({kanbanCards.length})</span>
+                <span>{tl('Kanban (')}{kanbanCards.length})</span>
               </button>
 
               <button
@@ -237,7 +238,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>Görevler ({tasks.filter(t => !t.completed).length})</span>
+                <span>{tl('Görevler (')}{tasks.filter(t => !t.completed).length})</span>
               </button>
 
               <button
@@ -245,7 +246,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                <span>Takvim</span>
+                <span>{tl('Takvim')}</span>
               </button>
 
               <button
@@ -253,7 +254,7 @@ export const CommandPalette: React.FC = () => {
                 className="flex items-center gap-1.5 p-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs text-white transition-colors text-left"
               >
                 <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Finans</span>
+                <span>{tl('Finans')}</span>
               </button>
             </div>
           </div>
@@ -261,8 +262,8 @@ export const CommandPalette: React.FC = () => {
 
         {/* Footer */}
         <div className="px-4 py-2.5 bg-app border-t border-line flex items-center justify-between text-[11px] text-muted">
-          <span>Gezinmek için arama yapın veya bir modüle tıklayın</span>
-          <span className="font-mono text-[10px] text-muted">ESC veya Tıkla ile Kapat</span>
+          <span>{tl('Gezinmek için arama yapın veya bir modüle tıklayın')}</span>
+          <span className="font-mono text-[10px] text-muted">{tl('ESC veya Tıkla ile Kapat')}</span>
         </div>
       </div>
     </div>

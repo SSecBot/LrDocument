@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import { responseError } from '@/lib/errors';
 import React, { useContext, useRef, useState } from 'react';
 import { SpaceContext, useAppStore } from '@/store/useAppStore';
 import { NoteEditor } from './NoteEditor';
@@ -87,14 +89,14 @@ export const NotesWorkspace: React.FC = () => {
 
   /** A PDF kept as it is: uploaded (encrypted on the server) and shown with the PDF reader. */
   const uploadPdf = async (file: File): Promise<string> => {
-    if (file.size > 25 * 1024 * 1024) throw new ImportError('PDF en fazla 25 MB olabilir.');
+    if (file.size > 25 * 1024 * 1024) throw new ImportError(tl('PDF en fazla 25 MB olabilir.'));
     const res = await fetch(`/api/files${space === 'personal' ? '?personal=1' : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/pdf', 'X-File-Name': encodeURIComponent(file.name) },
       body: file,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new ImportError(data.error || 'PDF yüklenemedi.');
+    if (!res.ok) throw new ImportError(responseError(res, data, tl('PDF yüklenemedi.')));
     return data.id as string;
   };
 
@@ -108,34 +110,34 @@ export const NotesWorkspace: React.FC = () => {
         if (importMode === 'table' || isSheetFile(file)) {
           const t = await importTableFile(file);
           lastId = addNote({ title: t.title, content: JSON.stringify(t.doc), kind: 'table' });
-          addToast({ type: 'success', title: 'Tablo içe aktarıldı', message: [`“${t.title}”`, ...t.notes].join(' — ') });
+          addToast({ type: 'success', title: tl('Tablo içe aktarıldı'), message: [`“${t.title}”`, ...t.notes].join(' — ') });
           continue;
         }
         const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
         if (isPdf && !pdfAsText) {
-          setImporting(`${file.name} şifrelenip kaydediliyor…`);
+          setImporting(tl('{name} şifrelenip kaydediliyor…', { name: file.name }));
           const fileId = await uploadPdf(file);
           lastId = addNote({ title: file.name.replace(/\.pdf$/i, '').slice(0, 200) || 'PDF', content: '', kind: 'pdf', fileId });
-          addToast({ type: 'success', title: 'PDF eklendi', message: `“${file.name}” uygulamada açılır; istediğinizde metne dönüştürebilirsiniz.` });
+          addToast({ type: 'success', title: tl('PDF eklendi'), message: tl('“{name}” uygulamada açılır; istediğinizde metne dönüştürebilirsiniz.', { name: file.name }) });
           continue;
         }
         const result = await importNoteFile(
           file,
           (p) =>
-            setImporting(p.stage === 'ocr' ? `${file.name}: sayfa ${p.page}/${p.pages} metin tanıma %${Math.round(p.progress * 100)}` : `${file.name}: sayfa ${p.page || 1}/${p.pages || '…'}`),
+            setImporting(p.stage === 'ocr' ? tl('{name}: sayfa {page}/{pages} metin tanıma %{v3}', { name: file.name, page: p.page, pages: p.pages, v3: Math.round(p.progress * 100) }) : `${file.name}: sayfa ${p.page || 1}/${p.pages || '…'}`),
           { handwriting }
         );
         lastId = addNote({ title: result.title, content: result.content });
         addToast({
           type: result.notes.length ? 'warning' : 'success',
-          title: 'Not içe aktarıldı',
+          title: tl('Not içe aktarıldı'),
           message: [`“${result.title}”`, ...result.notes].join(' — '),
         });
       } catch (err) {
         console.error(err);
         addToast({
           type: 'error',
-          title: `${file.name} aktarılamadı`,
+          title: tl('{name} aktarılamadı', { name: file.name }),
           message: err instanceof ImportError ? err.message : describePdfError(err),
         });
       }
@@ -158,12 +160,12 @@ export const NotesWorkspace: React.FC = () => {
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDesc, setNewFolderDesc] = useState('');
-  const [newFolderIcon, setNewFolderIcon] = useState('Folder');
+  const [newFolderIcon, setNewFolderIcon] = useState(tl('Folder'));
 
   const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [editFolderDesc, setEditFolderDesc] = useState('');
-  const [editFolderIcon, setEditFolderIcon] = useState('Folder');
+  const [editFolderIcon, setEditFolderIcon] = useState(tl('Folder'));
 
   const [deletingFolder, setDeletingFolder] = useState<FolderItem | null>(null);
   const [deleteWithNotes, setDeleteWithNotes] = useState(false);
@@ -268,7 +270,7 @@ export const NotesWorkspace: React.FC = () => {
       addFolder(newFolderName.trim(), newFolderDesc.trim(), newFolderIcon);
       setNewFolderName('');
       setNewFolderDesc('');
-      setNewFolderIcon('Folder');
+      setNewFolderIcon(tl('Folder'));
       setIsNewFolderModalOpen(false);
     }
   };
@@ -278,7 +280,7 @@ export const NotesWorkspace: React.FC = () => {
     setEditingFolder(folder);
     setEditFolderName(folder.name);
     setEditFolderDesc(folder.description || '');
-    setEditFolderIcon(folder.iconName || 'Folder');
+    setEditFolderIcon(folder.iconName || tl('Folder'));
   };
 
   const handleSaveEditFolder = (e: React.FormEvent) => {
@@ -355,24 +357,24 @@ export const NotesWorkspace: React.FC = () => {
           <button
             onClick={() => setPreference('notesPanelCollapsed', false)}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
-            title="Not listesini göster"
-            aria-label="Not listesini göster"
+            title={tl('Not listesini göster')}
+            aria-label={tl('Not listesini göster')}
           >
             <PanelLeftOpen className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleNewNoteMobile()}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
-            title="Yeni not"
-            aria-label="Yeni not"
+            title={tl('Yeni not')}
+            aria-label={tl('Yeni not')}
           >
             <Plus className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleNewNoteMobile('table')}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
-            title="Yeni tablo"
-            aria-label="Yeni tablo"
+            title={tl('Yeni tablo')}
+            aria-label={tl('Yeni tablo')}
           >
             <Table2 className="w-4 h-4" />
           </button>
@@ -380,8 +382,8 @@ export const NotesWorkspace: React.FC = () => {
             onClick={openImport}
             disabled={!!importing}
             className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-fg hover:bg-surface-2"
-            title="Dosyadan içe aktar"
-            aria-label="Dosyadan içe aktar"
+            title={tl('Dosyadan içe aktar')}
+            aria-label={tl('Dosyadan içe aktar')}
           >
             {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           </button>
@@ -397,7 +399,7 @@ export const NotesWorkspace: React.FC = () => {
         {/* Header & Search */}
         <div className="p-3.5 sm:p-4 border-b border-line space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-fg tracking-tight">{space === 'personal' ? 'Şahsi Notlar' : isCorporate(currentUser) ? 'Ortak Notlar' : 'Notlar'}</h2>
+            <h2 className="text-sm font-semibold text-fg tracking-tight">{space === 'personal' ? tl('Şahsi Notlar') : isCorporate(currentUser) ? tl('Ortak Notlar') : tl('Notlar')}</h2>
             <div className="flex items-center gap-1">
               {editable && (
                 <>
@@ -405,10 +407,10 @@ export const NotesWorkspace: React.FC = () => {
                 onClick={openImport}
                 disabled={!!importing}
                 className="min-h-[36px] flex items-center gap-1.5 px-2.5 text-xs text-body hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-md transition-colors disabled:opacity-60"
-                title="Dosyadan not veya tablo oluştur"
+                title={tl('Dosyadan not veya tablo oluştur')}
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                <span>İçe aktar</span>
+                <span>{tl('İçe aktar')}</span>
               </button>
               <div className="relative">
                 <button
@@ -418,17 +420,17 @@ export const NotesWorkspace: React.FC = () => {
                   className="min-h-[36px] flex items-center gap-1.5 px-2.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-medium rounded-md transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Yeni</span>
+                  <span>{tl('Yeni')}</span>
                 </button>
                 {newMenu && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setNewMenu(false)} aria-hidden="true" />
                     <div role="menu" className="absolute right-0 top-full mt-1 z-40 w-48 rounded-lg border border-line bg-surface shadow-xl p-1">
                       <button role="menuitem" onClick={() => handleNewNoteMobile('text')} className="w-full text-left px-2.5 py-2 rounded-md hover:bg-surface-2 flex items-center gap-2 text-sm text-fg">
-                        <FileText className="w-4 h-4 text-subtle" /> Not
+                        <FileText className="w-4 h-4 text-subtle" />{' '}{tl('Not')}
                       </button>
                       <button role="menuitem" onClick={() => handleNewNoteMobile('table')} className="w-full text-left px-2.5 py-2 rounded-md hover:bg-surface-2 flex items-center gap-2 text-sm text-fg">
-                        <Table2 className="w-4 h-4 text-subtle" /> Tablo (Excel gibi)
+                        <Table2 className="w-4 h-4 text-subtle" />{' '}{tl('Tablo (Excel gibi)')}
                       </button>
                     </div>
                   </>
@@ -439,14 +441,14 @@ export const NotesWorkspace: React.FC = () => {
               <button
                 onClick={() => setPreference('notesPanelCollapsed', true)}
                 className="hidden md:flex w-9 h-9 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
-                title="Not listesini gizle"
-                aria-label="Not listesini gizle"
+                title={tl('Not listesini gizle')}
+                aria-label={tl('Not listesini gizle')}
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
             </div>
           </div>
-          {importing && <p className="text-[11px] text-subtle truncate" aria-live="polite">{importing}</p>}
+          {importing && <p className="text-[11px] text-subtle truncate" aria-live="polite">{tx(importing)}</p>}
 
           {/* Search bar */}
           <div className="relative">
@@ -455,7 +457,7 @@ export const NotesWorkspace: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Notlarda veya LaTeX'te ara..."
+              placeholder={tl('Notlarda veya LaTeX\'te ara...')}
               className="w-full bg-surface-2 border border-line focus:border-brand rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-muted focus:outline-none transition-colors min-h-[40px]"
             />
           </div>
@@ -464,27 +466,27 @@ export const NotesWorkspace: React.FC = () => {
         {/* Folders List Bar */}
         <div className="px-3 py-2 border-b border-line bg-app">
           <div className="flex items-center justify-between px-2 mb-1.5">
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Klasörler</span>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{tl('Klasörler')}</span>
             <div className="flex items-center gap-1">
             {folders.length > 1 && (
               <button
                 onClick={() => setReorderFolders((v) => !v)}
                 aria-pressed={reorderFolders}
                 className={`p-1 rounded transition-colors flex items-center gap-1 text-[11px] ${reorderFolders ? 'text-emerald-400' : 'text-muted hover:text-emerald-400'}`}
-                title={reorderFolders ? 'Sıralamayı bitir' : 'Klasörleri sırala (sürükleyin veya oklarla taşıyın)'}
+                title={reorderFolders ? tl('Sıralamayı bitir') : tl('Klasörleri sırala (sürükleyin veya oklarla taşıyın)')}
               >
                 {reorderFolders ? <Check className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5" />}
-                <span>{reorderFolders ? 'Bitti' : 'Sırala'}</span>
+                <span>{reorderFolders ? tl('Bitti') : tl('Sırala')}</span>
               </button>
             )}
             {editable && !reorderFolders && (
             <button
               onClick={() => setIsNewFolderModalOpen(true)}
               className="text-muted hover:text-emerald-400 p-1 rounded transition-colors flex items-center gap-1 text-[11px]"
-              title="Yeni Klasör Oluştur"
+              title={tl('Yeni Klasör Oluştur')}
             >
               <FolderPlus className="w-3.5 h-3.5" />
-              <span>+ Klasör</span>
+              <span>{tl('+ Klasör')}</span>
             </button>
             )}
             </div>
@@ -499,7 +501,7 @@ export const NotesWorkspace: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <FileText className="w-3.5 h-3.5" />
-                <span>Tüm Notlar</span>
+                <span>{tl('Tüm Notlar')}</span>
               </div>
               <span className="text-[10px] text-muted">{notes.length}</span>
             </button>
@@ -513,7 +515,7 @@ export const NotesWorkspace: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400/30" />
-                <span>Favoriler</span>
+                <span>{tl('Favoriler')}</span>
               </div>
               <span className="text-[10px] text-muted">
                 {notes.filter(n => n.isFavorite).length}
@@ -527,9 +529,9 @@ export const NotesWorkspace: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Gizli Notlar</span>
+                  <span>{tl('Gizli Notlar')}</span>
                 </div>
-                <span className="text-[10px] text-muted">şifreli</span>
+                <span className="text-[10px] text-muted">{tl('şifreli')}</span>
               </button>
             )}
 
@@ -550,7 +552,7 @@ export const NotesWorkspace: React.FC = () => {
                 >
                   <div className="flex items-center gap-2 truncate flex-1 min-w-0">
                     {reorderFolders ? <GripVertical className="w-3.5 h-3.5 text-muted shrink-0" /> : getFolderIcon(folder.iconName)}
-                    <span className="truncate">{folder.name}</span>
+                    <span className="truncate">{tx(folder.name)}</span>
                   </div>
 
                   {reorderFolders ? (
@@ -559,7 +561,7 @@ export const NotesWorkspace: React.FC = () => {
                         onClick={(e) => { e.stopPropagation(); setPreference('folderOrder', moveId(folderIds, folder.id, -1)); }}
                         disabled={index === 0}
                         className="w-8 h-8 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
-                        aria-label={`${folder.name} klasörünü yukarı taşı`}
+                        aria-label={tl('{name} klasörünü yukarı taşı', { name: folder.name })}
                       >
                         <ChevronUp className="w-4 h-4" />
                       </button>
@@ -567,7 +569,7 @@ export const NotesWorkspace: React.FC = () => {
                         onClick={(e) => { e.stopPropagation(); setPreference('folderOrder', moveId(folderIds, folder.id, 1)); }}
                         disabled={index === orderedFolders.length - 1}
                         className="w-8 h-8 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
-                        aria-label={`${folder.name} klasörünü aşağı taşı`}
+                        aria-label={tl('{name} klasörünü aşağı taşı', { name: folder.name })}
                       >
                         <ChevronDown className="w-4 h-4" />
                       </button>
@@ -582,8 +584,8 @@ export const NotesWorkspace: React.FC = () => {
                     <button
                       onClick={(e) => handleEditFolder(folder, e)}
                       className={folderActionCls}
-                      title="Klasörü düzenle"
-                      aria-label={`${folder.name} klasörünü düzenle`}
+                      title={tl('Klasörü düzenle')}
+                      aria-label={tl('{name} klasörünü düzenle', { name: folder.name })}
                     >
                       <Edit2 className="w-3 h-3" />
                     </button>
@@ -595,8 +597,8 @@ export const NotesWorkspace: React.FC = () => {
                         askDeleteFolder(folder);
                       }}
                       className={`${folderActionCls} hover:!text-rose-400`}
-                      title="Klasörü sil"
-                      aria-label={`${folder.name} klasörünü sil`}
+                      title={tl('Klasörü sil')}
+                      aria-label={tl('{name} klasörünü sil', { name: folder.name })}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -624,7 +626,7 @@ export const NotesWorkspace: React.FC = () => {
                       : 'bg-surface-2 text-muted hover:text-body border border-line'
                     }`}
                 >
-                  #{tag}
+                  #{tx(tag)}
                 </button>
               ))}
             </div>
@@ -634,7 +636,7 @@ export const NotesWorkspace: React.FC = () => {
         {/* Sıralama */}
         <div className="px-3 py-1.5 border-b border-line flex items-center justify-between gap-2">
           <label htmlFor="note-sort" className="text-[11px] text-muted flex items-center gap-1.5">
-            <ArrowUpDown className="w-3 h-3" /> Sırala
+            <ArrowUpDown className="w-3 h-3" />{' '}{tl('Sırala')}
           </label>
           <select
             id="note-sort"
@@ -642,10 +644,10 @@ export const NotesWorkspace: React.FC = () => {
             onChange={(e) => setPreference('noteSort', e.target.value as UserPreferences['noteSort'])}
             className="h-8 bg-surface-2 border border-line rounded-md px-2 text-[11px] text-body focus:outline-none focus:border-brand"
           >
-            <option value="updated">Son düzenlenen</option>
-            <option value="created">Oluşturma tarihi</option>
-            <option value="title">Başlık (A–Z)</option>
-            <option value="manual">Elle (sürükle / oklar)</option>
+            <option value="updated">{tl('Son düzenlenen')}</option>
+            <option value="created">{tl('Oluşturma tarihi')}</option>
+            <option value="title">{tl('Başlık (A–Z)')}</option>
+            <option value="manual">{tl('Elle (sürükle / oklar)')}</option>
           </select>
         </div>
 
@@ -654,8 +656,8 @@ export const NotesWorkspace: React.FC = () => {
           {sortedNotes.length === 0 ? (
             <div className="p-5 text-center text-muted text-xs space-y-2">
               <FileText className="w-8 h-8 text-muted mx-auto mb-1" />
-              <p className="text-white font-medium">Henüz kayıtlı bir not bulunmuyor.</p>
-              {editable && <p className="text-[11px] text-subtle">Yeni bir not eklemek için yukarıdaki butonu kullanın.</p>}
+              <p className="text-white font-medium">{tl('Henüz kayıtlı bir not bulunmuyor.')}</p>
+              {editable && <p className="text-[11px] text-subtle">{tl('Yeni bir not eklemek için yukarıdaki butonu kullanın.')}</p>}
             </div>
           ) : (
             sortedNotes.map((n, index) => {
@@ -663,12 +665,12 @@ export const NotesWorkspace: React.FC = () => {
               const manual = noteSort === 'manual';
               const canUp = manual && index > 0 && sortedNotes[index - 1].isPinned === n.isPinned;
               const canDown = manual && index < sortedNotes.length - 1 && sortedNotes[index + 1].isPinned === n.isPinned;
-              const kindLabel = n.kind === 'table' ? 'Tablo' : n.kind === 'pdf' ? 'PDF' : 'Not';
+              const kindLabel = n.kind === 'table' ? tl('Tablo') : n.kind === 'pdf' ? 'PDF' : tl('Not');
               const snippet =
                 n.kind === 'table'
-                  ? 'Tablo notu'
+                  ? tl('Tablo notu')
                   : n.kind === 'pdf'
-                    ? 'PDF belgesi — uygulamada açılır'
+                    ? tl('PDF belgesi — uygulamada açılır')
                     : n.content
                         .replace(/[#*`$\n]/g, ' ')
                         .trim()
@@ -689,7 +691,7 @@ export const NotesWorkspace: React.FC = () => {
                       {n.isPinned && (
                         <Pin className="w-3 h-3 text-amber-400 shrink-0 rotate-45" />
                       )}
-                      <span className="truncate">{n.title || 'Başlıksız Not'}</span>
+                      <span className="truncate">{n.title || tl('Başlıksız Not')}</span>
                     </h3>
                     {n.isFavorite && (
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
@@ -700,7 +702,7 @@ export const NotesWorkspace: React.FC = () => {
                           onClick={(e) => { e.stopPropagation(); stepNote(n.id, -1); }}
                           disabled={!canUp}
                           className="w-7 h-7 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
-                          aria-label={`${n.title || 'Not'} yukarı taşı`}
+                          aria-label={tl('{v0} yukarı taşı', { v0: n.title || 'Not' })}
                         >
                           <ChevronUp className="w-3.5 h-3.5" />
                         </button>
@@ -708,7 +710,7 @@ export const NotesWorkspace: React.FC = () => {
                           onClick={(e) => { e.stopPropagation(); stepNote(n.id, 1); }}
                           disabled={!canDown}
                           className="w-7 h-7 inline-flex items-center justify-center rounded text-muted hover:text-fg hover:bg-surface-3 disabled:opacity-30"
-                          aria-label={`${n.title || 'Not'} aşağı taşı`}
+                          aria-label={tl('{v0} aşağı taşı', { v0: n.title || 'Not' })}
                         >
                           <ChevronDown className="w-3.5 h-3.5" />
                         </button>
@@ -717,22 +719,22 @@ export const NotesWorkspace: React.FC = () => {
                   </div>
 
                   <p className="text-[11px] text-subtle line-clamp-2 mt-1 leading-normal">
-                    {snippet || 'İçerik yok...'}
+                    {snippet || tl('İçerik yok...')}
                   </p>
 
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-line text-[10px] text-muted">
                     <span className="flex items-center gap-1.5">
-                      {formatTurkishDate(n.updatedAt)}
+                      {tx(formatTurkishDate(n.updatedAt))}
                       <span className="text-muted">·</span>
                       <span className="inline-flex items-center gap-1">
                         {n.kind === 'table' ? <Table2 className="w-3 h-3" /> : n.kind === 'pdf' ? <FileType2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                        {kindLabel}
+                        {tx(kindLabel)}
                       </span>
                     </span>
                     <div className="flex items-center gap-1">
                       {n.tags.slice(0, 2).map(t => (
                         <span key={t} className="bg-surface-2 px-1.5 py-0.2 rounded text-subtle">
-                          {t}
+                          {tx(t)}
                         </span>
                       ))}
                     </div>
@@ -763,9 +765,9 @@ export const NotesWorkspace: React.FC = () => {
             <div className="w-16 h-16 rounded-xl bg-surface border border-line flex items-center justify-center text-emerald-400">
               <FileText className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white tracking-tight">Henüz Kayıtlı Bir Not Bulunmuyor</h3>
+            <h3 className="text-lg font-bold text-white tracking-tight">{tl('Henüz Kayıtlı Bir Not Bulunmuyor')}</h3>
             <p className="text-xs max-w-md text-subtle leading-relaxed">
-              Markdown formatında zengin notlar yazabilir, canlı KaTeX formülleri ($e^{'{'}i\pi{'}'} + 1 = 0$) ekleyebilir ve klasörlerle organize edebilirsiniz.
+              {tl('Markdown formatında zengin notlar yazabilir, canlı KaTeX formülleri ($e^')}{'{'}i\pi{'}'}{' '}{tl('+ 1 = 0$) ekleyebilir ve klasörlerle organize edebilirsiniz.')}
             </p>
             {editable && (
             <button
@@ -773,7 +775,7 @@ export const NotesWorkspace: React.FC = () => {
               className="mt-2 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all min-h-[44px]"
             >
               <Plus className="w-4 h-4" />
-              <span>İlk Notunuzu Başlatın</span>
+              <span>{tl('İlk Notunuzu Başlatın')}</span>
             </button>
             )}
           </div>
@@ -781,32 +783,32 @@ export const NotesWorkspace: React.FC = () => {
       </div>
 
       {/* İçe aktar: choose the type first */}
-      <Modal isOpen={importDialog} onClose={() => setImportDialog(false)} title="İçe aktar" subtitle="Ne tür bir not oluşturulsun?" maxWidth="max-w-lg">
+      <Modal isOpen={importDialog} onClose={() => setImportDialog(false)} title={tl('İçe aktar')} subtitle={tl('Ne tür bir not oluşturulsun?')} maxWidth="max-w-lg">
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-line p-3 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-fg">
-              <FileText className="w-4 h-4 text-emerald-400" /> Not
+              <FileText className="w-4 h-4 text-emerald-400" />{' '}{tl('Not')}
             </div>
-            <p className="text-xs text-muted">PDF, Word (.docx), Markdown (.md) veya metin (.txt). PDF’ler olduğu gibi saklanır ve uygulamada açılır.</p>
+            <p className="text-xs text-muted">{tl('PDF, Word (.docx), Markdown (.md) veya metin (.txt). PDF’ler olduğu gibi saklanır ve uygulamada açılır.')}</p>
             <label className="flex items-start gap-2 text-xs text-body">
               <input type="checkbox" className="mt-0.5 accent-[var(--color-brand)]" checked={pdfAsText} onChange={(e) => setPdfAsText(e.target.checked)} />
-              PDF’leri düzenlenebilir metne çevir
+              {tl('PDF’leri düzenlenebilir metne çevir')}
             </label>
             <label className={`flex items-start gap-2 text-xs ${pdfAsText ? 'text-body' : 'text-muted'}`}>
               <input type="checkbox" className="mt-0.5 accent-[var(--color-brand)]" checked={handwriting} disabled={!pdfAsText} onChange={(e) => setHandwriting(e.target.checked)} />
-              El yazısı (taranmış elle yazılmış notlar)
+              {tl('El yazısı (taranmış elle yazılmış notlar)')}
             </label>
             <button onClick={() => chooseImport('note')} className="w-full h-10 rounded-lg bg-brand hover:bg-brand-hover text-white text-sm font-semibold">
-              Not dosyası seç
+              {tl('Not dosyası seç')}
             </button>
           </div>
           <div className="rounded-xl border border-line p-3 space-y-2 flex flex-col">
             <div className="flex items-center gap-2 text-sm font-semibold text-fg">
-              <Table2 className="w-4 h-4 text-emerald-400" /> Tablo
+              <Table2 className="w-4 h-4 text-emerald-400" />{' '}{tl('Tablo')}
             </div>
-            <p className="text-xs text-muted flex-1">Excel (.xlsx, .xls), LibreOffice (.ods) veya CSV. Tüm sayfalar ve formüller tablo notu olarak açılır.</p>
+            <p className="text-xs text-muted flex-1">{tl('Excel (.xlsx, .xls), LibreOffice (.ods) veya CSV. Tüm sayfalar ve formüller tablo notu olarak açılır.')}</p>
             <button onClick={() => chooseImport('table')} className="w-full h-10 rounded-lg bg-brand hover:bg-brand-hover text-white text-sm font-semibold">
-              Tablo dosyası seç
+              {tl('Tablo dosyası seç')}
             </button>
           </div>
         </div>
@@ -816,34 +818,34 @@ export const NotesWorkspace: React.FC = () => {
       <Modal
         isOpen={isNewFolderModalOpen}
         onClose={() => setIsNewFolderModalOpen(false)}
-        title="Yeni Klasör Oluştur"
-        subtitle="Notlarınızı kategorize etmek için bir klasör ekleyin."
+        title={tl('Yeni Klasör Oluştur')}
+        subtitle={tl('Notlarınızı kategorize etmek için bir klasör ekleyin.')}
         maxWidth="max-w-md"
       >
         <form onSubmit={handleCreateFolder} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Klasör Adı *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Klasör Adı *')}</label>
             <input
               type="text"
               required
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Örn: Kuantum Mekaniği, YKS 2026..."
+              placeholder={tl('Örn: Kuantum Mekaniği, YKS 2026...')}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Açıklama (Opsiyonel)</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Açıklama (Opsiyonel)')}</label>
             <input
               type="text"
               value={newFolderDesc}
               onChange={(e) => setNewFolderDesc(e.target.value)}
-              placeholder="Bu klasördeki notların kısa açıklaması..."
+              placeholder={tl('Bu klasördeki notların kısa açıklaması...')}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none min-h-[44px]"
             />
           </div>
           <div>
-            <span className="block text-xs font-semibold text-white mb-1.5">Simge</span>
+            <span className="block text-xs font-semibold text-white mb-1.5">{tl('Simge')}</span>
             <FolderIconPicker value={newFolderIcon} onChange={setNewFolderIcon} />
           </div>
           <div className="modal-actions flex justify-end gap-2">
@@ -852,13 +854,13 @@ export const NotesWorkspace: React.FC = () => {
               onClick={() => setIsNewFolderModalOpen(false)}
               className="min-h-[40px] px-4 py-2 bg-surface-2 hover:bg-surface-4 text-xs font-medium text-body rounded-lg transition-colors"
             >
-              İptal
+              {tl('İptal')}
             </button>
             <button
               type="submit"
               className="min-h-[40px] px-4 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-colors"
             >
-              Klasör Oluştur
+              {tl('Klasör Oluştur')}
             </button>
           </div>
         </form>
@@ -868,13 +870,13 @@ export const NotesWorkspace: React.FC = () => {
       <Modal
         isOpen={!!editingFolder}
         onClose={() => setEditingFolder(null)}
-        title="Klasörü Düzenle"
-        subtitle="Klasör adını ve açıklamasını güncelleyin."
+        title={tl('Klasörü Düzenle')}
+        subtitle={tl('Klasör adını ve açıklamasını güncelleyin.')}
         maxWidth="max-w-md"
       >
         <form onSubmit={handleSaveEditFolder} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Klasör Adı *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Klasör Adı *')}</label>
             <input
               type="text"
               required
@@ -884,7 +886,7 @@ export const NotesWorkspace: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Açıklama (Opsiyonel)</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Açıklama (Opsiyonel)')}</label>
             <input
               type="text"
               value={editFolderDesc}
@@ -893,7 +895,7 @@ export const NotesWorkspace: React.FC = () => {
             />
           </div>
           <div>
-            <span className="block text-xs font-semibold text-white mb-1.5">Simge</span>
+            <span className="block text-xs font-semibold text-white mb-1.5">{tl('Simge')}</span>
             <FolderIconPicker value={editFolderIcon} onChange={setEditFolderIcon} />
           </div>
           <div className="modal-actions flex items-center justify-end gap-2">
@@ -906,20 +908,20 @@ export const NotesWorkspace: React.FC = () => {
               }}
               className="modal-actions-start sm:mr-auto min-h-[40px] px-3 py-2 text-xs font-medium text-rose-300 hover:bg-rose-500/10 rounded-lg inline-flex items-center gap-1.5 transition-colors"
             >
-              <Trash2 className="w-3.5 h-3.5" /> Klasörü sil
+              <Trash2 className="w-3.5 h-3.5" />{' '}{tl('Klasörü sil')}
             </button>
             <button
               type="button"
               onClick={() => setEditingFolder(null)}
               className="min-h-[40px] px-4 py-2 bg-surface-2 hover:bg-surface-4 text-xs font-medium text-body rounded-lg transition-colors"
             >
-              İptal
+              {tl('İptal')}
             </button>
             <button
               type="submit"
               className="min-h-[40px] px-4 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-colors"
             >
-              Kaydet
+              {tl('Kaydet')}
             </button>
           </div>
         </form>
@@ -929,24 +931,24 @@ export const NotesWorkspace: React.FC = () => {
       <Modal
         isOpen={!!deletingFolder}
         onClose={() => setDeletingFolder(null)}
-        title="Klasörü sil"
-        subtitle={deletingFolder?.name}
+        title={tl('Klasörü sil')}
+        subtitle={tx(deletingFolder?.name)}
         maxWidth="max-w-md"
       >
         <div className="space-y-4">
           <p className="text-sm text-body">
             {deletingCount === 0
-              ? 'Klasör boş; silindiğinde hiçbir not etkilenmez.'
+              ? tl('Klasör boş; silindiğinde hiçbir not etkilenmez.')
               : deleteWithNotes
-                ? `Klasör ve içindeki ${deletingCount} not kalıcı olarak silinecek.`
-                : `Klasör silinecek; içindeki ${deletingCount} not “Tüm notlar” altında kalır.`}
+                ? tl('Klasör ve içindeki {deletingCount} not silinecek.', { deletingCount })
+                : tl('Klasör silinecek; içindeki {deletingCount} not “Tüm notlar” altında kalır.', { deletingCount })}
           </p>
           {deletingCount > 0 && (
             <label className="flex items-start gap-2.5 rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-body cursor-pointer">
               <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[var(--color-rose-500)]" checked={deleteWithNotes} onChange={(e) => setDeleteWithNotes(e.target.checked)} />
               <span>
-                İçindeki {deletingCount} notu da sil
-                <span className="block text-xs text-muted">Bu işlem geri alınamaz.</span>
+                {tl('İçindeki')}{' '}{deletingCount} notu da sil
+                <span className="block text-xs text-muted">{tl('Sildikten sonra birkaç saniye içinde “Geri al” ile geri getirebilirsiniz.')}</span>
               </span>
             </label>
           )}
@@ -956,14 +958,14 @@ export const NotesWorkspace: React.FC = () => {
               onClick={() => setDeletingFolder(null)}
               className="min-h-[40px] px-4 py-2 bg-surface-2 hover:bg-surface-4 text-xs font-medium text-body rounded-lg transition-colors"
             >
-              Vazgeç
+              {tl('Vazgeç')}
             </button>
             <button
               type="button"
               onClick={handleDeleteFolderConfirm}
               className="min-h-[40px] px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white rounded-lg transition-colors"
             >
-              {deleteWithNotes && deletingCount > 0 ? 'Klasörü ve notları sil' : 'Klasörü sil'}
+              {deleteWithNotes && deletingCount > 0 ? tl('Klasörü ve notları sil') : tl('Klasörü sil')}
             </button>
           </div>
         </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
+import { thrownError } from '@/lib/errors';
 import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNow } from '@/components/academic/useNow';
@@ -75,18 +77,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     const data = convertBytes;
     setConvertBytes(null);
     if (!data) return;
-    setConverting('Hazırlanıyor…');
+    setConverting(tl('Hazırlanıyor…'));
     try {
       const notes: string[] = [];
       const text = await pdfToText(data, notes, (p) =>
-        setConverting(p.stage === 'ocr' ? `Sayfa ${p.page}/${p.pages} okunuyor… %${Math.round(p.progress * 100)}` : p.stage === 'hazirlik' ? 'Metin tanıma hazırlanıyor…' : `Sayfa ${p.page}/${p.pages}`)
+        setConverting(p.stage === 'ocr' ? tl('Sayfa {page}/{pages} okunuyor… %{v2}', { page: p.page, pages: p.pages, v2: Math.round(p.progress * 100) }) : p.stage === 'hazirlik' ? tl('Metin tanıma hazırlanıyor…') : tl('Sayfa {page}/{pages}', { page: p.page, pages: p.pages }))
       , handwriting);
-      if (!text.trim()) throw new Error('PDF’te okunabilir yazı bulunamadı.');
+      if (!text.trim()) throw new Error(tl('PDF’te okunabilir yazı bulunamadı.'));
       const id = addNote({ title: `${note.title} (metin)`, content: text.slice(0, 200_000), folder: note.folder });
       setActiveNoteId(id);
-      addToast({ type: notes.length ? 'warning' : 'success', title: 'Metin notu oluşturuldu', message: notes.join(' ') || 'PDF’teki yazı yeni bir nota aktarıldı.' });
+      addToast({ type: notes.length ? 'warning' : 'success', title: tl('Metin notu oluşturuldu'), message: notes.join(' ') || tl('PDF’teki yazı yeni bir nota aktarıldı.') });
     } catch (err) {
-      addToast({ type: 'error', title: 'Metne dönüştürülemedi', message: (err as Error).message });
+      addToast({ type: 'error', title: tl('Metne dönüştürülemedi'), message: thrownError(err) });
     } finally {
       setConverting(null);
     }
@@ -217,7 +219,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
     if (key === 's') {
       e.preventDefault();
       flushPendingMutations();
-      addToast({ type: 'success', title: 'Kaydedildi' });
+      addToast({ type: 'success', title: tl('Kaydedildi') });
     } else if (key === 'e' && e.shiftKey) {
       e.preventDefault();
       setViewMode((m) => (m === 'preview' ? 'edit' : 'preview'));
@@ -248,12 +250,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
 
   const handleCopyMarkdown = () => {
     navigator.clipboard.writeText(note.content);
-    addToast({ type: 'success', title: 'Panoya Kopyalandı', message: 'Markdown içeriği kopyalandı.' });
+    addToast({ type: 'success', title: tl('Panoya Kopyalandı'), message: tl('Markdown içeriği kopyalandı.') });
   };
 
   const handleCreateTaskFromNote = () => {
     addTask({
-      title: `"${note.title}" notunu incele ve geliştir`,
+      title: tl('"{title}" notunu incele ve geliştir', { title: note.title }),
       completed: false,
       priority: systemSettings.tasks.defaultPriority,
       linkedNoteId: note.id,
@@ -274,7 +276,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             <button
               onClick={onBack}
               className="md:hidden min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 active:bg-surface-4 border border-line-strong rounded-lg text-body flex items-center justify-center transition-colors shrink-0"
-              title="Not Listesine Dön"
+              title={tl('Not Listesine Dön')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -285,7 +287,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             value={note.title}
             onChange={handleTitleChange}
             readOnly={!editable}
-            placeholder="Not Başlığı..."
+            placeholder={tl('Not Başlığı...')}
             className="text-base sm:text-lg font-bold text-white bg-transparent border-b border-transparent hover:border-line-strong focus:border-brand focus:outline-none px-1 py-0.5 w-full transition-colors truncate"
           />
         </div>
@@ -300,10 +302,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${
               symbolsOpen ? 'bg-surface-4 border-line-strong text-fg' : 'bg-surface-2 border-line-strong text-body hover:text-fg'
             }`}
-            title={symbolsOpen ? 'Sembol çekmecesini kapat' : 'Sembol çekmecesini aç'}
+            title={symbolsOpen ? tl('Sembol çekmecesini kapat') : tl('Sembol çekmecesini aç')}
           >
             <Sigma className="w-4 h-4" />
-            <span className="hidden sm:inline">Semboller</span>
+            <span className="hidden sm:inline">{tl('Semboller')}</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${symbolsOpen ? 'rotate-180' : ''}`} />
           </button>
           )}
@@ -315,10 +317,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${
               writingOpen ? 'bg-surface-4 border-line-strong text-fg' : 'bg-surface-2 border-line-strong text-body hover:text-fg'
             }`}
-            title="Yazım araçları: roman ve tez yazarken kısayollar"
+            title={tl('Yazım araçları: roman ve tez yazarken kısayollar')}
           >
             <PenLine className="w-4 h-4" />
-            <span className="hidden sm:inline">Yazım</span>
+            <span className="hidden sm:inline">{tl('Yazım')}</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${writingOpen ? 'rotate-180' : ''}`} />
           </button>
           )}
@@ -331,30 +333,30 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               className={`min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors ${
                 viewMode === 'edit' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
-              title="Yalnızca Editör"
+              title={tl('Yalnızca Editör')}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>Editör</span>
+              <span>{tl('Editör')}</span>
             </button>
             <button
               onClick={() => setViewMode('split')}
               className={`hidden sm:flex min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg items-center gap-1 transition-colors ${
                 viewMode === 'split' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
-              title="Bölünmüş Görünüm"
+              title={tl('Bölünmüş Görünüm')}
             >
               <Columns2 className="w-3.5 h-3.5" />
-              <span>Bölünmüş</span>
+              <span>{tl('Bölünmüş')}</span>
             </button>
             <button
               onClick={() => setViewMode('preview')}
               className={`min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-colors ${
                 viewMode === 'preview' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
               }`}
-              title="Yalnızca Önizleme"
+              title={tl('Yalnızca Önizleme')}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Önizleme</span>
+              <span>{tl('Önizleme')}</span>
             </button>
           </div>
           )}
@@ -369,7 +371,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
                 ? 'bg-amber-950/40 border-amber-600/50 text-amber-300'
                 : 'bg-surface-2 border-line-strong text-subtle hover:text-white'
             }`}
-            title={note.isPinned ? 'Sabitlemeyi Kaldır' : 'Başa Sabitle'}
+            title={note.isPinned ? tl('Sabitlemeyi Kaldır') : tl('Başa Sabitle')}
           >
             <Pin className="w-4 h-4" />
           </button>
@@ -381,7 +383,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
                 ? 'bg-amber-950/40 border-amber-600/50 text-amber-400 fill-amber-400'
                 : 'bg-surface-2 border-line-strong text-subtle hover:text-white'
             }`}
-            title={note.isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+            title={note.isFavorite ? tl('Favorilerden Çıkar') : tl('Favorilere Ekle')}
           >
             <Star className={`w-4 h-4 ${note.isFavorite ? 'fill-amber-400' : ''}`} />
           </button>
@@ -393,7 +395,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <button
             onClick={handleCopyMarkdown}
             className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-surface-3 border border-line-strong text-subtle hover:text-white rounded-lg transition-colors flex items-center justify-center"
-            title="Markdown İçeriğini Kopyala"
+            title={tl('Markdown İçeriğini Kopyala')}
           >
             <Copy className="w-4 h-4" />
           </button>
@@ -404,10 +406,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <button
             onClick={handleCreateTaskFromNote}
             className="hidden lg:flex min-h-[38px] px-2.5 py-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-body rounded-lg text-xs font-medium items-center gap-1.5 transition-colors"
-            title="Bu not için görev ekle"
+            title={tl('Bu not için görev ekle')}
           >
             <CheckSquare className="w-3.5 h-3.5" />
-            <span>Görev Oluştur</span>
+            <span>{tl('Görev Oluştur')}</span>
           </button>
 
           {editable && (
@@ -418,7 +420,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               if (onBack) onBack();
             }}
             className="min-h-[38px] min-w-[38px] p-2 bg-surface-2 hover:bg-rose-950/40 border border-line-strong hover:border-rose-800 text-subtle hover:text-rose-300 rounded-lg transition-colors flex items-center justify-center"
-            title="Notu Sil"
+            title={tl('Notu Sil')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -437,13 +439,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             disabled={!editable}
             className="bg-surface-2 text-body border border-line-strong rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand min-h-[34px]"
           >
-            <option value="">Klasörsüz</option>
+            <option value="">{tl('Klasörsüz')}</option>
             {applyOrder(folders, preferences.folderOrder).map(f => (
               <option key={f.id} value={f.id}>
-                {f.name}
+                {tx(f.name)}
               </option>
             ))}
-            {!!note.folder && !folders.some((f) => f.id === note.folder) && <option value={note.folder}>Silinmiş klasör</option>}
+            {!!note.folder && !folders.some((f) => f.id === note.folder) && <option value={note.folder}>{tl('Silinmiş klasör')}</option>}
           </select>
         </div>
 
@@ -455,7 +457,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
               key={tag}
               className="inline-flex items-center gap-1 bg-surface-2 border border-line-strong px-2 py-0.5 rounded text-[11px] text-body"
             >
-              #{tag}
+              #{tx(tag)}
               {editable && (
               <button
                 onClick={() => handleRemoveTag(tag)}
@@ -472,7 +474,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
             value={newTagInput}
             onChange={(e) => setNewTagInput(e.target.value)}
             onKeyDown={handleAddTag}
-            placeholder="+ Etiket ekle (Enter)"
+            placeholder={tl('+ Etiket ekle (Enter)')}
             className="bg-transparent border border-dashed border-line-strong focus:border-brand rounded-lg px-2 py-1 text-[11px] text-body focus:outline-none w-28 min-h-[32px]"
           />
           )}
@@ -482,12 +484,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         {remote && (
           <div className="flex items-center gap-1.5 text-[11px] text-subtle" role="status" aria-live="polite">
             <span className={`w-1.5 h-1.5 rounded-full ${remoteLive ? 'bg-emerald-400 animate-pulse' : 'bg-surface-4'}`} aria-hidden="true" />
-            {remoteLive ? `${remote.by} düzenliyor` : `Son değişiklik: ${remote.by}`}
+            {remoteLive ? tl('{by} düzenliyor', { by: remote.by }) : tl('Son değişiklik: {by}', { by: remote.by })}
           </div>
         )}
         <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted">
           <Calendar className="w-3 h-3" />
-          <span>Son düzenleme: {formatTurkishDate(note.updatedAt)}</span>
+          <span>{tl('Son düzenleme:')}{' '}{tx(formatTurkishDate(note.updatedAt))}</span>
         </div>
       </div>
 
@@ -504,24 +506,24 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           {note.fileId ? (
             <PdfViewer fileId={note.fileId} onConvert={editable ? setConvertBytes : undefined} />
           ) : (
-            <p className="p-6 text-sm text-muted">PDF dosyası bulunamadı.</p>
+            <p className="p-6 text-sm text-muted">{tl('PDF dosyası bulunamadı.')}</p>
           )}
           {converting && (
             <p className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg bg-surface border border-line text-xs text-body shadow-lg" aria-live="polite">
-              {converting}
+              {tx(converting)}
             </p>
           )}
         </div>
       )}
-      <Modal isOpen={!!convertBytes} onClose={() => setConvertBytes(null)} title="Metne dönüştür" subtitle="PDF’teki yazı yeni bir metin notuna aktarılır; PDF olduğu gibi kalır." maxWidth="max-w-md">
+      <Modal isOpen={!!convertBytes} onClose={() => setConvertBytes(null)} title={tl('Metne dönüştür')} subtitle={tl('PDF’teki yazı yeni bir metin notuna aktarılır; PDF olduğu gibi kalır.')} maxWidth="max-w-md">
         <div className="grid gap-2">
           <button onClick={() => convertPdf(false)} className="text-left p-3 rounded-lg border border-line hover:border-brand hover:bg-surface-2">
-            <span className="block text-sm text-fg font-medium">Basılı yazı</span>
-            <span className="block text-xs text-muted">Bilgisayarda yazılmış veya taranmış belgeler</span>
+            <span className="block text-sm text-fg font-medium">{tl('Basılı yazı')}</span>
+            <span className="block text-xs text-muted">{tl('Bilgisayarda yazılmış veya taranmış belgeler')}</span>
           </button>
           <button onClick={() => convertPdf(true)} className="text-left p-3 rounded-lg border border-line hover:border-brand hover:bg-surface-2">
-            <span className="block text-sm text-fg font-medium">El yazısı</span>
-            <span className="block text-xs text-muted">Elle yazılmış notların fotoğrafı / taraması. Okunaklı yazıda en iyi sonucu verir; sonucu kontrol edin.</span>
+            <span className="block text-sm text-fg font-medium">{tl('El yazısı')}</span>
+            <span className="block text-xs text-muted">{tl('Elle yazılmış notların fotoğrafı / taraması. Okunaklı yazıda en iyi sonucu verir; sonucu kontrol edin.')}</span>
           </button>
         </div>
       </Modal>
@@ -532,7 +534,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
         {/* Editor Column */}
         {(viewMode === 'edit' || viewMode === 'split') && (
           <div className={`flex flex-col h-full border-r border-line ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
-            <div className="px-4 py-2 bg-surface border-b border-line text-[11px] font-medium text-muted">Markdown ve formül</div>
+            <div className="px-4 py-2 bg-surface border-b border-line text-[11px] font-medium text-muted">{tl('Markdown ve formül')}</div>
             <textarea
               ref={textareaRef}
               value={note.content}
@@ -541,7 +543,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
                 selection.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd };
               }}
               readOnly={!editable}
-              placeholder="Notunuzu buraya yazın... Matematik formülleri için $..$ veya $$..$$ kullanın."
+              placeholder={tl('Notunuzu buraya yazın... Matematik formülleri için $..$ veya $$..$$ kullanın.')}
               className="flex-1 w-full p-4 sm:p-5 bg-app text-fg font-mono text-sm leading-relaxed resize-none focus:outline-none overflow-y-auto selection:bg-brand selection:text-white"
             />
           </div>
@@ -552,15 +554,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <div className={`flex flex-col h-full bg-app overflow-hidden ${viewMode === 'split' ? 'md:w-1/2 w-full' : 'w-full'}`}>
             {/* Header for Right Panel */}
             <div className="px-4 py-1.5 bg-surface border-b border-line flex items-center justify-between gap-2 sticky top-0 z-10">
-              <span className="text-[11px] font-medium text-muted">Önizleme</span>
+              <span className="text-[11px] font-medium text-muted">{tl('Önizleme')}</span>
 
               <span className="flex items-center gap-1 text-[11px] text-muted">
                 {viewMode === 'preview' && wide && preferences.pdfSpread && (
                   <>
-                    <button onClick={() => turnPage(-1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label="Önceki sayfa">
+                    <button onClick={() => turnPage(-1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label={tl('Önceki sayfa')}>
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <button onClick={() => turnPage(1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label="Sonraki sayfa">
+                    <button onClick={() => turnPage(1)} className="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-surface-2 hover:text-fg" aria-label={tl('Sonraki sayfa')}>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </>
@@ -570,9 +572,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
                     onClick={() => setPreference('pdfSpread', !preferences.pdfSpread)}
                     aria-pressed={preferences.pdfSpread}
                     className={`h-7 px-2 rounded-md inline-flex items-center gap-1 hover:bg-surface-2 hover:text-fg ${preferences.pdfSpread ? 'bg-surface-2 text-fg' : ''}`}
-                    title="Kitap görünümü: metin kitap gibi iki sayfa yan yana gösterilir"
+                    title={tl('Kitap görünümü: metin kitap gibi iki sayfa yan yana gösterilir')}
                   >
-                    <BookOpen className="w-3.5 h-3.5" /> Kitap
+                    <BookOpen className="w-3.5 h-3.5" />{' '}{tl('Kitap')}
                   </button>
                 )}
                 <span className="ml-1">
@@ -598,7 +600,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
                   }}
                   className="book-columns h-full overflow-x-auto overflow-y-hidden focus:outline-none"
                   style={{ columnGap: BOOK_GAP }}
-                  aria-label="Kitap görünümü (sağ / sol ok tuşlarıyla sayfa çevirin)"
+                  aria-label={tl('Kitap görünümü (sağ / sol ok tuşlarıyla sayfa çevirin)')}
                 >
                   <KatexPreview content={note.content} />
                 </div>
@@ -621,14 +623,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onBack }) => {
           <span>{wordCount} kelime</span>
           <span>{charCount} karakter</span>
           {wordCount > 0 && (
-            <span className="hidden sm:inline" title="Yaklaşık: sayfa başına 250 kelime, dakikada 200 kelime okuma">
+            <span className="hidden sm:inline" title={tl('Yaklaşık: sayfa başına 250 kelime, dakikada 200 kelime okuma')}>
               ≈ {stats.pages} sayfa · {stats.minutes} dk okuma
             </span>
           )}
         </div>
         <div className="flex items-center gap-1.5 text-muted text-[11px]">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>Otomatik kaydedilir</span>
+          <span>{tl('Otomatik kaydedilir')}</span>
         </div>
       </div>
       )}

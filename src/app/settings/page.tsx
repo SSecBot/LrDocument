@@ -1,5 +1,6 @@
 'use client';
 
+import { t } from '@/lib/i18n';
 import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { SettingsView } from '@/components/settings/SettingsView';
@@ -16,7 +17,7 @@ export default function SettingsPage() {
       <div className="h-dvh w-full bg-app flex items-center justify-center text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-neutral-400">Yükleniyor...</p>
+          <p className="text-xs text-neutral-400">{t('Yükleniyor...')}</p>
         </div>
       </div>
     );
@@ -27,7 +28,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-app text-fg">
+    <div className="app-shell flex h-dvh w-full overflow-hidden bg-app text-fg">
       <CommandPalette />
       <ToastContainer />
       <Sidebar />

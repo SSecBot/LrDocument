@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useSyncExternalStore } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal';
@@ -34,9 +35,13 @@ export function askConfirm(options: ConfirmOptions): Promise<boolean> {
   });
 }
 
+/** Default text: deletions can be undone from the toast for a few seconds (see offerUndo). */
+export const UNDO_HINT = 'Silindikten sonra birkaç saniye içinde “Geri al” ile geri getirebilirsiniz.';
+export const PERMANENT = 'Bu işlem geri alınamaz.';
+
 /** Shorthand for "<name> silinsin mi?" */
 export function confirmDelete(what: string, message?: string): Promise<boolean> {
-  return askConfirm({ title: `${what} silinsin mi?`, message: message ?? 'Bu işlem geri alınamaz.' });
+  return askConfirm({ title: `${what} silinsin mi?`, message: message ?? UNDO_HINT });
 }
 
 function answer(ok: boolean) {
@@ -68,7 +73,7 @@ export const ConfirmHost: React.FC = () => {
             onClick={() => answer(false)}
             className="min-h-[44px] px-4 rounded-lg bg-surface-2 hover:bg-surface-3 text-body text-sm font-medium transition-colors"
           >
-            Vazgeç
+            {t('Vazgeç')}
           </button>
           <button
             type="button"
@@ -78,7 +83,7 @@ export const ConfirmHost: React.FC = () => {
               danger ? 'bg-rose-600 hover:bg-rose-500' : 'bg-brand hover:bg-brand-hover'
             }`}
           >
-            {current?.confirmText ?? 'Sil'}
+            {current?.confirmText ?? t('Sil')}
           </button>
         </>
       }
@@ -87,7 +92,7 @@ export const ConfirmHost: React.FC = () => {
         <span className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center ${danger ? 'bg-rose-950/60 text-rose-400' : 'bg-amber-950/60 text-amber-400'}`}>
           <AlertTriangle className="w-[18px] h-[18px]" />
         </span>
-        <p className="text-sm text-body leading-relaxed whitespace-pre-line pt-1.5">{current?.message ?? 'Bu işlem geri alınamaz.'}</p>
+        <p className="text-sm text-body leading-relaxed whitespace-pre-line pt-1.5">{tx(current?.message)}</p>
       </div>
     </Modal>
   );

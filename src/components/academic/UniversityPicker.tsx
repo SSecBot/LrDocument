@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useId, useState } from 'react';
 import { Check, MapPin, Search } from 'lucide-react';
 import { searchUniversities, universityByEmail, universityById, UNIVERSITY_TYPE_LABEL } from '@/lib/universities';
@@ -45,7 +46,7 @@ export function UniversityPicker({ universityId, university, onChange, email, in
           aria-controls={listId}
           aria-autocomplete="list"
           autoComplete="off"
-          placeholder="Üniversitenizi arayın (ad, şehir)"
+          placeholder={t('Üniversitenizi arayın (ad, şehir)')}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onChange={(e) => {
@@ -69,7 +70,7 @@ export function UniversityPicker({ universityId, university, onChange, email, in
             }
           }}
         />
-        {selected && <Check className="w-4 h-4 text-emerald-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Listeden seçildi" />}
+        {selected && <Check className="w-4 h-4 text-emerald-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label={t('Listeden seçildi')} />}
       </div>
 
       {open && results.length > 0 && (
@@ -88,9 +89,9 @@ export function UniversityPicker({ universityId, university, onChange, email, in
                 className={`w-full text-left px-3 py-2 flex items-start gap-2 ${i === active ? 'bg-surface-3' : ''}`}
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm text-fg truncate">{u.name}</span>
+                  <span className="block text-sm text-fg truncate">{tx(u.name)}</span>
                   <span className="flex items-center gap-1 text-[11px] text-muted">
-                    <MapPin className="w-3 h-3" /> {u.city} · {UNIVERSITY_TYPE_LABEL[u.type]}
+                    <MapPin className="w-3 h-3" /> {tx(u.city)} · {tx(UNIVERSITY_TYPE_LABEL[u.type])}
                     {u.domain ? ` · ${u.domain}` : ''}
                   </span>
                 </span>
@@ -107,12 +108,12 @@ export function UniversityPicker({ universityId, university, onChange, email, in
           onClick={() => pick(suggestion)}
           className="mt-1.5 text-[11px] text-sky-300 hover:underline text-left"
         >
-          E-postanıza göre: {suggestion.name} — seç
+          {t('E-postanıza göre:')}{' '}{tx(suggestion.name)}{' '}{t('— seç')}
         </button>
       )}
       {!selected && university.trim().length >= 3 && !suggestion && (
         <p className="mt-1.5 text-[11px] text-muted">
-          Listeden seçerseniz okulunuzun akademik takvimi (yayınlandığında) otomatik gelir. Okulunuz listede yoksa yazdığınız ad kaydedilir.
+          {t('Listeden seçerseniz okulunuzun akademik takvimi (yayınlandığında) otomatik gelir. Okulunuz listede yoksa yazdığınız ad kaydedilir.')}
         </p>
       )}
     </div>

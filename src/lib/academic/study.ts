@@ -1,5 +1,6 @@
 import type { AcademicData, Course, StudyLog, StudySession, Term } from './types';
 import { hasCalendar } from './grading';
+import { t } from '@/lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Ders çalışma takvimi: weekly study slots per course (chosen by the student, like a timetable),
@@ -35,8 +36,8 @@ export function formatDuration(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));
   const h = Math.floor(m / 60);
   const r = m % 60;
-  if (!h) return `${r} dk`;
-  return r ? `${h} sa ${r} dk` : `${h} saat`;
+  if (!h) return t('{r} dk', { r });
+  return r ? t('{h} sa {r} dk', { h, r }) : t('{h} saat', { h });
 }
 
 export interface StudyNow {

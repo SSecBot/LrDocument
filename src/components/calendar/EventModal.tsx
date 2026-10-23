@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { CalendarEvent, CalendarEventType, Platform, EventStatus, EventChecklistItem } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -38,9 +39,9 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [platform, setPlatform] = useState<Platform>('YouTube');
   const [status, setStatus] = useState<EventStatus>('planlandi');
   const [checklist, setChecklist] = useState<EventChecklistItem[]>([
-    { id: '1', text: 'Kapak resmi (Thumbnail) tasarımı bitti', done: false },
-    { id: '2', text: 'Video kurgusu ve ses dengelemesi tamam', done: false },
-    { id: '3', text: 'Açıklama, etiketler ve kaynakça eklendi', done: false },
+    { id: '1', text: tl('Kapak resmi (Thumbnail) tasarımı bitti'), done: false },
+    { id: '2', text: tl('Video kurgusu ve ses dengelemesi tamam'), done: false },
+    { id: '3', text: tl('Açıklama, etiketler ve kaynakça eklendi'), done: false },
   ]);
   const [newChecklistText, setNewChecklistText] = useState('');
 
@@ -125,7 +126,7 @@ export const EventModal: React.FC<EventModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (editEvent && (await confirmDelete(`"${editEvent.title}" etkinliği`))) {
+    if (editEvent && (await confirmDelete(tl('"{title}" etkinliği', { title: editEvent.title })))) {
       deleteEvent(editEvent.id);
       onClose();
     }
@@ -135,18 +136,18 @@ export const EventModal: React.FC<EventModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editEvent ? 'Takvim Etkinliğini Düzenle' : 'Yeni Takvim Etkinliği Ekle'}
-      subtitle="Yayın planı, görev teslimi veya özel kilometre taşı oluşturun."
+      title={editEvent ? tl('Takvim Etkinliğini Düzenle') : tl('Yeni Takvim Etkinliği Ekle')}
+      subtitle={tl('Yayın planı, görev teslimi veya özel kilometre taşı oluşturun.')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Event Type Select */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1.5">Etkinlik Türü</label>
+          <label className="block text-xs font-semibold text-white mb-1.5">{tl('Etkinlik Türü')}</label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'yayin', label: 'Yayın / Video', desc: 'Sosyal Medya' },
-              { id: 'gorev', label: 'Görev Teslimi', desc: 'İş Planı' },
-              { id: 'ozel_gun', label: 'Özel Gün / Not', desc: 'Kilometre Taşı' },
+              { id: 'yayin', label: tl('Yayın / Video'), desc: tl('Sosyal Medya') },
+              { id: 'gorev', label: tl('Görev Teslimi'), desc: tl('İş Planı') },
+              { id: 'ozel_gun', label: tl('Özel Gün / Not'), desc: tl('Kilometre Taşı') },
             ].map((t) => (
               <button
                 type="button"
@@ -158,8 +159,8 @@ export const EventModal: React.FC<EventModalProps> = ({
                     : 'bg-surface-2 border-line text-subtle hover:text-white'
                 }`}
               >
-                <span>{t.label}</span>
-                <span className="text-[10px] font-normal text-muted">{t.desc}</span>
+                <span>{tx(t.label)}</span>
+                <span className="text-[10px] font-normal text-muted">{tx(t.desc)}</span>
               </button>
             ))}
           </div>
@@ -167,13 +168,13 @@ export const EventModal: React.FC<EventModalProps> = ({
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1">Etkinlik Başlığı *</label>
+          <label className="block text-xs font-semibold text-white mb-1">{tl('Etkinlik Başlığı *')}</label>
           <input
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Örn: Euler Özdeşliği Belgesel Videosu Yayını"
+            placeholder={tl('Örn: Euler Özdeşliği Belgesel Videosu Yayını')}
             className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none"
           />
         </div>
@@ -182,7 +183,7 @@ export const EventModal: React.FC<EventModalProps> = ({
         <div className="grid grid-cols-2 gap-3">
           {eventType === 'yayin' ? (
             <div>
-              <label className="block text-xs font-semibold text-white mb-1">Yayın Platformu</label>
+              <label className="block text-xs font-semibold text-white mb-1">{tl('Yayın Platformu')}</label>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as Platform)}
@@ -190,31 +191,31 @@ export const EventModal: React.FC<EventModalProps> = ({
               >
                 <option value="YouTube">YouTube</option>
                 <option value="TikTok">TikTok</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Web">Web Video / Blog</option>
-                <option value="Podcast">Podcast</option>
+                <option value="Instagram">{tl('Instagram')}</option>
+                <option value="Web">{tl('Web Video / Blog')}</option>
+                <option value="Podcast">{tl('Podcast')}</option>
               </select>
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-semibold text-white mb-1">Kategori</label>
+              <label className="block text-xs font-semibold text-white mb-1">{tl('Kategori')}</label>
               <div className="bg-surface-2 border border-line-strong rounded-lg px-3 py-2 text-xs text-subtle">
-                {eventType === 'gorev' ? 'Görev & Yapılacak' : 'Özel Gün & Not'}
+                {eventType === 'gorev' ? tl('Görev & Yapılacak') : tl('Özel Gün & Not')}
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Durum</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Durum')}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as EventStatus)}
               className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
             >
-              <option value="planlandi">Planlandı</option>
-              <option value="hazirlaniyor">Hazırlanıyor</option>
-              <option value="yayinlandi">Tamamlandı / Yayınlandı</option>
-              <option value="iptal">İptal Edildi</option>
+              <option value="planlandi">{tl('Planlandı')}</option>
+              <option value="hazirlaniyor">{tl('Hazırlanıyor')}</option>
+              <option value="yayinlandi">{tl('Tamamlandı / Yayınlandı')}</option>
+              <option value="iptal">{tl('İptal Edildi')}</option>
             </select>
           </div>
         </div>
@@ -222,7 +223,7 @@ export const EventModal: React.FC<EventModalProps> = ({
         {/* Date, Time & Duration */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold text-white mb-1">Tarih *</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Tarih *')}</label>
             <input
               type="date"
               required
@@ -233,7 +234,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Saat</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Saat')}</label>
             <input
               type="time"
               value={time}
@@ -243,7 +244,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-white mb-1">Süre (Dk)</label>
+            <label className="block text-xs font-semibold text-white mb-1">{tl('Süre (Dk)')}</label>
             <input
               type="number"
               min="5"
@@ -258,12 +259,12 @@ export const EventModal: React.FC<EventModalProps> = ({
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-semibold text-white mb-1">Açıklama & Notlar</label>
+          <label className="block text-xs font-semibold text-white mb-1">{tl('Açıklama & Notlar')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            placeholder="Yayın stratejisi, hedef kitle veya hatırlatıcılar..."
+            placeholder={tl('Yayın stratejisi, hedef kitle veya hatırlatıcılar...')}
             className="w-full bg-surface-2 border border-line-strong focus:border-brand rounded-lg p-3 text-xs text-white focus:outline-none resize-none"
           />
         </div>
@@ -273,10 +274,10 @@ export const EventModal: React.FC<EventModalProps> = ({
           <label className="block text-xs font-semibold text-white flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <ListChecks className="w-3.5 h-3.5 text-emerald-400" />
-              Kontrol Listesi
+              {tl('Kontrol Listesi')}
             </span>
             <span className="text-[11px] text-muted">
-              {checklist.filter(c => c.done).length}/{checklist.length} tamamlandı
+              {checklist.filter(c => c.done).length}/{checklist.length}{' '}{tl('tamamlandı')}
             </span>
           </label>
 
@@ -298,12 +299,12 @@ export const EventModal: React.FC<EventModalProps> = ({
                     {item.done && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <span className={item.done ? 'line-through text-muted' : 'text-white'}>
-                    {item.text}
+                    {tx(item.text)}
                   </span>
                 </div>
                 <button
                   type="button"
-                  onClick={async () => (await confirmDelete('Kontrol maddesi', 'Kaydet’e basana kadar değişiklik kalıcı olmaz.')) && handleDeleteChecklist(item.id)}
+                  onClick={async () => (await confirmDelete(tl('Kontrol maddesi'), tl('Kaydet’e basana kadar değişiklik kalıcı olmaz.'))) && handleDeleteChecklist(item.id)}
                   className="text-muted hover:text-rose-400 p-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -317,7 +318,7 @@ export const EventModal: React.FC<EventModalProps> = ({
               type="text"
               value={newChecklistText}
               onChange={(e) => setNewChecklistText(e.target.value)}
-              placeholder="Yeni kontrol maddesi ekle..."
+              placeholder={tl('Yeni kontrol maddesi ekle...')}
               className="flex-1 bg-surface-2 border border-line-strong focus:border-brand rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
             />
             <button
@@ -326,7 +327,7 @@ export const EventModal: React.FC<EventModalProps> = ({
               className="px-3 py-1.5 bg-surface-2 hover:bg-surface-4 text-xs font-medium text-white rounded-lg flex items-center gap-1 transition-colors"
             >
               <Plus className="w-3 h-3" />
-              <span>Ekle</span>
+              <span>{tl('Ekle')}</span>
             </button>
           </div>
         </div>
@@ -340,7 +341,7 @@ export const EventModal: React.FC<EventModalProps> = ({
               className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Sil</span>
+              <span>{tl('Sil')}</span>
             </button>
           ) : <div />}
 
@@ -350,13 +351,13 @@ export const EventModal: React.FC<EventModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-xs font-medium text-body rounded-lg transition-colors"
             >
-              İptal
+              {tl('İptal')}
             </button>
             <button
               type="submit"
               className="px-5 py-2 bg-brand hover:bg-brand-hover text-xs font-semibold text-white rounded-lg transition-all"
             >
-              {editEvent ? 'Değişiklikleri Kaydet' : 'Etkinliği Kaydet'}
+              {editEvent ? tl('Değişiklikleri Kaydet') : tl('Etkinliği Kaydet')}
             </button>
           </div>
         </div>

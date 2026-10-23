@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { CalendarEvent, FinanceTransaction } from '@/types';
@@ -199,7 +200,7 @@ export const CalendarWorkspace: React.FC = () => {
     e.target.value = '';
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      addToast({ type: 'error', title: 'Dosya çok büyük', message: '.ics dosyası en fazla 5 MB olabilir.' });
+      addToast({ type: 'error', title: tl('Dosya çok büyük'), message: tl('.ics dosyası en fazla 5 MB olabilir.') });
       return;
     }
     file
@@ -207,14 +208,14 @@ export const CalendarWorkspace: React.FC = () => {
       .then((text) => {
         const parsed = parseICS(text).slice(0, 2000);
         if (parsed.length === 0) {
-          addToast({ type: 'warning', title: 'Etkinlik bulunamadı', message: 'Dosyada geçerli bir takvim etkinliği yok.' });
+          addToast({ type: 'warning', title: tl('Etkinlik bulunamadı'), message: tl('Dosyada geçerli bir takvim etkinliği yok.') });
           return;
         }
         parsed.forEach((item) => addEvent(item));
-        addToast({ type: 'success', title: 'Takvim içe aktarıldı', message: `${parsed.length} etkinlik eklendi.` });
+        addToast({ type: 'success', title: tl('Takvim içe aktarıldı'), message: `${parsed.length} etkinlik eklendi.` });
         if (parsed[0]?.date) goToDate(parsed[0].date);
       })
-      .catch(() => addToast({ type: 'error', title: 'İçe aktarılamadı', message: 'Geçerli bir .ics dosyası seçin.' }));
+      .catch(() => addToast({ type: 'error', title: tl('İçe aktarılamadı'), message: tl('Geçerli bir .ics dosyası seçin.') }));
   };
 
   const handleDrop = (e: React.DragEvent, date: string) => {
@@ -257,18 +258,18 @@ export const CalendarWorkspace: React.FC = () => {
         className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line space-y-0.5"
       >
         <span className="flex items-start justify-between gap-2">
-          <span className="text-xs text-fg">{f.title}</span>
-          {f.overdue && <span className="text-[10px] text-rose-300 shrink-0">Gecikti</span>}
+          <span className="text-xs text-fg">{tx(f.title)}</span>
+          {f.overdue && <span className="text-[10px] text-rose-300 shrink-0">{tl('Gecikti')}</span>}
         </span>
         {(f.time || f.detail) && (
           <span className="flex items-center gap-1.5 text-[11px] text-muted">
             {f.time && (
               <>
-                <Clock className="w-3 h-3" /> {f.time}
+                <Clock className="w-3 h-3" /> {tx(f.time)}
               </>
             )}
             {f.time && f.detail && <span aria-hidden="true">·</span>}
-            {f.detail}
+            {tx(f.detail)}
           </span>
         )}
       </button>
@@ -284,21 +285,21 @@ export const CalendarWorkspace: React.FC = () => {
       <div className="p-4 border-b border-line space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-[11px] text-muted">{selectedDay === today ? 'Bugün' : 'Seçili gün'}</p>
-            <h3 className="text-base font-semibold text-fg tracking-tight">{formatTurkishDate(selectedDay)}</h3>
+            <p className="text-[11px] text-muted">{selectedDay === today ? tl('Bugün') : tl('Seçili gün')}</p>
+            <h3 className="text-base font-semibold text-fg tracking-tight">{tx(formatTurkishDate(selectedDay))}</h3>
           </div>
           <button
             onClick={() => setMobilePanelOpen(false)}
             className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
-            aria-label="Gün panelini kapat"
+            aria-label={tl('Gün panelini kapat')}
           >
             <X className="w-4 h-4" />
           </button>
           <button
             onClick={() => setPreference('calendarPanelCollapsed', true)}
             className="hidden lg:flex w-8 h-8 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
-            aria-label="Gün panelini gizle"
-            title="Gün panelini gizle"
+            aria-label={tl('Gün panelini gizle')}
+            title={tl('Gün panelini gizle')}
           >
             <PanelRightClose className="w-4 h-4" />
           </button>
@@ -308,37 +309,37 @@ export const CalendarWorkspace: React.FC = () => {
             onClick={openNewEvent}
             className="flex-1 h-9 px-3 bg-brand hover:bg-brand-hover text-white text-xs font-medium rounded-md flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-4 h-4" /> Etkinlik
+            <Plus className="w-4 h-4" />{' '}{tl('Etkinlik')}
           </button>
           <button
             onClick={() => {
-              addTask({ title: 'Yeni görev', dueDate: selectedDay, completed: false, priority: systemSettings.tasks.defaultPriority });
-              addToast({ type: 'success', title: 'Görev eklendi', message: `${formatTurkishDate(selectedDay)} tarihine görev eklendi.` });
+              addTask({ title: tl('Yeni görev'), dueDate: selectedDay, completed: false, priority: systemSettings.tasks.defaultPriority });
+              addToast({ type: 'success', title: tl('Görev eklendi'), message: tl('{v0} tarihine görev eklendi.', { v0: formatTurkishDate(selectedDay) }) });
             }}
             className="h-9 px-3 bg-surface-2 hover:bg-surface-3 text-body hover:text-fg border border-line-strong text-xs font-medium rounded-md flex items-center gap-1.5"
           >
-            <CheckSquare className="w-3.5 h-3.5" /> Görev
+            <CheckSquare className="w-3.5 h-3.5" />{' '}{tl('Görev')}
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {academicDay.length > 0 && (
-          <PanelSection icon={Flag} title="Özel gün" count={academicDay.length} empty="">
+          <PanelSection icon={Flag} title={tl('Özel gün')} count={academicDay.length} empty="">
             {renderFeed(academicDay)}
           </PanelSection>
         )}
         {examsDay.length > 0 && (
-          <PanelSection icon={ClipboardList} title="Sınavlar" count={examsDay.length} empty="">
+          <PanelSection icon={ClipboardList} title={tl('Sınavlar')} count={examsDay.length} empty="">
             {renderFeed(examsDay)}
           </PanelSection>
         )}
         {shown('ders') && hasStudentAccess(currentUser) && (
-          <PanelSection icon={GraduationCap} title="Dersler" count={classesDay.length} empty="Bu gün ders yok.">
+          <PanelSection icon={GraduationCap} title={tl('Dersler')} count={classesDay.length} empty={tl('Bu gün ders yok.')}>
             {renderFeed(classesDay)}
           </PanelSection>
         )}
-        <PanelSection icon={CalendarDays} title="Etkinlikler" count={dayEvents.length} empty="Bu güne planlanmış etkinlik yok.">
+        <PanelSection icon={CalendarDays} title={tl('Etkinlikler')} count={dayEvents.length} empty={tl('Bu güne planlanmış etkinlik yok.')}>
           {dayEvents.map((ev) => (
             <button
               key={ev.id}
@@ -346,18 +347,18 @@ export const CalendarWorkspace: React.FC = () => {
               className="w-full text-left p-3 rounded-md bg-surface-2 hover:bg-surface-3 border border-line space-y-1"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-xs font-medium text-fg">{ev.title}</span>
-                {isEventOverdue(ev) && <span className="text-[10px] text-rose-300 shrink-0">Gecikti</span>}
+                <span className="text-xs font-medium text-fg">{tx(ev.title)}</span>
+                {isEventOverdue(ev) && <span className="text-[10px] text-rose-300 shrink-0">{tl('Gecikti')}</span>}
               </div>
               <span className="flex items-center gap-1.5 text-[11px] text-muted">
                 <Clock className="w-3 h-3" /> {ev.time || '—'} · {ev.durationMinutes || systemSettings.calendar.defaultEventDurationMinutes} dk
               </span>
-              {ev.description && <p className="text-[11px] text-subtle line-clamp-2">{ev.description}</p>}
+              {ev.description && <p className="text-[11px] text-subtle line-clamp-2">{tx(ev.description)}</p>}
             </button>
           ))}
         </PanelSection>
 
-        <PanelSection icon={CheckSquare} title="Görevler" count={dayTasks.length} empty="Bu gün için görev yok.">
+        <PanelSection icon={CheckSquare} title={tl('Görevler')} count={dayTasks.length} empty={tl('Bu gün için görev yok.')}>
           {dayTasks.map((t) => (
             <div key={t.id} className="p-2.5 rounded-md bg-surface-2 border border-line flex items-center gap-2">
               <button
@@ -365,17 +366,17 @@ export const CalendarWorkspace: React.FC = () => {
                 className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                   t.completed ? 'bg-brand border-brand text-white' : 'border-line-strong'
                 }`}
-                aria-label={t.completed ? 'Tamamlanmadı olarak işaretle' : 'Tamamlandı olarak işaretle'}
+                aria-label={t.completed ? tl('Tamamlanmadı olarak işaretle') : tl('Tamamlandı olarak işaretle')}
               >
                 {t.completed && <Check className="w-3 h-3" />}
               </button>
-              <span className={`text-xs truncate ${t.completed ? 'line-through text-muted' : 'text-fg'}`}>{t.title}</span>
-              {t.dueTime && t.dueDate === selectedDay && <span className="ml-auto text-[11px] text-muted tabular-nums shrink-0">{t.dueTime}</span>}
+              <span className={`text-xs truncate ${t.completed ? 'line-through text-muted' : 'text-fg'}`}>{tx(t.title)}</span>
+              {t.dueTime && t.dueDate === selectedDay && <span className="ml-auto text-[11px] text-muted tabular-nums shrink-0">{tx(t.dueTime)}</span>}
             </div>
           ))}
         </PanelSection>
 
-        <PanelSection icon={Wallet} title="Finans" count={dayTransactions.length} empty="Bu tarihte finans kaydı yok.">
+        <PanelSection icon={Wallet} title={tl('Finans')} count={dayTransactions.length} empty={tl('Bu tarihte finans kaydı yok.')}>
           {dayTransactions.map((tr) => (
             <button
               key={tr.id}
@@ -386,30 +387,30 @@ export const CalendarWorkspace: React.FC = () => {
               className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line flex items-center justify-between gap-2"
             >
               <span className="min-w-0">
-                <span className="text-xs text-fg block truncate">{tr.title}</span>
-                <span className="text-[10px] text-muted">{tr.isDebt ? 'Kredi / borç' : tr.category}</span>
+                <span className="text-xs text-fg block truncate">{tx(tr.title)}</span>
+                <span className="text-[10px] text-muted">{tr.isDebt ? tl('Kredi / borç') : tr.category}</span>
               </span>
               <span className={`text-xs font-medium tabular-nums ${tr.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {tr.type === 'gelir' ? '+' : '−'}
-                {formatCurrencyTRY(tr.amount)}
+                {tx(formatCurrencyTRY(tr.amount))}
               </span>
             </button>
           ))}
         </PanelSection>
 
         {kanbanDay.length > 0 && (
-          <PanelSection icon={Kanban} title="Kanban" count={kanbanDay.length} empty="">
+          <PanelSection icon={Kanban} title={tl('Kanban')} count={kanbanDay.length} empty="">
             {renderFeed(kanbanDay)}
           </PanelSection>
         )}
         {customerDay.length > 0 && (
-          <PanelSection icon={Building2} title="Müşteri ödemeleri" count={customerDay.length} empty="">
+          <PanelSection icon={Building2} title={tl('Müşteri ödemeleri')} count={customerDay.length} empty="">
             {renderFeed(customerDay)}
           </PanelSection>
         )}
 
         {dayNotes.length > 0 && (
-          <PanelSection icon={FileText} title="Notlar" count={dayNotes.length} empty="">
+          <PanelSection icon={FileText} title={tl('Notlar')} count={dayNotes.length} empty="">
             {dayNotes.map((n) => (
               <button
                 key={n.id}
@@ -419,7 +420,7 @@ export const CalendarWorkspace: React.FC = () => {
                 }}
                 className="w-full text-left p-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs text-fg truncate"
               >
-                {n.title || 'Başlıksız not'}
+                {n.title || tl('Başlıksız not')}
               </button>
             ))}
           </PanelSection>
@@ -439,17 +440,17 @@ export const CalendarWorkspace: React.FC = () => {
             <button
               onClick={() => shiftMonths(-1)}
               className="w-9 h-9 rounded-md flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2"
-              aria-label="Bir ay geri"
+              aria-label={tl('Bir ay geri')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="text-sm font-semibold text-fg min-w-[120px] text-center">
-              {MONTH_NAMES[anchor.month]} {anchor.year}
+              {tx(MONTH_NAMES[anchor.month])} {anchor.year}
             </span>
             <button
               onClick={() => shiftMonths(1)}
               className="w-9 h-9 rounded-md flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2"
-              aria-label="Bir ay ileri"
+              aria-label={tl('Bir ay ileri')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -457,7 +458,7 @@ export const CalendarWorkspace: React.FC = () => {
               onClick={() => goToDate(today)}
               className="h-9 px-3 ml-1 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
             >
-              Bugün
+              {tl('Bugün')}
             </button>
           </div>
 
@@ -467,21 +468,21 @@ export const CalendarWorkspace: React.FC = () => {
                 onClick={() => setLayersOpen((o) => !o)}
                 aria-expanded={layersOpen}
                 className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
-                title="Takvimde gösterilecekler"
+                title={tl('Takvimde gösterilecekler')}
               >
                 <Layers className="w-4 h-4" />
-                <span className="hidden sm:inline">Katmanlar</span>
+                <span className="hidden sm:inline">{tl('Katmanlar')}</span>
                 {hidden.size > 0 && <span className="text-[10px] text-muted tabular-nums">{availableLayers.filter(shown).length}/{availableLayers.length}</span>}
               </button>
               {layersOpen && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setLayersOpen(false)} aria-hidden="true" />
-                  <div className="absolute left-0 mt-2 z-40 w-56 p-1.5 bg-surface border border-line-strong rounded-lg shadow-xl" role="menu" aria-label="Katmanlar">
+                  <div className="absolute left-0 mt-2 z-40 w-56 p-1.5 bg-surface border border-line-strong rounded-lg shadow-xl" role="menu" aria-label={tl('Katmanlar')}>
                     {availableLayers.map((l) => (
                       <label key={l} className="flex items-center gap-2.5 px-2.5 min-h-[36px] rounded-md text-[13px] text-body hover:bg-surface-2 cursor-pointer">
                         <input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={shown(l)} onChange={() => toggleLayer(l)} />
                         <span className={`w-2 h-2 rounded-full ${LAYER_DOT[l]}`} aria-hidden="true" />
-                        {CALENDAR_LAYER_LABEL[l]}
+                        {tx(CALENDAR_LAYER_LABEL[l])}
                       </label>
                     ))}
                   </div>
@@ -491,32 +492,32 @@ export const CalendarWorkspace: React.FC = () => {
             <button
               onClick={() => fileInputRef.current?.click()}
               className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
-              title=".ics takvim dosyasını içe aktar"
+              title={tl('.ics takvim dosyasını içe aktar')}
             >
               <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">İçe aktar</span>
+              <span className="hidden sm:inline">{tl('İçe aktar')}</span>
             </button>
             <button
               onClick={() => setIsExportModalOpen(true)}
               className="h-9 px-3 flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs text-body hover:text-fg rounded-md"
-              title="Dışa aktar / eşitle"
+              title={tl('Dışa aktar / eşitle')}
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Dışa aktar</span>
+              <span className="hidden sm:inline">{tl('Dışa aktar')}</span>
             </button>
             <button
               onClick={openNewEvent}
               className="h-9 px-3.5 flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-medium rounded-md"
             >
               <Plus className="w-4 h-4" />
-              <span>Etkinlik</span>
+              <span>{tl('Etkinlik')}</span>
             </button>
             {panelCollapsed && (
               <button
                 onClick={() => setPreference('calendarPanelCollapsed', false)}
                 className="hidden lg:flex w-9 h-9 items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2"
-                aria-label="Gün panelini göster"
-                title="Gün panelini göster"
+                aria-label={tl('Gün panelini göster')}
+                title={tl('Gün panelini göster')}
               >
                 <PanelRightOpen className="w-4 h-4" />
               </button>
@@ -536,16 +537,16 @@ export const CalendarWorkspace: React.FC = () => {
                   else monthRefs.current.delete(key);
                 }}
                 className="pt-5"
-                aria-label={`${MONTH_NAMES[m.month]} ${m.year}`}
+                aria-label={`${tx(MONTH_NAMES[m.month])} ${m.year}`}
               >
                 <div className="sticky top-0 z-10 bg-app py-2 flex items-baseline justify-between border-b border-line mb-2">
                   <h3 className="text-sm font-semibold text-fg">
-                    {MONTH_NAMES[m.month]} <span className="text-muted font-normal">{m.year}</span>
+                    {tx(MONTH_NAMES[m.month])} <span className="text-muted font-normal">{m.year}</span>
                   </h3>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted mb-1">
                   {DAY_NAMES.map((d) => (
-                    <span key={d}>{d}</span>
+                    <span key={d}>{tx(d)}</span>
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
@@ -583,7 +584,7 @@ export const CalendarWorkspace: React.FC = () => {
                         }}
                         onDragLeave={() => dragOverDate === date && setDragOverDate(null)}
                         onDrop={(e) => handleDrop(e, date)}
-                        aria-label={formatTurkishDate(date)}
+                        aria-label={tx(formatTurkishDate(date))}
                         aria-pressed={selected}
                         className={`min-h-[64px] sm:min-h-[84px] p-1.5 rounded-md border flex flex-col gap-1 cursor-pointer transition-colors ${
                           selected
@@ -602,30 +603,30 @@ export const CalendarWorkspace: React.FC = () => {
                             {i + 1}
                           </span>
                           <span className="flex gap-0.5">
-                            {hasTasks && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Görev var" />}
-                            {hasMoney && <span className="w-1.5 h-1.5 rounded-full bg-subtle" title="Finans kaydı var" />}
+                            {hasTasks && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={tl('Görev var')} />}
+                            {hasMoney && <span className="w-1.5 h-1.5 rounded-full bg-subtle" title={tl('Finans kaydı var')} />}
                             {dots.map((l) => (
                               <span
                                 key={l}
                                 className={`w-1.5 h-1.5 rounded-full ${dueOverdue && l === 'musteri' ? 'bg-rose-400' : LAYER_DOT[l]}`}
-                                title={CALENDAR_LAYER_LABEL[l]}
+                                title={tx(CALENDAR_LAYER_LABEL[l])}
                               />
                             ))}
-                            {classCount > 0 && <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-sky-400" title="Ders var" />}
+                            {classCount > 0 && <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-sky-400" title={tl('Ders var')} />}
                           </span>
                         </div>
                         {label && (
                           <span
                             className={`text-[10px] px-1 py-px rounded truncate ${label.layer === 'resmi' ? 'bg-emerald-500/10 text-emerald-200' : 'bg-violet-500/10 text-violet-200'}`}
-                            title={label.title}
+                            title={tx(label.title)}
                           >
-                            {label.title}
+                            {tx(label.title)}
                           </span>
                         )}
                         <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
                           {exams.slice(0, 1).map((f) => (
-                            <span key={f.id} className="text-[10px] px-1 py-px rounded border border-rose-500/50 bg-rose-500/10 text-rose-200 truncate" title={f.title}>
-                              {f.title}
+                            <span key={f.id} className="text-[10px] px-1 py-px rounded border border-rose-500/50 bg-rose-500/10 text-rose-200 truncate" title={tx(f.title)}>
+                              {tx(f.title)}
                             </span>
                           ))}
                           {classCount > 0 && (
@@ -643,7 +644,7 @@ export const CalendarWorkspace: React.FC = () => {
                               title={`${ev.time ?? ''} ${ev.title}`.trim()}
                               className={`text-[10px] px-1 py-px rounded border truncate ${eventTone(ev)}`}
                             >
-                              {ev.title}
+                              {tx(ev.title)}
                             </span>
                           ))}
                           {evs.length > 2 && <span className="text-[9px] text-muted pl-1">+{evs.length - 2}</span>}
@@ -661,7 +662,7 @@ export const CalendarWorkspace: React.FC = () => {
               onClick={() => shiftMonths(6)}
               className="h-9 px-4 text-xs text-subtle hover:text-fg bg-surface hover:bg-surface-2 border border-line rounded-md"
             >
-              Sonraki aylar
+              {tl('Sonraki aylar')}
             </button>
           </div>
         </div>
@@ -708,11 +709,11 @@ function PanelSection({
       <h4 className="text-[11px] font-medium text-subtle flex items-center justify-between">
         <span className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5 text-muted" />
-          {title}
+          {tx(title)}
         </span>
         <span className="tabular-nums text-muted">{count}</span>
       </h4>
-      {count === 0 ? <p className="text-xs text-muted">{empty}</p> : <div className="space-y-1.5">{children}</div>}
+      {count === 0 ? <p className="text-xs text-muted">{tx(empty)}</p> : <div className="space-y-1.5">{children}</div>}
     </section>
   );
 }

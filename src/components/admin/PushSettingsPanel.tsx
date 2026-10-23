@@ -1,5 +1,6 @@
 'use client';
 
+import { responseError } from '@/lib/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, BellRing, CheckCircle2, Loader2, RefreshCw, Send, Smartphone } from 'lucide-react';
 import { enableDesktopNotifications, useAppStore } from '@/store/useAppStore';
@@ -45,7 +46,7 @@ export function PushSettingsPanel() {
       addToast(
         res.ok
           ? { type: 'success', title: action === 'test' ? 'Test bildirimi gönderildi' : 'Hatırlatmalar çalıştırıldı', message: data.message }
-          : { type: 'error', title: 'Gönderilemedi', message: data.error || 'Bilinmeyen hata.' }
+          : { type: 'error', title: 'Gönderilemedi', message: responseError(res, data, 'Test bildirimi gönderilemedi.') }
       );
     } finally {
       setBusy(null);

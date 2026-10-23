@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Building2, Mail, Phone, Plus, Search, User } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -74,8 +75,8 @@ export function CustomersWorkspace() {
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-semibold text-fg tracking-tight">Müşteriler</h1>
-              <p className="text-xs text-muted">Aylık ödeme, iletişim ve taahhüt süresi; ödemeler ay ay takip edilir.</p>
+              <h1 className="text-lg sm:text-xl font-semibold text-fg tracking-tight">{t('Müşteriler')}</h1>
+              <p className="text-xs text-muted">{t('Aylık ödeme, iletişim ve taahhüt süresi; ödemeler ay ay takip edilir.')}</p>
             </div>
           </div>
           {editable && (
@@ -83,19 +84,19 @@ export function CustomersWorkspace() {
               onClick={() => setOpenId('new')}
               className="h-10 px-4 rounded-md bg-brand hover:bg-brand-hover text-white text-sm font-medium inline-flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" /> Yeni müşteri
+              <Plus className="w-4 h-4" />{' '}{t('Yeni müşteri')}
             </button>
           )}
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Stat label="Taahhüdü süren" value={String(totals.active)} />
-          <Stat label="Aylık beklenen" value={formatCurrencyTRY(totals.expected)} />
-          <Stat label={`${formatMonth(thisMonth)} tahsilatı`} value={formatCurrencyTRY(totals.collected)} />
+          <Stat label={t('Taahhüdü süren')} value={String(totals.active)} />
+          <Stat label={t('Aylık beklenen')} value={formatCurrencyTRY(totals.expected)} />
+          <Stat label={t('{v0} tahsilatı', { v0: formatMonth(thisMonth) })} value={formatCurrencyTRY(totals.collected)} />
           <Stat
-            label="Geciken ödeme"
+            label={t('Geciken ödeme')}
             value={formatCurrencyTRY(totals.overdue)}
-            hint={totals.overdueCount ? `${totals.overdueCount} müşteri` : undefined}
+            hint={totals.overdueCount ? t('{overdueCount} müşteri', { overdueCount: totals.overdueCount }) : undefined}
             warn={totals.overdue > 0}
           />
         </div>
@@ -106,12 +107,12 @@ export function CustomersWorkspace() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Müşteri, yetkili, telefon veya e-posta ara…"
-              aria-label="Müşteri ara"
+              placeholder={t('Müşteri, yetkili, telefon veya e-posta ara…')}
+              aria-label={t('Müşteri ara')}
               className="w-full h-10 bg-surface border border-line rounded-md pl-9 pr-3 text-sm text-fg placeholder-muted focus:outline-none focus:border-line-strong"
             />
           </div>
-          <div className="flex gap-1 overflow-x-auto no-scrollbar" role="tablist" aria-label="Filtre">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar" role="tablist" aria-label={t('Filtre')}>
             {FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -122,7 +123,7 @@ export function CustomersWorkspace() {
                   filter === f.id ? 'bg-surface-3 border-line-strong text-fg' : 'border-line text-subtle hover:text-fg hover:bg-surface-2'
                 }`}
               >
-                {f.label}
+                {tx(f.label)}
               </button>
             ))}
           </div>
@@ -132,9 +133,9 @@ export function CustomersWorkspace() {
           <div className="rounded-lg border border-dashed border-line p-10 text-center text-sm text-muted">
             {customers.length === 0
               ? editable
-                ? 'Henüz müşteri yok. “Yeni müşteri” ile ilk kaydı ekleyin.'
-                : 'Henüz müşteri eklenmemiş.'
-              : 'Bu filtreye uyan müşteri yok.'}
+                ? t('Henüz müşteri yok. “Yeni müşteri” ile ilk kaydı ekleyin.')
+                : t('Henüz müşteri eklenmemiş.')
+              : t('Bu filtreye uyan müşteri yok.')}
           </div>
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
@@ -148,38 +149,38 @@ export function CustomersWorkspace() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-fg truncate">{c.name}</p>
+                        <p className="text-sm font-semibold text-fg truncate">{tx(c.name)}</p>
                         <p className="text-xs text-muted mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
                           {c.contactName && (
                             <span className="inline-flex items-center gap-1">
-                              <User className="w-3 h-3" /> {c.contactName}
+                              <User className="w-3 h-3" /> {tx(c.contactName)}
                             </span>
                           )}
                           {c.phone && (
                             <span className="inline-flex items-center gap-1">
-                              <Phone className="w-3 h-3" /> {c.phone}
+                              <Phone className="w-3 h-3" /> {tx(c.phone)}
                             </span>
                           )}
                           {c.email && (
                             <span className="inline-flex items-center gap-1 min-w-0">
-                              <Mail className="w-3 h-3" /> <span className="truncate">{c.email}</span>
+                              <Mail className="w-3 h-3" /> <span className="truncate">{tx(c.email)}</span>
                             </span>
                           )}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-fg tabular-nums">{formatCurrencyTRY(c.monthlyFee)}</p>
-                        <p className="text-[11px] text-muted">aylık · her ayın {c.paymentDay}. günü</p>
+                        <p className="text-sm font-semibold text-fg tabular-nums">{tx(formatCurrencyTRY(c.monthlyFee))}</p>
+                        <p className="text-[11px] text-muted">{t('aylık · her ayın')}{' '}{c.paymentDay}{t('. günü')}</p>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-[11px] text-muted mb-1">
                         <span>
-                          {formatTurkishDate(c.startDate)} – {formatTurkishDate(c.endDate)}
+                          {tx(formatTurkishDate(c.startDate))} – {tx(formatTurkishDate(c.endDate))}
                         </span>
                         <span className="tabular-nums">
-                          {s.paidMonths}/{s.totalMonths} ay ödendi
+                          {s.paidMonths}/{s.totalMonths}{' '}{t('ay ödendi')}
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden" aria-hidden="true">
@@ -190,14 +191,14 @@ export function CustomersWorkspace() {
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
                       {s.overdueMonths > 0 ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30">
-                          <AlertTriangle className="w-3 h-3" /> {s.overdueMonths} ay gecikti · {formatCurrencyTRY(s.overdueAmount)}
+                          <AlertTriangle className="w-3 h-3" /> {s.overdueMonths} ay gecikti · {tx(formatCurrencyTRY(s.overdueAmount))}
                         </span>
                       ) : s.ended ? (
-                        <span className="px-2 py-0.5 rounded-full bg-surface-3 text-subtle">Taahhüt bitti</span>
+                        <span className="px-2 py-0.5 rounded-full bg-surface-3 text-subtle">{t('Taahhüt bitti')}</span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">Ödemeler güncel</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">{t('Ödemeler güncel')}</span>
                       )}
-                      {s.nextDue && <span className="text-muted">Sonraki: {formatTurkishDate(s.nextDue.due)}</span>}
+                      {s.nextDue && <span className="text-muted">{t('Sonraki:')}{' '}{tx(formatTurkishDate(s.nextDue.due))}</span>}
                     </div>
                   </button>
                 </li>
@@ -223,9 +224,9 @@ export function CustomersWorkspace() {
 function Stat({ label, value, hint, warn }: { label: string; value: string; hint?: string; warn?: boolean }) {
   return (
     <div className="rounded-lg bg-surface border border-line p-3.5">
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className={`text-base sm:text-lg font-semibold tabular-nums mt-1 ${warn ? 'text-rose-300' : 'text-fg'}`}>{value}</p>
-      {hint && <p className="text-[11px] text-muted mt-0.5">{hint}</p>}
+      <p className="text-[11px] text-muted">{tx(label)}</p>
+      <p className={`text-base sm:text-lg font-semibold tabular-nums mt-1 ${warn ? 'text-rose-300' : 'text-fg'}`}>{tx(value)}</p>
+      {hint && <p className="text-[11px] text-muted mt-0.5">{tx(hint)}</p>}
     </div>
   );
 }

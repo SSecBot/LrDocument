@@ -1,10 +1,12 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
+import { responseError, thrownError } from '@/lib/errors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Eye, KeyRound, Loader2, Lock, LockOpen, Pencil, Pin, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { KatexPreview } from './KatexPreview';
-import { useAppStore } from '@/store/useAppStore';
+import { offerUndo, useAppStore } from '@/store/useAppStore';
 import { formatTurkishDate } from '@/lib/utils';
 import {
   createVault,
@@ -35,7 +37,7 @@ const secondary = 'h-11 px-4 rounded-lg border border-line text-sm text-body hov
 async function api(body?: Record<string, unknown>) {
   const res = await fetch('/api/secret-notes', body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı.');
+  if (!res.ok) throw new Error(responseError(res, data, t('Gizli notlara ulaşılamadı.')));
   return data;
 }
 
@@ -58,7 +60,7 @@ export function SecretNotes({ onExit }: { onExit: () => void }) {
       setSealed(data.notes);
       return data as { vault: VaultMeta | null; notes: typeof sealed };
     } catch (err) {
-      setError((err as Error).message);
+      setError(thrownError(err));
       setMeta(null);
       return null;
     }
@@ -72,7 +74,7 @@ export function SecretNotes({ onExit }: { onExit: () => void }) {
         setMeta(data.vault);
         setSealed(data.notes);
       })
-      .catch((err) => !cancelled && (setError(err.message), setMeta(null)));
+      .catch((err) => !cancelled && (setError(thrownError(err)), setMeta(null)));
     return () => {
       cancelled = true;
     };
@@ -96,7 +98,7 @@ export function SecretNotes({ onExit }: { onExit: () => void }) {
         broken++;
       }
     }
-    if (broken) addToast({ type: 'warning', title: `${broken} not açılamadı`, message: 'Bu notlar başka bir şifreyle kaydedilmiş olabilir.' });
+    if (broken) addToast({ type: 'warning', title: t('{broken} not açılamadı', { broken }), message: t('Bu notlar başka bir şifreyle kaydedilmiş olabilir.') });
     setNotes(opened);
     setKey(k);
   };
@@ -127,15 +129,15 @@ export function SecretNotes({ onExit }: { onExit: () => void }) {
 
   const header = (
     <div className="flex items-center gap-2 px-4 py-3 border-b border-line bg-surface">
-      <button onClick={onExit} className="w-10 h-10 -ml-2 rounded-md inline-flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2" aria-label="Notlara dön">
+      <button onClick={onExit} className="w-10 h-10 -ml-2 rounded-md inline-flex items-center justify-center text-subtle hover:text-fg hover:bg-surface-2" aria-label={t('Notlara dön')}>
         <ArrowLeft className="w-4 h-4" />
       </button>
       <h2 className="text-sm font-semibold text-fg flex items-center gap-2 flex-1 min-w-0">
-        <Lock className="w-4 h-4 text-amber-400 shrink-0" /> Gizli Notlar
+        <Lock className="w-4 h-4 text-amber-400 shrink-0" />{' '}{t('Gizli Notlar')}
       </h2>
       {key && (
         <button onClick={lock} className="h-9 px-3 rounded-md border border-line text-xs text-body hover:bg-surface-2 inline-flex items-center gap-1.5">
-          <Lock className="w-3.5 h-3.5" /> Kilitle
+          <Lock className="w-3.5 h-3.5" />{' '}{t('Kilitle')}
         </button>
       )}
     </div>
@@ -149,9 +151,9 @@ export function SecretNotes({ onExit }: { onExit: () => void }) {
       </div>
     );
   } else if (!vaultSupported()) {
-    body = <Center icon={Lock} title="Bu tarayıcı desteklemiyor">Gizli notlar için güncel bir tarayıcı ve HTTPS bağlantısı gerekir.</Center>;
+    body = <Center icon={Lock} title={t('Bu tarayıcı desteklemiyor')}>{t('Gizli notlar için güncel bir tarayıcı ve HTTPS bağlantısı gerekir.')}</Center>;
   } else if (error && !meta) {
-    body = <Center icon={Lock} title="Gizli notlar açılamadı">{error}</Center>;
+    body = <Center icon={Lock} title={t('Gizli notlar açılamadı')}>{tx(error)}</Center>;
   } else if (!meta) {
     body = <SetupForm onCreated={(m, k) => (setMeta(m), setKey(k), setNotes([]))} />;
   } else if (!key) {
@@ -175,7 +177,7 @@ function Center({ icon: Icon, title, children }: { icon: React.ElementType; titl
         <div className="w-12 h-12 rounded-xl bg-surface border border-line flex items-center justify-center text-amber-400 mx-auto">
           <Icon className="w-6 h-6" />
         </div>
-        <h3 className="text-base font-semibold text-fg text-center">{title}</h3>
+        <h3 className="text-base font-semibold text-fg text-center">{tx(title)}</h3>
         <div className="text-sm text-subtle space-y-3">{children}</div>
       </div>
     </div>
@@ -189,8 +191,8 @@ function SetupForm({ onCreated }: { onCreated: (meta: VaultMeta, key: CryptoKey)
   const [err, setErr] = useState('');
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw.length < VAULT_MIN_PASSWORD) return setErr(`Şifre en az ${VAULT_MIN_PASSWORD} karakter olmalı.`);
-    if (pw !== pw2) return setErr('Şifreler aynı değil.');
+    if (pw.length < VAULT_MIN_PASSWORD) return setErr(t('Şifre en az {VAULT_MIN_PASSWORD} karakter olmalı.', { VAULT_MIN_PASSWORD }));
+    if (pw !== pw2) return setErr(t('Şifreler aynı değil.'));
     setBusy(true);
     setErr('');
     try {
@@ -198,23 +200,23 @@ function SetupForm({ onCreated }: { onCreated: (meta: VaultMeta, key: CryptoKey)
       await api({ action: 'setup', vault: meta });
       onCreated(meta, key);
     } catch (error) {
-      setErr((error as Error).message);
+      setErr(thrownError(error));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Center icon={ShieldCheck} title="Gizli notlar için şifre belirleyin">
+    <Center icon={ShieldCheck} title={t('Gizli notlar için şifre belirleyin')}>
       <p className="text-center">
-        Gizli notlar bu cihazda şifrelenip öyle kaydedilir; sunucu ve yönetici bile içeriğini göremez. Hesap şifrenizden farklı bir şifre seçin.
+        {t('Gizli notlar bu cihazda şifrelenip öyle kaydedilir; sunucu ve yönetici bile içeriğini göremez. Hesap şifrenizden farklı bir şifre seçin.')}
       </p>
       <form onSubmit={submit} className="space-y-3">
-        <input type="password" autoComplete="new-password" placeholder="Gizli notlar şifresi" value={pw} onChange={(e) => setPw(e.target.value)} className={input} aria-label="Gizli notlar şifresi" />
-        <input type="password" autoComplete="new-password" placeholder="Şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} aria-label="Şifre (tekrar)" />
-        <p className="text-xs text-amber-300">Bu şifreyi unutursanız gizli notlar kurtarılamaz; yalnızca silinip baştan başlanabilir.</p>
-        {err && <p className="text-xs text-rose-400" role="alert">{err}</p>}
+        <input type="password" autoComplete="new-password" placeholder={t('Gizli notlar şifresi')} value={pw} onChange={(e) => setPw(e.target.value)} className={input} aria-label={t('Gizli notlar şifresi')} />
+        <input type="password" autoComplete="new-password" placeholder={t('Şifre (tekrar)')} value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} aria-label={t('Şifre (tekrar)')} />
+        <p className="text-xs text-amber-300">{t('Bu şifreyi unutursanız gizli notlar kurtarılamaz; yalnızca silinip baştan başlanabilir.')}</p>
+        {err && <p className="text-xs text-rose-400" role="alert">{tx(err)}</p>}
         <button type="submit" disabled={busy} className={`${primary} w-full`}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} Şifreyi oluştur
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}{' '}{t('Şifreyi oluştur')}
         </button>
       </form>
     </Center>
@@ -242,7 +244,7 @@ function UnlockForm({ meta, onOpen, onReset }: { meta: VaultMeta; onOpen: (key: 
     const key = await openVault(pw, meta);
     if (!key) {
       setFails((f) => f + 1);
-      setErr('Şifre hatalı.');
+      setErr(t('Şifre hatalı.'));
       setBusy(false);
       return;
     }
@@ -256,52 +258,52 @@ function UnlockForm({ meta, onOpen, onReset }: { meta: VaultMeta; onOpen: (key: 
     try {
       await api({ action: 'reset', password: accountPw });
       setResetOpen(false);
-      addToast({ type: 'success', title: 'Gizli notlar sıfırlandı', message: 'Yeni bir şifre belirleyebilirsiniz.' });
+      addToast({ type: 'success', title: t('Gizli notlar sıfırlandı'), message: t('Yeni bir şifre belirleyebilirsiniz.') });
       onReset();
     } catch (error) {
-      setResetErr((error as Error).message);
+      setResetErr(thrownError(error));
     }
   };
 
   return (
-    <Center icon={Lock} title="Gizli notlar kilitli">
+    <Center icon={Lock} title={t('Gizli notlar kilitli')}>
       <form onSubmit={submit} className="space-y-3">
         <input
           type="password"
           autoComplete="current-password"
           autoFocus
-          placeholder="Gizli notlar şifresi"
+          placeholder={t('Gizli notlar şifresi')}
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           className={input}
-          aria-label="Gizli notlar şifresi"
+          aria-label={t('Gizli notlar şifresi')}
         />
-        {err && <p className="text-xs text-rose-400" role="alert">{err}</p>}
+        {err && <p className="text-xs text-rose-400" role="alert">{tx(err)}</p>}
         <button type="submit" disabled={busy || !pw} className={`${primary} w-full`}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <LockOpen className="w-4 h-4" />} Kilidi aç
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <LockOpen className="w-4 h-4" />}{' '}{t('Kilidi aç')}
         </button>
       </form>
       <button onClick={() => setResetOpen(true)} className="text-xs text-muted hover:text-fg underline underline-offset-2 mx-auto block">
-        Şifremi unuttum
+        {t('Şifremi unuttum')}
       </button>
 
-      <Modal isOpen={resetOpen} onClose={() => setResetOpen(false)} title="Gizli notları sıfırla" subtitle="Şifre olmadan notlar açılamaz." maxWidth="max-w-md">
+      <Modal isOpen={resetOpen} onClose={() => setResetOpen(false)} title={t('Gizli notları sıfırla')} subtitle={t('Şifre olmadan notlar açılamaz.')} maxWidth="max-w-md">
         <div className="space-y-3">
           <p className="text-sm text-body">
-            Gizli notlar şifreniz hiçbir yerde saklanmadığı için kurtarılamaz. Sıfırlarsanız <strong className="text-rose-300">bütün gizli notlar kalıcı olarak silinir</strong> ve yeni şifre belirlersiniz.
+            {t('Gizli notlar şifreniz hiçbir yerde saklanmadığı için kurtarılamaz. Sıfırlarsanız')}{' '}<strong className="text-rose-300">{t('bütün gizli notlar kalıcı olarak silinir')}</strong>{' '}{t('ve yeni şifre belirlersiniz.')}
           </p>
-          <input type="password" autoComplete="current-password" placeholder="Hesap şifreniz" value={accountPw} onChange={(e) => setAccountPw(e.target.value)} className={input} aria-label="Hesap şifreniz" />
-          <input placeholder='Onaylamak için "SİL" yazın' value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={input} aria-label="Onay" />
-          {resetErr && <p className="text-xs text-rose-400" role="alert">{resetErr}</p>}
+          <input type="password" autoComplete="current-password" placeholder={t('Hesap şifreniz')} value={accountPw} onChange={(e) => setAccountPw(e.target.value)} className={input} aria-label={t('Hesap şifreniz')} />
+          <input placeholder={t('Onaylamak için "SİL" yazın')} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={input} aria-label={t('Onay')} />
+          {resetErr && <p className="text-xs text-rose-400" role="alert">{tx(resetErr)}</p>}
         </div>
         <div className="modal-actions">
-          <button onClick={() => setResetOpen(false)} className={secondary}>Vazgeç</button>
+          <button onClick={() => setResetOpen(false)} className={secondary}>{t('Vazgeç')}</button>
           <button
             onClick={reset}
             disabled={!accountPw || confirmText.trim().toLocaleUpperCase('tr') !== 'SİL'}
             className="h-11 px-4 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold disabled:opacity-50"
           >
-            Tümünü sil ve sıfırla
+            {t('Tümünü sil ve sıfırla')}
           </button>
         </div>
       </Modal>
@@ -340,7 +342,7 @@ function Vault({
         setSaving('saved');
       } catch (err) {
         setSaving('error');
-        addToast({ type: 'error', title: 'Gizli not kaydedilemedi', message: (err as Error).message });
+        addToast({ type: 'error', title: t('Gizli not kaydedilemedi'), message: thrownError(err) });
       }
     },
     [vaultKey, addToast]
@@ -376,7 +378,7 @@ function Vault({
 
   const add = async () => {
     const now = new Date().toISOString();
-    const note: PlainNote = { id: crypto.randomUUID(), title: 'Yeni gizli not', content: '', isPinned: false, createdAt: now, updatedAt: now };
+    const note: PlainNote = { id: crypto.randomUUID(), title: t('Yeni gizli not'), content: '', isPinned: false, createdAt: now, updatedAt: now };
     setNotes((list) => [note, ...list]);
     setActiveId(note.id);
     setMode('edit');
@@ -384,18 +386,27 @@ function Vault({
     await save(note);
   };
 
-  const remove = async (note: PlainNote) => {
-    try {
-      await api({ action: 'delete', id: note.id });
-      setNotes((list) => list.filter((n) => n.id !== note.id));
-      if (activeId === note.id) {
-        setActiveId(null);
-        setMobileView('list');
-      }
-      setDeleting(null);
-    } catch (err) {
-      addToast({ type: 'error', title: 'Silinemedi', message: (err as Error).message });
+  // Leaves the list at once; the server delete waits for the undo window (see offerUndo).
+  const remove = (note: PlainNote) => {
+    const index = notes.findIndex((n) => n.id === note.id);
+    const putBack = () =>
+      setNotes((list) => (list.some((n) => n.id === note.id) ? list : [...list.slice(0, index), note, ...list.slice(index)]));
+    setNotes((list) => list.filter((n) => n.id !== note.id));
+    if (activeId === note.id) {
+      setActiveId(null);
+      setMobileView('list');
     }
+    setDeleting(null);
+    offerUndo({
+      title: t('Gizli not silindi'),
+      message: note.title,
+      undo: putBack,
+      commit: () =>
+        api({ action: 'delete', id: note.id }).catch((err) => {
+          putBack();
+          addToast({ type: 'error', title: t('Gizli not silinemedi'), message: thrownError(err) });
+        }),
+    });
   };
 
   return (
@@ -404,14 +415,14 @@ function Vault({
       <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-80 shrink-0 flex-col border-r border-line bg-surface min-h-0`}>
         <div className="p-3 border-b border-line flex items-center gap-2">
           <button onClick={add} className="h-10 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold inline-flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> Yeni gizli not
+            <Plus className="w-4 h-4" />{' '}{t('Yeni gizli not')}
           </button>
-          <button onClick={() => setRekeyOpen(true)} className="h-10 px-3 rounded-lg border border-line text-xs text-body hover:bg-surface-2 inline-flex items-center gap-1.5 ml-auto" title="Gizli notlar şifresini değiştir">
-            <KeyRound className="w-3.5 h-3.5" /> Şifre
+          <button onClick={() => setRekeyOpen(true)} className="h-10 px-3 rounded-lg border border-line text-xs text-body hover:bg-surface-2 inline-flex items-center gap-1.5 ml-auto" title={t('Gizli notlar şifresini değiştir')}>
+            <KeyRound className="w-3.5 h-3.5" />{' '}{t('Şifre')}
           </button>
         </div>
         <ul className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {sorted.length === 0 && <li className="p-6 text-center text-xs text-muted">Henüz gizli not yok.</li>}
+          {sorted.length === 0 && <li className="p-6 text-center text-xs text-muted">{t('Henüz gizli not yok.')}</li>}
           {sorted.map((n) => (
             <li key={n.id}>
               <button
@@ -423,10 +434,10 @@ function Vault({
               >
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-fg">
                   {n.isPinned && <Pin className="w-3 h-3 text-amber-400 rotate-45 shrink-0" />}
-                  <span className="truncate">{n.title || 'Başlıksız'}</span>
+                  <span className="truncate">{n.title || t('Başlıksız')}</span>
                 </span>
-                <span className="block text-[11px] text-subtle line-clamp-2 mt-1">{n.content.replace(/[#*`$\n]/g, ' ').trim().slice(0, 90) || 'İçerik yok…'}</span>
-                <span className="block text-[10px] text-muted mt-1.5">{formatTurkishDate(n.updatedAt)}</span>
+                <span className="block text-[11px] text-subtle line-clamp-2 mt-1">{n.content.replace(/[#*`$\n]/g, ' ').trim().slice(0, 90) || t('İçerik yok…')}</span>
+                <span className="block text-[10px] text-muted mt-1.5">{tx(formatTurkishDate(n.updatedAt))}</span>
               </button>
             </li>
           ))}
@@ -438,7 +449,7 @@ function Vault({
         {active ? (
           <>
             <div className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border-b border-line bg-surface flex-wrap">
-              <button onClick={() => setMobileView('list')} className="md:hidden w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label="Listeye dön">
+              <button onClick={() => setMobileView('list')} className="md:hidden w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:bg-surface-2" aria-label={t('Listeye dön')}>
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <div className="inline-flex rounded-md border border-line p-0.5">
@@ -450,23 +461,23 @@ function Vault({
                     className={`h-8 px-2.5 rounded text-xs inline-flex items-center gap-1 ${mode === m ? 'bg-surface-3 text-fg' : 'text-subtle hover:text-fg'}`}
                   >
                     {m === 'edit' ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    {m === 'edit' ? 'Düzenle' : 'Önizleme'}
+                    {m === 'edit' ? t('Düzenle') : t('Önizleme')}
                   </button>
                 ))}
               </div>
               <span className="text-[11px] text-muted ml-1" aria-live="polite">
-                {saving === 'saving' ? 'Şifrelenip kaydediliyor…' : saving === 'saved' ? 'Kaydedildi' : saving === 'error' ? 'Kaydedilemedi' : ''}
+                {saving === 'saving' ? t('Şifrelenip kaydediliyor…') : saving === 'saved' ? t('Kaydedildi') : saving === 'error' ? t('Kaydedilemedi') : ''}
               </span>
               <div className="ml-auto flex items-center gap-1">
                 <button
                   onClick={() => update(active.id, { isPinned: !active.isPinned })}
                   aria-pressed={active.isPinned}
                   className={`w-9 h-9 rounded-md inline-flex items-center justify-center hover:bg-surface-2 ${active.isPinned ? 'text-amber-400' : 'text-subtle'}`}
-                  aria-label={active.isPinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}
+                  aria-label={active.isPinned ? t('Sabitlemeyi kaldır') : t('Sabitle')}
                 >
                   <Pin className="w-4 h-4" />
                 </button>
-                <button onClick={() => setDeleting(active)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:text-rose-400 hover:bg-surface-2" aria-label="Gizli notu sil">
+                <button onClick={() => setDeleting(active)} className="w-9 h-9 rounded-md inline-flex items-center justify-center text-subtle hover:text-rose-400 hover:bg-surface-2" aria-label={t('Gizli notu sil')}>
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -475,16 +486,16 @@ function Vault({
               <input
                 value={active.title}
                 onChange={(e) => update(active.id, { title: e.target.value.slice(0, 200) })}
-                placeholder="Başlık"
-                aria-label="Başlık"
+                placeholder={t('Başlık')}
+                aria-label={t('Başlık')}
                 className="w-full bg-transparent text-lg sm:text-xl font-semibold text-fg placeholder-muted focus:outline-none"
               />
               {mode === 'edit' ? (
                 <textarea
                   value={active.content}
                   onChange={(e) => update(active.id, { content: e.target.value.slice(0, 500_000) })}
-                  placeholder="Gizli notunuzu yazın… (Markdown ve $LaTeX$ desteklenir)"
-                  aria-label="Not içeriği"
+                  placeholder={t('Gizli notunuzu yazın… (Markdown ve $LaTeX$ desteklenir)')}
+                  aria-label={t('Not içeriği')}
                   className="w-full min-h-[50vh] bg-transparent text-sm text-body leading-relaxed placeholder-muted focus:outline-none resize-none font-mono"
                 />
               ) : (
@@ -496,18 +507,18 @@ function Vault({
           <div className="flex-1 flex items-center justify-center p-6 text-center text-sm text-muted">
             <div className="space-y-2">
               <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
-              <p>Gizli notlarınız bu cihazda şifrelenir.</p>
+              <p>{t('Gizli notlarınız bu cihazda şifrelenir.')}</p>
             </div>
           </div>
         )}
       </div>
 
-      <Modal isOpen={!!deleting} onClose={() => setDeleting(null)} title="Gizli notu sil" subtitle={deleting?.title} maxWidth="max-w-md">
-        <p className="text-sm text-body">Bu gizli not kalıcı olarak silinecek.</p>
+      <Modal isOpen={!!deleting} onClose={() => setDeleting(null)} title={t('Gizli notu sil')} subtitle={tx(deleting?.title)} maxWidth="max-w-md">
+        <p className="text-sm text-body">{t('Bu gizli not silinecek. Sildikten sonra birkaç saniye içinde “Geri al” ile geri getirebilirsiniz.')}</p>
         <div className="modal-actions">
-          <button onClick={() => setDeleting(null)} className={secondary}>Vazgeç</button>
+          <button onClick={() => setDeleting(null)} className={secondary}>{t('Vazgeç')}</button>
           <button onClick={() => deleting && remove(deleting)} className="h-11 px-4 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold">
-            Sil
+            {t('Sil')}
           </button>
         </div>
       </Modal>
@@ -525,8 +536,8 @@ function RekeyModal({ open, onClose, notes, onDone }: { open: boolean; onClose: 
   const [err, setErr] = useState('');
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw.length < VAULT_MIN_PASSWORD) return setErr(`Şifre en az ${VAULT_MIN_PASSWORD} karakter olmalı.`);
-    if (pw !== pw2) return setErr('Şifreler aynı değil.');
+    if (pw.length < VAULT_MIN_PASSWORD) return setErr(t('Şifre en az {VAULT_MIN_PASSWORD} karakter olmalı.', { VAULT_MIN_PASSWORD }));
+    if (pw !== pw2) return setErr(t('Şifreler aynı değil.'));
     setBusy(true);
     setErr('');
     try {
@@ -537,23 +548,23 @@ function RekeyModal({ open, onClose, notes, onDone }: { open: boolean; onClose: 
       setPw('');
       setPw2('');
       onClose();
-      addToast({ type: 'success', title: 'Şifre değişti', message: 'Gizli notlar yeni şifreyle yeniden şifrelendi.' });
+      addToast({ type: 'success', title: t('Şifre değişti'), message: t('Gizli notlar yeni şifreyle yeniden şifrelendi.') });
     } catch (error) {
-      setErr((error as Error).message);
+      setErr(thrownError(error));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Modal isOpen={open} onClose={onClose} title="Gizli notlar şifresini değiştir" maxWidth="max-w-md">
+    <Modal isOpen={open} onClose={onClose} title={t('Gizli notlar şifresini değiştir')} maxWidth="max-w-md">
       <form onSubmit={submit} className="space-y-3">
-        <input type="password" autoComplete="new-password" placeholder="Yeni şifre" value={pw} onChange={(e) => setPw(e.target.value)} className={input} aria-label="Yeni şifre" />
-        <input type="password" autoComplete="new-password" placeholder="Yeni şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} aria-label="Yeni şifre (tekrar)" />
-        {err && <p className="text-xs text-rose-400" role="alert">{err}</p>}
+        <input type="password" autoComplete="new-password" placeholder={t('Yeni şifre')} value={pw} onChange={(e) => setPw(e.target.value)} className={input} aria-label={t('Yeni şifre')} />
+        <input type="password" autoComplete="new-password" placeholder={t('Yeni şifre (tekrar)')} value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} aria-label={t('Yeni şifre (tekrar)')} />
+        {err && <p className="text-xs text-rose-400" role="alert">{tx(err)}</p>}
         <div className="modal-actions">
-          <button type="button" onClick={onClose} className={secondary}>Vazgeç</button>
+          <button type="button" onClick={onClose} className={secondary}>{t('Vazgeç')}</button>
           <button type="submit" disabled={busy} className={primary}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />} Değiştir
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}{' '}{t('Değiştir')}
           </button>
         </div>
       </form>

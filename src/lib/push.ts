@@ -4,6 +4,7 @@ import webpush from 'web-push';
 import { prisma } from './prisma';
 import { databaseDir } from './dataCrypto';
 import { canView, parsePermissions, type CorpModule } from './corporate';
+import { normalizeLocale, translatorFor, type Locale } from './i18n/server';
 
 // ---------------------------------------------------------------------------
 // Web Push: notifications on phones and computers even while LrDocument is closed.
@@ -147,17 +148,45 @@ export async function getPushStatus(): Promise<PushStatus> {
 }
 
 /** Sends to the given devices; subscriptions the push service no longer knows are deleted. */
+/** Language of each device's person: the account owner's or the kurumsal member's own. */
+async function deviceLocales(subs: Sub[]): Promise<Map<string, Locale>> {
+  const rows = await prisma.pushSubscription.findMany({ where: { id: { in: subs.map((s) => s.id) } }, select: { id: true, userId: true, memberId: true } });
+  const userIds = [...new Set(rows.filter((r) => !r.memberId).map((r) => r.userId))];
+  const memberIds = [...new Set(rows.map((r) => r.memberId).filter((x): x is string => !!x))];
+  const [users, members] = await Promise.all([
+    userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, locale: true } }) : [],
+    memberIds.length ? prisma.orgMember.findMany({ where: { id: { in: memberIds } }, select: { id: true, locale: true } }) : [],
+  ]);
+  const byUser = new Map(users.map((u) => [u.id, normalizeLocale(u.locale)]));
+  const byMember = new Map(members.map((m) => [m.id, normalizeLocale(m.locale)]));
+  return new Map(rows.map((r) => [r.id, (r.memberId ? byMember.get(r.memberId) : byUser.get(r.userId)) ?? 'tr']));
+}
+
+/** The notification in one language: the title and every line of the body (user text stays as written). */
+function localized(payload: PushPayload, locale: Locale): string {
+  const t = translatorFor(locale);
+  const title = t.msg(payload.title);
+  const body = payload.body.split(/\r?\n/).map((line) => t.msg(line)).join('\n');
+  return JSON.stringify({ ...payload, title: title.slice(0, 120), body: body.slice(0, 240) });
+}
+
 export async function sendPush(subs: Sub[], payload: PushPayload): Promise<number> {
   if (!subs.length) return 0;
   const { publicKey, privateKey } = keys();
   const sub = await pushSubject();
-  const body = JSON.stringify({ ...payload, title: payload.title.slice(0, 120), body: payload.body.slice(0, 240) });
+  const locales = await deviceLocales(subs).catch(() => new Map<string, Locale>());
+  const bodies = new Map<Locale, string>();
+  const bodyFor = (id: string) => {
+    const l = locales.get(id) ?? 'tr';
+    if (!bodies.has(l)) bodies.set(l, localized(payload, l));
+    return bodies.get(l)!;
+  };
   let sent = 0;
   let lastError: string | null = null;
   await Promise.all(
     subs.map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, bodyFor(s.id), {
           vapidDetails: { subject: sub, publicKey, privateKey },
           TTL: 12 * 60 * 60,
           urgency: 'normal',

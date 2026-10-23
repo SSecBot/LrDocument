@@ -1,5 +1,6 @@
 'use client';
 
+import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { PlatformBadge } from '@/components/ui/Badge';
@@ -85,10 +86,10 @@ function nextDue(t: FinanceTransaction, today: string, horizon: number): string 
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h < 6) return 'İyi geceler';
-  if (h < 12) return 'Günaydın';
-  if (h < 18) return 'İyi günler';
-  return 'İyi akşamlar';
+  if (h < 6) return tl('İyi geceler');
+  if (h < 12) return tl('Günaydın');
+  if (h < 18) return tl('İyi günler');
+  return tl('İyi akşamlar');
 }
 
 function WidgetHeader({ icon: Icon, title, action, onAction }: { icon: React.ElementType; title: string; action: string; onAction: () => void }) {
@@ -96,10 +97,10 @@ function WidgetHeader({ icon: Icon, title, action, onAction }: { icon: React.Ele
     <header className="flex items-center justify-between px-4 h-11 border-b border-line">
       <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
         <Icon className="w-4 h-4 text-subtle" />
-        {title}
+        {tx(title)}
       </h2>
       <button onClick={onAction} className="text-xs text-subtle hover:text-fg flex items-center gap-1 h-8">
-        {action} <ArrowRight className="w-3 h-3" />
+        {tx(action)} <ArrowRight className="w-3 h-3" />
       </button>
     </header>
   );
@@ -156,23 +157,23 @@ export const DashboardOverview: React.FC = () => {
   const overdueCustomers = customers.filter((c) => customerSummary(c, todayStr).overdueMonths > 0).length;
 
   const allStats: { key: string; tab: ActiveTab; label: string; value: React.ReactNode; hint: string; icon: React.ElementType }[] = [
-    { key: 'notes', tab: 'notes', label: corporate ? 'Ortak notlar' : 'Notlar', value: notes.length, hint: 'toplam', icon: FileText },
+    { key: 'notes', tab: 'notes', label: corporate ? tl('Ortak notlar') : tl('Notlar'), value: notes.length, hint: 'toplam', icon: FileText },
     {
       key: 'customers',
       tab: 'customers',
-      label: 'Müşteriler',
+      label: tl('Müşteriler'),
       value: customers.length,
-      hint: overdueCustomers ? `${overdueCustomers} ödeme gecikti` : 'ödemeler güncel',
+      hint: overdueCustomers ? tl('{overdueCustomers} ödeme gecikti', { overdueCustomers }) : tl('ödemeler güncel'),
       icon: Building2,
     },
-    { key: 'tasks', tab: 'tasks', label: 'Görevler', value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
-    { key: 'calendar', tab: 'calendar', label: 'Takvim', value: futureEvents.length, hint: 'yaklaşan', icon: Calendar },
+    { key: 'tasks', tab: 'tasks', label: tl('Görevler'), value: pendingTasks, hint: 'bekliyor', icon: CheckSquare },
+    { key: 'calendar', tab: 'calendar', label: tl('Takvim'), value: futureEvents.length, hint: tl('yaklaşan'), icon: Calendar },
     {
       key: 'finance',
       tab: 'finance',
-      label: 'Net bakiye',
-      value: <span className={netBalance < 0 ? 'text-rose-400' : 'text-emerald-400'}>{formatCurrencyTRY(netBalance)}</span>,
-      hint: 'gelir − gider',
+      label: tl('Net bakiye'),
+      value: <span className={netBalance < 0 ? 'text-rose-400' : 'text-emerald-400'}>{tx(formatCurrencyTRY(netBalance))}</span>,
+      hint: tl('gelir − gider'),
       icon: Wallet,
     },
   ];
@@ -214,7 +215,7 @@ export const DashboardOverview: React.FC = () => {
     saveLayout(order.map((wid) => layout.find((w) => w.id === wid)!));
   };
   const toggleWidget = (id: WidgetId) => saveLayout(layout.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w)));
-  const dueLabel = (date: string) => (date === todayStr ? 'Bugün' : date < todayStr ? `Gecikti · ${formatTurkishDate(date)}` : formatTurkishDate(date));
+  const dueLabel = (date: string) => (date === todayStr ? tl('Bugün') : date < todayStr ? tl('Gecikti · {v0}', { v0: formatTurkishDate(date) }) : formatTurkishDate(date));
   const dueCls = (date: string) => (date < todayStr ? 'text-rose-400' : date === todayStr ? 'text-amber-300' : 'text-muted');
 
   const statsWidget = (
@@ -229,11 +230,11 @@ export const DashboardOverview: React.FC = () => {
           className="text-left bg-surface hover:bg-surface-2 border border-line hover:border-line-strong rounded-lg px-3 py-2.5 transition-colors group"
         >
           <div className="flex items-center justify-between text-muted">
-            <span className="text-[11px] font-medium">{label}</span>
+            <span className="text-[11px] font-medium">{tx(label)}</span>
             <Icon className="w-3.5 h-3.5 group-hover:text-subtle transition-colors" />
           </div>
           <div className="mt-1 text-lg font-semibold text-fg tabular-nums truncate">{value}</div>
-          <div className="text-[11px] text-muted">{hint}</div>
+          <div className="text-[11px] text-muted">{tx(hint)}</div>
         </button>
       ))}
     </div>
@@ -241,13 +242,13 @@ export const DashboardOverview: React.FC = () => {
 
   const notesWidget = (
     <section className="bg-surface border border-line rounded-xl h-full">
-      <WidgetHeader icon={FileText} title={corporate ? 'Son ortak notlar' : 'Son notlar'} action="Tümü" onAction={() => setActiveTab('notes')} />
+      <WidgetHeader icon={FileText} title={corporate ? tl('Son ortak notlar') : tl('Son notlar')} action="Tümü" onAction={() => setActiveTab('notes')} />
       {recentNotes.length === 0 ? (
         <div className="px-4 py-8 text-center text-xs text-muted space-y-2">
-          <p>Henüz not yok.</p>
+          <p>{tl('Henüz not yok.')}</p>
           {canEdit(currentUser, 'notes') && (
             <button onClick={startNote} className="text-emerald-400 hover:underline font-medium inline-flex items-center gap-1">
-              <Plus className="w-3 h-3" /> İlk notunu oluştur
+              <Plus className="w-3 h-3" />{' '}{tl('İlk notunu oluştur')}
             </button>
           )}
         </div>
@@ -264,14 +265,14 @@ export const DashboardOverview: React.FC = () => {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-fg truncate">{note.title || 'Başlıksız not'}</span>
+                    <span className="text-sm text-fg truncate">{note.title || tl('Başlıksız not')}</span>
                     {note.isPinned && <Pin className="w-3 h-3 text-amber-400 shrink-0" />}
                     {note.isFavorite && <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-muted">{getRelativeTimeTurkish(note.updatedAt)}</p>
+                  <p className="text-[11px] text-muted">{tx(getRelativeTimeTurkish(note.updatedAt))}</p>
                 </div>
                 {note.tags[0] && (
-                  <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-subtle shrink-0">#{note.tags[0]}</span>
+                  <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-subtle shrink-0">#{tx(note.tags[0])}</span>
                 )}
               </button>
             </li>
@@ -283,12 +284,12 @@ export const DashboardOverview: React.FC = () => {
 
   const eventsWidget = (
     <section className="bg-surface border border-line rounded-xl h-full">
-      <WidgetHeader icon={Calendar} title="Yaklaşan etkinlikler" action="Takvim" onAction={() => setActiveTab('calendar')} />
+      <WidgetHeader icon={Calendar} title={tl('Yaklaşan etkinlikler')} action="Takvim" onAction={() => setActiveTab('calendar')} />
       {upcomingEvents.length === 0 ? (
         <div className="px-4 py-8 text-center text-xs text-muted space-y-2">
-          <p>Yaklaşan etkinlik yok.</p>
+          <p>{tl('Yaklaşan etkinlik yok.')}</p>
           <button onClick={() => setActiveTab('calendar')} className="text-emerald-400 hover:underline font-medium inline-flex items-center gap-1">
-            <Plus className="w-3 h-3" /> Etkinlik planla
+            <Plus className="w-3 h-3" />{' '}{tl('Etkinlik planla')}
           </button>
         </div>
       ) : (
@@ -299,16 +300,16 @@ export const DashboardOverview: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {ev.platform && <PlatformBadge platform={ev.platform} size="sm" />}
-                    <span className="text-sm text-fg truncate">{ev.title}</span>
+                    <span className="text-sm text-fg truncate">{tx(ev.title)}</span>
                   </div>
                   <p className="text-[11px] text-muted flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {ev.date === todayStr ? 'Bugün' : formatTurkishDate(ev.date)}
+                    {ev.date === todayStr ? tl('Bugün') : formatTurkishDate(ev.date)}
                     {ev.time ? ` • ${ev.time}` : ''}
                   </p>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-subtle shrink-0">
-                  {ev.eventType === 'yayin' ? 'Yayın' : ev.eventType === 'gorev' ? 'Görev' : 'Özel gün'}
+                  {ev.eventType === 'yayin' ? tl('Yayın') : ev.eventType === 'gorev' ? tl('Görev') : tl('Özel gün')}
                 </span>
               </button>
             </li>
@@ -322,7 +323,7 @@ export const DashboardOverview: React.FC = () => {
     <section className="bg-surface border border-line rounded-xl h-full">
       <WidgetHeader
         icon={CheckSquare}
-        title="Yaklaşan görevler"
+        title={tl('Yaklaşan görevler')}
         action="Görevler"
         onAction={() => {
           setPreference('tasksView', 'liste');
@@ -330,15 +331,15 @@ export const DashboardOverview: React.FC = () => {
         }}
       />
       {upcomingTasks.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-muted">Son tarihi olan bekleyen görev yok.</p>
+        <p className="px-4 py-8 text-center text-xs text-muted">{tl('Son tarihi olan bekleyen görev yok.')}</p>
       ) : (
         <ul className="divide-y divide-line">
           {upcomingTasks.map((t) => (
             <li key={t.id}>
               <button onClick={() => setActiveTab('tasks')} className="w-full text-left px-4 py-2.5 hover:bg-surface-2 transition-colors">
-                <span className="block text-sm text-fg truncate">{t.title || 'Başlıksız görev'}</span>
+                <span className="block text-sm text-fg truncate">{t.title || tl('Başlıksız görev')}</span>
                 <span className={`text-[11px] flex items-center gap-1 ${dueCls(t.dueDate!)}`}>
-                  <Clock className="w-3 h-3" /> {dueLabel(t.dueDate!)}
+                  <Clock className="w-3 h-3" /> {tx(dueLabel(t.dueDate!))}
                   {t.dueTime ? ` · ${t.dueTime}` : ''}
                 </span>
               </button>
@@ -351,24 +352,24 @@ export const DashboardOverview: React.FC = () => {
 
   const paymentsWidget = (
     <section className="bg-surface border border-line rounded-xl h-full">
-      <WidgetHeader icon={Wallet} title="Yaklaşan ödemeler" action="Finans" onAction={() => setActiveTab('finance')} />
+      <WidgetHeader icon={Wallet} title={tl('Yaklaşan ödemeler')} action="Finans" onAction={() => setActiveTab('finance')} />
       {upcomingPayments.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-muted">30 gün içinde bekleyen ödeme veya tahsilat yok.</p>
+        <p className="px-4 py-8 text-center text-xs text-muted">{tl('30 gün içinde bekleyen ödeme veya tahsilat yok.')}</p>
       ) : (
         <ul className="divide-y divide-line">
           {upcomingPayments.map(({ t, due }) => (
             <li key={t.id}>
               <button onClick={() => setActiveTab('finance')} className="w-full text-left px-4 py-2.5 hover:bg-surface-2 transition-colors flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <span className="block text-sm text-fg truncate">{t.title}</span>
+                  <span className="block text-sm text-fg truncate">{tx(t.title)}</span>
                   <span className={`text-[11px] flex items-center gap-1 ${dueCls(due)}`}>
-                    <Clock className="w-3 h-3" /> {dueLabel(due)}
-                    {t.isDebt ? ' · kredi / borç' : t.isRecurring ? ' · tekrarlayan' : ''}
+                    <Clock className="w-3 h-3" /> {tx(dueLabel(due))}
+                    {t.isDebt ? tl(' · kredi / borç') : t.isRecurring ? ' · tekrarlayan' : ''}
                   </span>
                 </div>
                 <span className={`text-xs tabular-nums shrink-0 ${t.type === 'gelir' ? 'text-emerald-400' : 'text-rose-300'}`}>
                   {t.type === 'gelir' ? '+' : '−'}
-                  {formatCurrencyTRY(t.amount)}
+                  {tx(formatCurrencyTRY(t.amount))}
                 </span>
               </button>
             </li>
@@ -402,9 +403,9 @@ export const DashboardOverview: React.FC = () => {
         {/* Greeting + quick actions */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <p className="text-xs text-muted">{formatTurkishDate(todayStr)}</p>
+            <p className="text-xs text-muted">{tx(formatTurkishDate(todayStr))}</p>
             <h1 className="text-lg sm:text-xl font-semibold text-fg">
-              {greeting()}
+              {tx(greeting())}
               {firstName ? `, ${firstName}` : ''}
             </h1>
           </div>
@@ -415,7 +416,7 @@ export const DashboardOverview: React.FC = () => {
                 className="shrink-0 h-9 px-3.5 bg-brand hover:bg-brand-hover active:bg-brand-active text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Yeni not
+                {tl('Yeni not')}
               </button>
             )}
             {studentAccess && (
@@ -424,7 +425,7 @@ export const DashboardOverview: React.FC = () => {
                 className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
               >
                 <GraduationCap className="w-4 h-4 text-subtle" />
-                Ders Takibi
+                {tl('Ders Takibi')}
               </button>
             )}
             {canView(currentUser, 'work') && (
@@ -433,7 +434,7 @@ export const DashboardOverview: React.FC = () => {
                 className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
               >
                 <CheckSquare className="w-4 h-4 text-subtle" />
-                Görev
+                {tl('Görev')}
               </button>
             )}
             {canView(currentUser, 'finance') && (
@@ -442,16 +443,16 @@ export const DashboardOverview: React.FC = () => {
                 className="shrink-0 h-9 px-3.5 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
               >
                 <Wallet className="w-4 h-4 text-subtle" />
-                İşlem
+                {tl('İşlem')}
               </button>
             )}
             <button
               onClick={() => setEditing(true)}
               className="shrink-0 h-9 px-3 bg-surface-2 hover:bg-surface-3 border border-line text-body text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
-              title="Genel bakıştaki bölümleri seç ve sırala"
+              title={tl('Genel bakıştaki bölümleri seç ve sırala')}
             >
               <LayoutGrid className="w-4 h-4 text-subtle" />
-              Düzenle
+              {tl('Düzenle')}
             </button>
           </div>
         </div>
@@ -464,16 +465,16 @@ export const DashboardOverview: React.FC = () => {
           ))}
           {shown.length === 0 && (
             <div className="lg:col-span-2 rounded-xl border border-dashed border-line px-4 py-10 text-center text-xs text-muted">
-              Tüm bölümler gizli.{' '}
+              {tl('Tüm bölümler gizli.')}{' '}
               <button onClick={() => setEditing(true)} className="text-emerald-400 hover:underline font-medium">
-                Bölüm ekle
+                {tl('Bölüm ekle')}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Genel bakışı düzenle" subtitle="Bölümleri gösterin, gizleyin ve sıralayın." maxWidth="max-w-md">
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title={tl('Genel bakışı düzenle')} subtitle={tl('Bölümleri gösterin, gizleyin ve sıralayın.')} maxWidth="max-w-md">
         <ul className="divide-y divide-line rounded-lg border border-line">
           {layout.map((w, i) => {
             const def = WIDGETS.find((d) => d.id === w.id)!;
@@ -483,7 +484,7 @@ export const DashboardOverview: React.FC = () => {
                   onClick={() => toggleWidget(w.id)}
                   aria-pressed={w.visible}
                   aria-label={`${def.label}: ${w.visible ? 'gizle' : 'göster'}`}
-                  title={w.visible ? 'Gizle' : 'Göster'}
+                  title={w.visible ? tl('Gizle') : tl('Göster')}
                   className={`w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-md border transition-colors ${
                     w.visible ? 'border-brand/50 text-emerald-400 bg-brand/10' : 'border-line text-muted hover:text-fg'
                   }`}
@@ -491,13 +492,13 @@ export const DashboardOverview: React.FC = () => {
                   {w.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${w.visible ? 'text-fg' : 'text-muted'}`}>{def.label}</p>
-                  <p className="text-[11px] text-muted truncate">{def.hint}</p>
+                  <p className={`text-sm truncate ${w.visible ? 'text-fg' : 'text-muted'}`}>{tx(def.label)}</p>
+                  <p className="text-[11px] text-muted truncate">{tx(def.hint)}</p>
                 </div>
                 <button
                   onClick={() => moveWidget(w.id, -1)}
                   disabled={i === 0}
-                  aria-label={`${def.label} yukarı taşı`}
+                  aria-label={tl('{label} yukarı taşı', { label: def.label })}
                   className="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30"
                 >
                   <ChevronUp className="w-4 h-4" />
@@ -505,7 +506,7 @@ export const DashboardOverview: React.FC = () => {
                 <button
                   onClick={() => moveWidget(w.id, 1)}
                   disabled={i === layout.length - 1}
-                  aria-label={`${def.label} aşağı taşı`}
+                  aria-label={tl('{label} aşağı taşı', { label: def.label })}
                   className="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-md text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30"
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -519,10 +520,10 @@ export const DashboardOverview: React.FC = () => {
             onClick={() => setPreference('dashboardWidgets', [])}
             className="h-10 px-4 text-xs text-subtle hover:text-fg rounded-lg border border-line hover:bg-surface-2"
           >
-            Varsayılana dön
+            {tl('Varsayılana dön')}
           </button>
           <button onClick={() => setEditing(false)} className="h-10 px-4 text-xs font-semibold text-white bg-brand hover:bg-brand-hover rounded-lg">
-            Tamam
+            {tl('Tamam')}
           </button>
         </div>
       </Modal>

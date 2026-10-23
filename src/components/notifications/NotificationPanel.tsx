@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { AppNotification } from '@/types';
@@ -87,14 +88,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             </div>
             <div>
               <h3 className="text-xs font-bold text-white tracking-tight flex items-center gap-2">
-                <span>Bildirim & Hatırlatma Merkezi</span>
+                <span>{t('Bildirim & Hatırlatma Merkezi')}</span>
                 {unreadNotificationCount > 0 && (
                   <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-600 text-white rounded-full">
-                    {unreadNotificationCount} Yeni
+                    {unreadNotificationCount}{' '}{t('Yeni')}
                   </span>
                 )}
               </h3>
-              <p className="text-[10px] text-muted">Gecikmeler, yaklaşan yayınlar ve acil onaylar</p>
+              <p className="text-[10px] text-muted">{t('Gecikmeler, yaklaşan yayınlar ve acil onaylar')}</p>
             </div>
           </div>
 
@@ -103,10 +104,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <button
                 onClick={markAllNotificationsAsRead}
                 className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors flex items-center gap-1"
-                title="Tümünü Okundu İşaretle"
+                title={t('Tümünü Okundu İşaretle')}
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Tümünü Okundu Say</span>
+                <span className="hidden sm:inline">{t('Tümünü Okundu Say')}</span>
               </button>
             )}
             <button
@@ -126,7 +127,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               activeFilter === 'all' ? 'bg-surface-4 text-fg font-medium' : 'text-subtle hover:text-white'
             }`}
           >
-            Tümü ({notifications.length})
+            {t('Tümü (')}{notifications.length})
           </button>
           <button
             onClick={() => setActiveFilter('overdue')}
@@ -135,7 +136,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }`}
           >
             <AlertTriangle className="w-3 h-3 text-rose-400" />
-            <span>Gecikenler</span>
+            <span>{t('Gecikenler')}</span>
           </button>
           <button
             onClick={() => setActiveFilter('high')}
@@ -144,7 +145,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span>Yüksek Öncelik</span>
+            <span>{t('Yüksek Öncelik')}</span>
           </button>
         </div>
 
@@ -153,8 +154,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           {filteredNotifications.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted space-y-2">
               <CheckCircle2 className="w-8 h-8 mx-auto text-muted" />
-              <p className="text-white font-medium">Harika! Bekleyen acil bildiriminiz yok.</p>
-              <p className="text-[11px]">Tüm görevler, takvim etkinlikleri ve finans ödemeleri güncel.</p>
+              <p className="text-white font-medium">{t('Harika! Bekleyen acil bildiriminiz yok.')}</p>
+              <p className="text-[11px]">{t('Tüm görevler, takvim etkinlikleri ve finans ödemeleri güncel.')}</p>
             </div>
           ) : (
             filteredNotifications.map((notif) => {
@@ -175,14 +176,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                       <div className="min-w-0 space-y-0.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
-                            {notif.title}
+                            {tx(notif.title)}
                           </h4>
                           {!notif.isRead && (
                             <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                           )}
                         </div>
                         <p className="text-[11px] text-subtle leading-relaxed">
-                          {notif.message}
+                          {tx(notif.message)}
                         </p>
                       </div>
                     </div>
@@ -190,10 +191,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (await confirmDelete('Bildirim')) deleteNotification(notif.id);
+                        if (await confirmDelete(t('Bildirim'))) deleteNotification(notif.id);
                       }}
                       className="p-1 text-muted hover:text-rose-400 rounded-lg hover:bg-surface-3 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-                      title="Bildirimi Kaldır"
+                      title={t('Bildirimi Kaldır')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -203,11 +204,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-line">
                     <span className="text-[10px] font-mono text-muted">
                       {notif.priority === 'yuksek' ? (
-                        <span className="text-rose-400 font-bold">Yüksek Öncelik</span>
+                        <span className="text-rose-400 font-bold">{t('Yüksek Öncelik')}</span>
                       ) : notif.priority === 'orta' ? (
-                        <span className="text-amber-400 font-bold">Orta Öncelik</span>
+                        <span className="text-amber-400 font-bold">{t('Orta Öncelik')}</span>
                       ) : (
-                        <span className="text-emerald-400 font-bold">Düşük Öncelik</span>
+                        <span className="text-emerald-400 font-bold">{t('Düşük Öncelik')}</span>
                       )}
                     </span>
 
@@ -221,7 +222,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 hover:text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all"
                         >
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>Görevi Tamamla (✓)</span>
+                          <span>{t('Görevi Tamamla (✓)')}</span>
                         </button>
                       )}
 
@@ -234,7 +235,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           className="px-2.5 py-1 bg-amber-950/80 hover:bg-amber-900 border border-amber-800/80 text-amber-300 hover:text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all"
                         >
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>İşlemi Onayla / Öde (✓)</span>
+                          <span>{t('İşlemi Onayla / Öde (✓)')}</span>
                         </button>
                       )}
 
@@ -245,7 +246,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         }}
                         className="px-2 py-1 bg-surface-2 hover:bg-surface-3 text-subtle hover:text-white rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors"
                       >
-                        <span>Detaya Git</span>
+                        <span>{t('Detaya Git')}</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>

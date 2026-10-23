@@ -136,7 +136,7 @@ Yalnızca hizmet için gereken bilgileri toplarız: hesap bilgileriniz (ad, e-po
 - Bağlantılar HTTPS ile şifrelenir.
 
 ## Çerezler ve tarayıcı depolama
-Yalnızca oturumunuzu sürdürmek için gerekli, JavaScript ile okunamayan (httpOnly) zorunlu çerezler kullanılır: oturum çerezi ve aynı tarayıcıda açtığınız hesapların listesi. Bu çerezler adınızı veya e-postanızı içermez. Analiz, reklam veya takip çerezi kullanılmaz; tercihleriniz tarayıcıda değil, sunucuda şifreli olarak saklanır.
+Yalnızca oturumunuzu sürdürmek için gerekli, JavaScript ile okunamayan (httpOnly) zorunlu çerezler kullanılır: oturum çerezi, aynı tarayıcıda açtığınız hesapların listesi ve seçtiğiniz arayüz dili (tr / en). Bu çerezler adınızı veya e-postanızı içermez. Analiz, reklam veya takip çerezi kullanılmaz; tercihleriniz tarayıcıda değil, sunucuda şifreli olarak saklanır.
 
 ## Dosyalar
 Ders programı, akademik takvim ve not olarak içe aktardığınız PDF, Word ve Markdown dosyaları cihazınızda işlenir; dosyanın kendisi sunucuya yüklenmez, yalnızca sizin kaydettiğiniz sonuç saklanır.

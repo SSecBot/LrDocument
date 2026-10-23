@@ -1,5 +1,6 @@
 'use client';
 
+import { t, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import type { Course, CourseCurve, CurveBoundary, CurveMode, GradingSystem, Term } from '@/lib/academic/types';
@@ -62,7 +63,7 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
 
   const handleSave = () => {
     if (draft.mode === 'tscore' && (draft.mean === null || draft.stdDev === null || draft.stdDev <= 0)) {
-      return setError('Sınıf ortalamasını ve sıfırdan büyük standart sapmayı giriniz.');
+      return setError(t('Sınıf ortalamasını ve sıfırdan büyük standart sapmayı giriniz.'));
     }
     const sorted = [...draft.boundaries].sort((a, b) => b.min - a.min);
     const curve: CourseCurve = { ...draft, enabled: true, boundaries: draft.autoTable && draft.mode === 'tscore' ? shownBoundaries : sorted };
@@ -71,13 +72,13 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Çan eğrisi" subtitle={course.name} maxWidth="max-w-xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('Çan eğrisi')} subtitle={tx(course.name)} maxWidth="max-w-xl">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-surface-2 border border-line">
           {(
             [
-              ['tscore', 'Ortalama + std. sapma'],
-              ['raw', 'Hocanın not aralıkları'],
+              ['tscore', t('Ortalama + std. sapma')],
+              ['raw', t('Hocanın not aralıkları')],
             ] as const
           ).map(([m, label]) => (
             <button
@@ -88,7 +89,7 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
                 draft.mode === m ? 'bg-surface text-fg shadow-sm' : 'text-subtle hover:text-fg'
               }`}
             >
-              {label}
+              {tx(label)}
             </button>
           ))}
         </div>
@@ -96,36 +97,35 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
         {draft.mode === 'tscore' ? (
           <>
             <p className="text-[11px] text-muted leading-relaxed">
-              Hocanın açıkladığı sınıf ortalaması ve standart sapmayı girin. Notunuz T = 50 + 10 × (not − ortalama) / std. sapma ile
-              T-skoruna çevrilir ve harf notu T-skoru tablosundan belirlenir.
+              {t('Hocanın açıkladığı sınıf ortalaması ve standart sapmayı girin. Notunuz T = 50 + 10 × (not − ortalama) / std. sapma ile T-skoruna çevrilir ve harf notu T-skoru tablosundan belirlenir.')}
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className={labelCls}>Sınıf ortalaması</label>
-                <DecimalInput key={prevKey} value={draft.mean} onChange={(v) => set({ mean: v })} placeholder="Ör. 48,5" />
+                <label className={labelCls}>{t('Sınıf ortalaması')}</label>
+                <DecimalInput key={prevKey} value={draft.mean} onChange={(v) => set({ mean: v })} placeholder={t('Ör. 48,5')} />
               </div>
               <div>
-                <label className={labelCls}>Standart sapma</label>
-                <DecimalInput key={prevKey} value={draft.stdDev} onChange={(v) => set({ stdDev: v })} placeholder="Ör. 14" />
+                <label className={labelCls}>{t('Standart sapma')}</label>
+                <DecimalInput key={prevKey} value={draft.stdDev} onChange={(v) => set({ stdDev: v })} placeholder={t('Ör. 14')} />
               </div>
               <div>
-                <label className={labelCls}>Mutlak sistem eşiği</label>
+                <label className={labelCls}>{t('Mutlak sistem eşiği')}</label>
                 <DecimalInput
                   key={prevKey}
                   value={draft.absoluteAbove}
                   onChange={(v) => set({ absoluteAbove: Math.min(100, Math.max(0, v ?? 0)) })}
-                  title="Sınıf ortalaması bunun üzerindeyse mutlak değerlendirme uygulanır (0 = hiçbir zaman)"
+                  title={t('Sınıf ortalaması bunun üzerindeyse mutlak değerlendirme uygulanır (0 = hiçbir zaman)')}
                 />
               </div>
             </div>
             <label className="flex items-center gap-2 text-xs text-body">
               <input type="checkbox" checked={draft.autoTable} onChange={(e) => set({ autoTable: e.target.checked, boundaries: shownBoundaries })} />
-              Standart T-skoru tablosunu kullan (sınıf ortalamasına göre otomatik)
+              {t('Standart T-skoru tablosunu kullan (sınıf ortalamasına göre otomatik)')}
             </label>
           </>
         ) : (
           <p className="text-[11px] text-muted leading-relaxed">
-            Hocanın açıkladığı harf notu alt sınırlarını (ham not) girin. Ör. “AA: 78 ve üzeri, BA: 70 ve üzeri…”
+            {t('Hocanın açıkladığı harf notu alt sınırlarını (ham not) girin. Ör. “AA: 78 ve üzeri, BA: 70 ve üzeri…”')}
           </p>
         )}
 
@@ -133,9 +133,9 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-[11px] text-muted">
               <tr>
-                <th className="text-left font-medium px-3 py-1.5">Harf</th>
-                {draft.mode === 'tscore' && <th className="text-right font-medium px-3 py-1.5">Min. T-skoru</th>}
-                <th className="text-right font-medium px-3 py-1.5">{draft.mode === 'tscore' ? 'Gereken not' : 'Min. not'}</th>
+                <th className="text-left font-medium px-3 py-1.5">{t('Harf')}</th>
+                {draft.mode === 'tscore' && <th className="text-right font-medium px-3 py-1.5">{t('Min. T-skoru')}</th>}
+                <th className="text-right font-medium px-3 py-1.5">{draft.mode === 'tscore' ? t('Gereken not') : t('Min. not')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -144,7 +144,7 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
                 const editable = draft.mode === 'raw' || !draft.autoTable;
                 return (
                   <tr key={b.letter} className={grade.letter === b.letter ? 'bg-emerald-500/5' : ''}>
-                    <td className="px-3 py-1 font-medium text-fg">{b.letter}</td>
+                    <td className="px-3 py-1 font-medium text-fg">{tx(b.letter)}</td>
                     {draft.mode === 'tscore' && (
                       <td className="px-3 py-1 text-right tabular-nums text-body">
                         {editable ? (
@@ -172,23 +172,23 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
 
         <div className="rounded-lg bg-surface-2 border border-line px-3 py-2 text-xs text-subtle space-y-0.5">
           {scale.note ? (
-            <p className="text-amber-300/90">{scale.note}</p>
+            <p className="text-amber-300/90">{tx(scale.note)}</p>
           ) : (
-            scale.tableLabel && <p>Sınıf düzeyi: <span className="text-body">{scale.tableLabel}</span></p>
+            scale.tableLabel && <p>{t('Sınıf düzeyi:')}{' '}<span className="text-body">{tx(scale.tableLabel)}</span></p>
           )}
           {grade.average !== null ? (
             <p>
-              Mevcut ortalamanız <span className="text-fg font-semibold tabular-nums">{grade.average.toFixed(2)}</span>
-              {grade.tScore !== null && <> • T-skoru <span className="text-fg tabular-nums">{grade.tScore.toFixed(1)}</span></>}
-              {grade.letter ? <> → <span className="text-fg font-semibold">{grade.letter}</span></> : grade.missingWeight > 0 && ' (notlar tamamlanınca harf belli olur)'}
+              {t('Mevcut ortalamanız')}{' '}<span className="text-fg font-semibold tabular-nums">{tx(grade.average.toFixed(2))}</span>
+              {grade.tScore !== null && <>{' '}{t('• T-skoru')}{' '}<span className="text-fg tabular-nums">{tx(grade.tScore.toFixed(1))}</span></>}
+              {grade.letter ? <> → <span className="text-fg font-semibold">{tx(grade.letter)}</span></> : grade.missingWeight > 0 && t(' (notlar tamamlanınca harf belli olur)')}
             </p>
           ) : (
-            <p>Not girdikçe bu derse ait harf notu çan eğrisine göre hesaplanır.</p>
+            <p>{t('Not girdikçe bu derse ait harf notu çan eğrisine göre hesaplanır.')}</p>
           )}
-          <p className="text-muted">Final barajı ve devamsızlık kuralları çan eğrisinden önce uygulanır.</p>
+          <p className="text-muted">{t('Final barajı ve devamsızlık kuralları çan eğrisinden önce uygulanır.')}</p>
         </div>
 
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-400">{tx(error)}</p>}
 
         <div className="modal-actions flex flex-wrap items-center justify-between gap-2">
           {course.curve ? (
@@ -200,32 +200,32 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
                 onClose();
               }}
             >
-              Çan eğrisini kaldır
+              {t('Çan eğrisini kaldır')}
             </button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
-            <button type="button" className={btnSecondary} onClick={onClose}>Vazgeç</button>
-            <button type="button" className={btnPrimary} onClick={handleSave}>Uygula</button>
+            <button type="button" className={btnSecondary} onClick={onClose}>{t('Vazgeç')}</button>
+            <button type="button" className={btnPrimary} onClick={handleSave}>{t('Uygula')}</button>
           </div>
         </div>
         <details className="text-[11px] text-muted">
-          <summary className="cursor-pointer hover:text-subtle">Standart T-skoru tablosu</summary>
+          <summary className="cursor-pointer hover:text-subtle">{t('Standart T-skoru tablosu')}</summary>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full tabular-nums">
               <thead>
                 <tr className="text-left">
-                  <th className="pr-2 font-medium">Sınıf ort.</th>
+                  <th className="pr-2 font-medium">{t('Sınıf ort.')}</th>
                   {['AA', 'BA', 'BB', 'CB', 'CC', 'DC', 'DD', 'FD'].map((l) => (
-                    <th key={l} className="px-1 font-medium text-right">{l}</th>
+                    <th key={l} className="px-1 font-medium text-right">{tx(l)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {T_SCORE_TABLE.map((r) => (
                   <tr key={r.label}>
-                    <td className="pr-2 whitespace-nowrap">{r.label}</td>
+                    <td className="pr-2 whitespace-nowrap">{tx(r.label)}</td>
                     {r.mins.map((m, i) => (
                       <td key={i} className="px-1 text-right">{m}</td>
                     ))}
@@ -233,7 +233,7 @@ export function CurveModal({ isOpen, onClose, course, grading, term, onSave }: P
                 ))}
               </tbody>
             </table>
-            <p className="mt-1">Tablo üniversiteden üniversiteye küçük farklar gösterebilir; gerekirse otomatik tabloyu kapatıp düzenleyin.</p>
+            <p className="mt-1">{t('Tablo üniversiteden üniversiteye küçük farklar gösterebilir; gerekirse otomatik tabloyu kapatıp düzenleyin.')}</p>
           </div>
         </details>
       </div>
@@ -273,8 +273,8 @@ function DecimalInput({
       className={inputCls}
       inputMode="decimal"
       value={text}
-      placeholder={placeholder}
-      title={title}
+      placeholder={tx(placeholder)}
+      title={tx(title)}
       onChange={(e) => {
         const next = e.target.value.replace(/[^0-9.,]/g, '').slice(0, 7);
         setText(next);
