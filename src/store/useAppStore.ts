@@ -443,7 +443,7 @@ export function getComputedNotifications(): AppNotification[] {
       notifs.push({
         id: `notif-task-${task.id}`,
         title: tl('Gecikmiş Görev: {title}', { title: task.title }),
-        message: tl('Son teslim tarihi ({dueDate}) geçmiş ve henüz tamamlanmamış. Öncelik "Yüksek" olarak işaretlendi.', { dueDate: task.dueDate }),
+        message: tl('Son teslim tarihi ({dueDate}) geçmiş ve henüz tamamlanmamış. Öncelik "Yüksek" olarak işaretlendi.', { dueDate: task.dueTime ? `${task.dueDate} ${task.dueTime}` : task.dueDate }),
         type: 'task_overdue',
         priority: 'yuksek',
         isRead: globalState.preferences.readNotificationIds.includes(`notif-task-${task.id}`),
@@ -680,8 +680,29 @@ const loadUserData = async (silent = false, request?: Promise<Response>) => {
     globalState.isLoadingData = false;
     dataLoadedOnce = true;
     notify();
+    watchDueTimes();
   }
 };
+
+// A task becomes "Gecikmiş" the moment its saat (or the end of its day) passes. Nothing else changes
+// then, so a light check re-renders the bell, the lists and the banner when the overdue set changes.
+let dueWatch: ReturnType<typeof setInterval> | null = null;
+let overdueKey = '';
+function watchDueTimes() {
+  if (dueWatch || typeof window === 'undefined') return;
+  const check = () => {
+    if (!globalState.isAuthenticated) return;
+    const key = globalState.tasks
+      .filter(isTaskOverdue)
+      .map((t) => t.id)
+      .join(',');
+    if (key === overdueKey) return;
+    overdueKey = key;
+    notify();
+  };
+  check();
+  dueWatch = setInterval(check, 20_000);
+}
 
 /** Clears every in-memory record and reloads, so no data of the previous account survives. */
 function leaveTo(path: string) {

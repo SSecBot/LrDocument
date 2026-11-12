@@ -175,7 +175,7 @@ async function financeReminders(userId: string, today: string, fin: FinRow[], wh
   return sent;
 }
 
-/** Görev with a saat: a reminder at that time on its due day (any hour, like class reminders). */
+/** Görev with a saat: when that time comes it is overdue (Gecikmiş), so the notice comes right then (any hour). */
 async function taskTimeReminders(userId: string, now: Now): Promise<number> {
   const tasks = await prisma.task.findMany({ where: { userId, completed: false, dueDate: now.date, dueTime: { not: null } } });
   const due: Item[] = [];
@@ -189,8 +189,8 @@ async function taskTimeReminders(userId: string, now: Now): Promise<number> {
     userId,
     'work',
     due,
-    (i) => ({ title: 'Görevin saati geldi', body: i.label, tab: 'tasks', tag: 'lr-task-time' }),
-    (n, list) => ({ title: `${n} görevin saati geldi`, body: list, tab: 'tasks', tag: 'lr-task-time' })
+    (i) => ({ title: 'Görevin süresi doldu', body: i.label, tab: 'tasks', tag: 'lr-task-time' }),
+    (n, list) => ({ title: `${n} görevin süresi doldu`, body: list, tab: 'tasks', tag: 'lr-task-time' })
   );
 }
 

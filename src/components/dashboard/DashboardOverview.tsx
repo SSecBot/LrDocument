@@ -9,6 +9,7 @@ import { AlertBanner } from './AlertBanner';
 import { VerificationBanner } from './VerificationBanner';
 import { AcademicSummaryWidget, ExchangeWidget, FinanceSummaryWidget, MonthCalendarWidget, PinnedNotesWidget } from './ExtraWidgets';
 import { StudentDashboardCard } from '@/components/academic/StudentDashboardCard';
+import { StudyDashboardCard } from '@/components/academic/StudyDashboardCard';
 import { hasStudentAccess } from '@/lib/access';
 import { canEdit, canView, isCorporate } from '@/lib/corporate';
 import { customerSummary } from '@/lib/customers';
@@ -41,6 +42,7 @@ type WidgetId = WidgetSetting['id'];
 /** Genel bakış sections in their default order and visibility. */
 const WIDGETS: { id: WidgetId; label: string; hint: string; wide?: boolean; visible: boolean }[] = [
   { id: 'student', label: 'Ders Takibi', hint: 'Bugünkü dersler, devamsızlık ve sınavlar', wide: true, visible: true },
+  { id: 'study', label: 'Çalışma takvimi', hint: 'Bugünkü ders çalışma saatleri ve hızlı işaretleme', visible: true },
   { id: 'stats', label: 'Özet kartları', hint: 'Not, görev, takvim ve bakiye sayıları', wide: true, visible: true },
   { id: 'notes', label: 'Son notlar', hint: 'En son düzenlenen notlar', visible: true },
   { id: 'events', label: 'Yaklaşan etkinlikler', hint: 'Takvimdeki sıradaki etkinlikler', visible: true },
@@ -193,6 +195,7 @@ export const DashboardOverview: React.FC = () => {
   // Widgets this person can have (account type, kurumsal permissions), in the saved order.
   const available: Record<WidgetId, boolean> = {
     student: studentAccess,
+    study: studentAccess,
     stats: stats.length > 0,
     notes: canView(currentUser, 'notes'),
     events: canView(currentUser, 'calendar'),
@@ -381,6 +384,7 @@ export const DashboardOverview: React.FC = () => {
 
   const widgetContent: Record<WidgetId, React.ReactNode> = {
     student: <StudentDashboardCard />,
+    study: <StudyDashboardCard />,
     stats: statsWidget,
     notes: notesWidget,
     events: eventsWidget,

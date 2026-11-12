@@ -14,6 +14,17 @@ const fields = {
   /** Calendar layers the user turned off (see src/lib/calendarFeed.ts). */
   calendarHiddenLayers: z.array(z.enum(['etkinlik', 'gorev', 'finans', 'ders', 'sinav', 'akademik', 'resmi', 'kanban', 'musteri'])).max(20),
   tasksView: z.enum(['liste', 'pano']),
+  /** Finans: the filters chosen last, restored when Finans opens again. */
+  financeFilters: z
+    .object({
+      type: z.enum(['all', 'gelir', 'gider']),
+      status: z.enum(['all', 'recurring', 'unconfirmed', 'confirmed']),
+      currency: z.enum(['all', 'TRY', 'USD', 'EUR']),
+      priority: z.enum(['all', 'yuksek', 'orta', 'dusuk']),
+      period: z.enum(['all', 'this_month', 'last_month']),
+      sort: z.enum(['priority', 'date', 'amount']),
+    })
+    .strict(),
   exchangeMarkupTRY: z.number().min(0).max(1000).nullable(),
   readNotificationIds: z.array(z.string().max(200)).max(500),
   dismissedNotificationIds: z.array(z.string().max(200)).max(500),
@@ -58,7 +69,7 @@ const fields = {
   /** "Ana ekrana ekle" reminder: the person chose "Bir daha gösterme". */
   installPromptOff: z.boolean(),
   dashboardWidgets: z
-    .array(z.object({ id: z.enum(['student', 'stats', 'notes', 'events', 'tasks', 'payments', 'month', 'exchange', 'academic', 'financeSummary', 'pinned']), visible: z.boolean() }).strict())
+    .array(z.object({ id: z.enum(['student', 'study', 'stats', 'notes', 'events', 'tasks', 'payments', 'month', 'exchange', 'academic', 'financeSummary', 'pinned']), visible: z.boolean() }).strict())
     .max(20),
 };
 
@@ -72,6 +83,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   calendarPanelCollapsed: false,
   calendarHiddenLayers: [],
   tasksView: 'liste',
+  financeFilters: { type: 'all', status: 'all', currency: 'all', priority: 'all', period: 'this_month', sort: 'priority' },
   exchangeMarkupTRY: null,
   readNotificationIds: [],
   dismissedNotificationIds: [],

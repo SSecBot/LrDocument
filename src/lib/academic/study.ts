@@ -4,12 +4,13 @@ import { t } from '@/lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Ders çalışma takvimi: weekly study slots per course (chosen by the student, like a timetable),
-// what was studied, and the "devamsızlık" of studying: when more than %40 of the study time so far
-// was not studied, the student is warned how many hours to add to later sessions.
+// what was studied, and the "devamsızlık" of studying: at least %60 of the term's whole study plan
+// must be studied, so when the missed time passes %40 of the plan for the term the student is warned
+// how many hours to add to later sessions.
 // Shared by the page and the push reminders (server), so it uses plain dates only.
 // ---------------------------------------------------------------------------
 
-/** Above this share of missed study time the course gets a warning. */
+/** Above this share of the term's planned study time missed, the course gets a warning. */
 export const STUDY_WARN_RATIO = 0.4;
 /** A count of past days is limited (a term is ~4 months). */
 const MAX_DAYS = 400;
@@ -56,8 +57,18 @@ export function studySessionsOf(data: AcademicData, termId: string): StudySessio
  * up to now (and the term end).
  */
 export function pastOccurrences(session: StudySession, term: Term | undefined, now: StudyNow): string[] {
+  return occurrences(session, term, now.date).filter((day) => day < now.date || now.minutes >= toMinutes(session.end));
+}
+
+/** The slot takes place on `date` (its weekday, after it was added, within the term). */
+export function occursOn(session: StudySession, term: Term | undefined, date: string): boolean {
+  if (weekdayOf(date) !== session.day || date < session.since) return false;
+  return !term || !hasCalendar(term) || (date >= term.start && date <= term.end);
+}
+
+/** Every day the slot takes place from when it was added (and the term start) up to `until` (and the term end). */
+function occurrences(session: StudySession, term: Term | undefined, until: string): string[] {
   let from = session.since;
-  let until = now.date;
   if (term && hasCalendar(term)) {
     if (term.start > from) from = term.start;
     if (term.end < until) until = term.end;
@@ -67,7 +78,7 @@ export function pastOccurrences(session: StudySession, term: Term | undefined, n
   let day = addDays(from, (session.day - weekdayOf(from) + 7) % 7);
   const out: string[] = [];
   for (let i = 0; day <= until && i < MAX_DAYS / 7 + 2; i++) {
-    if (day < now.date || now.minutes >= toMinutes(session.end)) out.push(day);
+    out.push(day);
     day = addDays(day, 7);
   }
   return out;
@@ -80,12 +91,17 @@ export interface CourseStudyStats {
   weeklyMinutes: number;
   /** Planned minutes of the slots that already took place */
   plannedMinutes: number;
+  /** Planned minutes of the whole term (only the slots so far when the term has no dates) */
+  termMinutes: number;
+  /** Missed time the term still allows before the warning (%40 of termMinutes minus the deficit) */
+  allowanceMinutes: number;
   studiedMinutes: number;
   missedMinutes: number;
+  /** Extra study outside the plan (telafi or any other time) */
   makeupMinutes: number;
   /** Missed time not yet made up: "x saat eksik" */
   deficitMinutes: number;
-  /** deficit / planned */
+  /** deficit / termMinutes */
   ratio: number;
   warn: boolean;
   /** Slots that ended without an entry (counted as not studied) */
@@ -104,11 +120,13 @@ export function courseStudyStats(data: AcademicData, term: Term | undefined, cou
   return courses.map((course) => {
     const own = sessions.filter((s) => s.courseId === course.id);
     let planned = 0;
+    let termTotal = 0;
     let studied = 0;
     let missed = 0;
     const unmarked: CourseStudyStats['unmarked'] = [];
     for (const s of own) {
       const length = slotMinutes(s);
+      if (term && hasCalendar(term)) termTotal += length * occurrences(s, term, term.end).length;
       for (const date of pastOccurrences(s, term, now)) {
         planned += length;
         const log = byKey.get(logKey(s.id, date));
@@ -127,28 +145,34 @@ export function courseStudyStats(data: AcademicData, term: Term | undefined, cou
       .filter((l) => l.status === 'makeup' && l.courseId === course.id && (!term || !hasCalendar(term) || (l.date >= term.start && l.date <= term.end)))
       .reduce((sum, l) => sum + (l.minutes ?? 0), 0);
     const deficit = Math.max(0, missed - makeup);
-    const ratio = planned > 0 ? deficit / planned : 0;
+    // The %60 rule applies to the whole term, like class attendance: a missed slot early in the term
+    // is measured against everything planned until the term ends, not just the weeks so far.
+    const termMinutes = Math.max(termTotal, planned);
+    const ratio = termMinutes > 0 ? deficit / termMinutes : 0;
     return {
       course,
       sessions: own,
       weeklyMinutes: own.reduce((sum, s) => sum + slotMinutes(s), 0),
       plannedMinutes: planned,
-      studiedMinutes: studied + Math.min(makeup, missed),
+      termMinutes,
+      allowanceMinutes: Math.max(0, Math.floor(termMinutes * STUDY_WARN_RATIO) - deficit),
+      studiedMinutes: studied + makeup,
       missedMinutes: missed,
       makeupMinutes: makeup,
       deficitMinutes: deficit,
       ratio,
-      warn: planned > 0 && ratio > STUDY_WARN_RATIO,
+      warn: termMinutes > 0 && ratio > STUDY_WARN_RATIO,
       unmarked: unmarked.sort((a, b) => b.date.localeCompare(a.date)),
     };
   });
 }
 
 /** The warning sentence shown in Ders Takibi and in the end-of-study notification. */
-export function studyWarning(s: Pick<CourseStudyStats, 'course' | 'ratio' | 'deficitMinutes'>): string {
-  return `${s.course.code || s.course.name}: çalışma saatlerinin %${Math.round(s.ratio * 100)}’i yapılmadı. ${formatDuration(
+export function studyWarning(s: Pick<CourseStudyStats, 'course' | 'ratio' | 'deficitMinutes' | 'termMinutes'>): string {
+  const over = s.deficitMinutes - Math.floor(s.termMinutes * STUDY_WARN_RATIO);
+  return `${s.course.code || s.course.name}: dönemin çalışma planının %${Math.round(s.ratio * 100)}’i yapılmadı (en az %${Math.round((1 - STUDY_WARN_RATIO) * 100)} çalışılmalı). ${formatDuration(
     s.deficitMinutes
-  )} eksik — ileriki çalışmalara eklenmeli.`;
+  )} eksik — en az ${formatDuration(Math.max(1, over))} ileriki çalışmalara eklenmeli.`;
 }
 
 /** Two slots of the same day overlap. */

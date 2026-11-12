@@ -4,7 +4,7 @@ import { t as tl, tx } from '@/lib/i18n';
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, GraduationCap } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { addDays, DAYS, dayPlan, formatDayPlanEmpty, nextClassDay, upcomingExams } from '@/lib/academic/grading';
+import { addDays, DAYS, dayPlan, formatDayPlanEmpty, nextClassDay, showsNextDay, upcomingExams } from '@/lib/academic/grading';
 import { toLocalDateString } from '@/lib/utils';
 import { useAcademicData } from './useAcademicData';
 import { ExamRow } from './ExamsTab';
@@ -17,7 +17,7 @@ export function StudentDashboardCard() {
   const { setActiveTab, systemSettings } = useAppStore();
   const { data } = useAcademicData();
   const now = useNow();
-  // null = automatic: today until 17:00, tomorrow afterwards.
+  // null = automatic: today until its last class is over, then the next day with classes.
   const [view, setView] = useState<'today' | 'tomorrow' | 'week' | null>(null);
 
   if (!data) return null;
@@ -42,10 +42,13 @@ export function StudentDashboardCard() {
   }
 
   const term = data.terms.find((t) => t.id === termId);
-  const shown = view ?? (now.getHours() >= systemSettings.academic.tomorrowFromHour ? 'tomorrow' : 'today');
+  const shown = view ?? (showsNextDay(courses, term, now, systemSettings.academic.tomorrowFromHour) ? 'tomorrow' : 'today');
   const tomorrow = shown === 'tomorrow';
   const todayIso = toLocalDateString(now);
-  const plan = dayPlan(courses, term, tomorrow ? addDays(todayIso, 1) : todayIso);
+  const tomorrowIso = addDays(todayIso, 1);
+  let plan = dayPlan(courses, term, tomorrow ? tomorrowIso : todayIso);
+  // Looking ahead on its own (e.g. Friday evening): the next day that has classes, not an empty Saturday.
+  if (!view && tomorrow && plan.sessions.length === 0 && !plan.outside) plan = nextClassDay(courses, term, todayIso) ?? plan;
   const empty = formatDayPlanEmpty(plan, tomorrow, term);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -94,7 +97,7 @@ export function StudentDashboardCard() {
         ) : (
           <ul className="divide-y divide-line">
             <li className="px-4 py-1.5 text-[11px] text-muted">
-              {tomorrow ? tl('Yarın') : tl('Bugün')} • {tx(DAYS[plan.weekday])}
+              {plan.date === todayIso ? tl('Bugün') : plan.date === tomorrowIso ? tl('Yarın') : tl('Sıradaki ders günü')} • {tx(DAYS[plan.weekday])}
               {plan.halfHoliday ? tl(' • {name}: 13:00 sonrası ders yok', { name: plan.halfHoliday.name }) : ''}
             </li>
             {plan.sessions.map(({ course, session }) => {

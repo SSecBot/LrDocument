@@ -33,9 +33,9 @@ export const AlertBanner: React.FC = () => {
   // 1. Overdue uncompleted tasks
   const overdueTasks = tasks.filter((t) => isTaskOverdue(t));
 
-  // 2. Today's pending tasks
+  // 2. Today's pending tasks (a task whose saat already passed is listed as overdue instead)
   const todayTasks = tasks.filter((t) => {
-    if (t.completed || !t.dueDate) return false;
+    if (t.completed || !t.dueDate || isTaskOverdue(t)) return false;
     return t.dueDate === todayStr;
   });
 

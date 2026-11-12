@@ -111,13 +111,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setDescription('');
       setIsRecurring(false);
       setRecurringFrequency('aylik');
-      setIsConfirmed(true);
+      // A new expense starts as "ödenmedi": it is marked once actually paid. Income starts as received.
+      setIsConfirmed(startType === 'gelir');
     }
   }
 
   const handleTypeChange = (newType: FinanceTransactionType) => {
     setType(newType);
     if (newType === 'gelir') setIsDebt(false);
+    if (!editTransaction) setIsConfirmed(newType === 'gelir');
     const defaultCat = financeCategories.find(c => c.type === newType)?.name || '';
     setCategory(defaultCat);
     setFormErrors((prev) => {

@@ -321,6 +321,20 @@ export function formatDayPlanEmpty(plan: DayPlan, tomorrow: boolean, term?: Term
   return { title: `${when} dersiniz yok` };
 }
 
+/**
+ * Whether the day's schedule cards look ahead to the next day: once all of today's classes are over,
+ * or (on a day without classes) from `fromHour` on.
+ */
+export function showsNextDay(courses: Course[], term: Term | undefined | null, now: Date, fromHour: number): boolean {
+  const today = dayPlan(courses, term, toLocal(now));
+  if (today.sessions.length === 0) return now.getHours() >= fromHour;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  return today.sessions.every(({ session }) => toMin(session.end) <= minutes);
+}
+
+const toLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 /** First day after `date` (within three weeks) that has a class, with its earliest session. */
 export function nextClassDay(courses: Course[], term: Term | undefined | null, date: string): DayPlan | null {
   for (let i = 1; i <= 21; i++) {

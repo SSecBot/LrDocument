@@ -22,11 +22,20 @@
     <main>
       <div class="card">
         <img src="/icons/icon-192.png" alt="" />
-        <h1>İnternet bağlantısı yok</h1>
-        <p>LrDocument’e ulaşılamıyor. Bağlantınız geri geldiğinde kaldığınız yerden devam edebilirsiniz; kaydedilmiş verileriniz sunucuda güvende.</p>
-        <p class="en" lang="en">No internet connection. You can continue where you left off once you are back online; your saved data is safe on the server.</p>
+        <h1 id="title">İnternet bağlantısı yok</h1>
+        <p id="tr">LrDocument’e ulaşılamıyor. Bağlantınız geri geldiğinde kaldığınız yerden devam edebilirsiniz; kaydedilmiş verileriniz sunucuda güvende.</p>
+        <p id="en" class="en" lang="en">No internet connection. You can continue where you left off once you are back online; your saved data is safe on the server.</p>
         <a href="/dashboard">Tekrar dene · Try again</a>
       </div>
     </main>
+    <script>
+      // The device is online, so the server (not the connection) could not be reached.
+      if (navigator.onLine) {
+        document.title = 'Sunucuya ulaşılamıyor · LrDocument';
+        document.getElementById('title').textContent = 'Sunucuya şu an ulaşılamıyor';
+        document.getElementById('tr').textContent = 'İnternet bağlantınız var ama LrDocument şu an yanıt vermiyor. Birkaç dakika sonra tekrar deneyin; kaydedilmiş verileriniz sunucuda güvende.';
+        document.getElementById('en').textContent = 'You are online, but LrDocument is not responding right now. Please try again in a few minutes; your saved data is safe on the server.';
+      }
+    </script>
   </body>
 </html>

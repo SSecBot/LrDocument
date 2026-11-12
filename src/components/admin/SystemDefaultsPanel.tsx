@@ -47,7 +47,7 @@ const GROUPS: { title: string; hint?: string; fields: Field[] }[] = [
   {
     title: 'Ders takibi — genel',
     fields: [
-      { kind: 'number', path: 'academic.tomorrowFromHour', label: 'Yarının programı şu saatten itibaren', unit: ':00', step: 1, min: 0, max: 23 },
+      { kind: 'number', path: 'academic.tomorrowFromHour', label: 'Dersi olmayan günlerde yarının programı şu saatten itibaren', unit: ':00', step: 1, min: 0, max: 23 },
       { kind: 'number', path: 'academic.defaultCredit', label: 'Yeni ders kredisi', min: 0, max: 30 },
       { kind: 'number', path: 'academic.defaultEcts', label: 'Yeni ders AKTS', min: 0, max: 60 },
     ],

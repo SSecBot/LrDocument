@@ -16,6 +16,7 @@ import {
   isAttendanceExempt,
   newId,
   sessionHours,
+  showsNextDay,
   summarizeAll,
   summarizeTerm,
   upcomingExams,
@@ -47,9 +48,9 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
   const today = toLocalDateString(now);
   const basisLabel = data.grading.gpaBasis === 'ects' ? 'AKTS' : 'kredi';
 
-  // From 17:00 the card looks ahead to tomorrow; the user can still switch back to mark absences.
+  // Once today's classes are over the card looks ahead to tomorrow; the user can still switch back to mark absences.
   const [dayPick, setDayPick] = useState<'today' | 'tomorrow' | null>(null);
-  const showTomorrow = (dayPick ?? (now.getHours() >= systemSettings.academic.tomorrowFromHour ? 'tomorrow' : 'today')) === 'tomorrow';
+  const showTomorrow = (dayPick ?? (showsNextDay(courses, term, now, systemSettings.academic.tomorrowFromHour) ? 'tomorrow' : 'today')) === 'tomorrow';
   const plan = dayPlan(courses, term, showTomorrow ? addDays(today, 1) : today);
   const empty = formatDayPlanEmpty(plan, showTomorrow, term);
 
@@ -71,9 +72,9 @@ export function OverviewTab({ data, term, courses, update, onAddCourse, onOpenTa
     return items;
   });
 
-  // Ders çalışma takvimi: more than %40 of the study time not studied.
+  // Ders çalışma takvimi: more than %40 of the term's study plan not studied.
   for (const s of courseStudyStats(data, term, courses, { date: today, minutes: now.getHours() * 60 + now.getMinutes() })) {
-    if (s.warn) attention.push({ course: s.course, text: tl('Çalışmaların %{v0}’i yapılmadı — {v1} eksik, ileriki çalışmalara eklenmeli', { v0: Math.round(s.ratio * 100), v1: formatDuration(s.deficitMinutes) }), severity: 'bad' });
+    if (s.warn) attention.push({ course: s.course, text: tl('Dönemin çalışma planının %{v0}’i yapılmadı — {v1} eksik, ileriki çalışmalara eklenmeli', { v0: Math.round(s.ratio * 100), v1: formatDuration(s.deficitMinutes) }), severity: 'bad' });
   }
 
   const absentToday = (course: Course, kind: string) => course.absences.find((a) => a.date === today && a.kind === kind);

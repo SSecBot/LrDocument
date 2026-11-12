@@ -2,12 +2,14 @@
 
 import { t, tx } from '@/lib/i18n';
 import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { canEdit, isCorporate } from '@/lib/corporate';
 import { AccountSwitcher } from './AccountSwitcher';
 import {
   Menu,
+  LayoutDashboard,
   Search,
   Plus,
   Bell,
@@ -43,6 +45,9 @@ export const Header: React.FC = () => {
     currentUser,
     addToast,
   } = useAppStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const onOverview = activeTab === 'dashboard' && pathname === '/dashboard';
 
   const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
@@ -109,6 +114,22 @@ export const Header: React.FC = () => {
           title={t('Menü')}
         >
           <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Phones: one tap back to Genel bakış */}
+        <button
+          onClick={() => {
+            setActiveTab('dashboard');
+            if (pathname !== '/dashboard') router.push('/dashboard');
+          }}
+          className={`[@media(min-width:768px)_and_(min-height:501px)]:hidden w-10 h-10 -ml-1 sm:-ml-2 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+            onOverview ? 'text-brand-light bg-surface-2' : 'text-subtle hover:text-fg hover:bg-surface-2'
+          }`}
+          aria-label={t('Genel Bakış')}
+          aria-current={onOverview ? 'page' : undefined}
+          title={t('Genel Bakış')}
+        >
+          <LayoutDashboard className="w-5 h-5" />
         </button>
 
         <div className="min-w-0">

@@ -45,15 +45,26 @@ export const FinanceWorkspace: React.FC = () => {
     fetchExchangeRates,
     addToast,
     currentUser,
+    preferences,
+    setPreference,
   } = useAppStore();
   const showAuthor = isCorporate(currentUser);
 
-  const [typeFilter, setTypeFilter] = useState<FinanceTransactionType | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'recurring' | 'unconfirmed' | 'confirmed'>('all');
-  const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
-  const [currencyFilter, setCurrencyFilter] = useState<CurrencyCode | 'all'>('all');
-  const [sortBy, setSortBy] = useState<'priority' | 'date' | 'amount'>('priority');
-  const [periodFilter, setPeriodFilter] = useState<'all' | 'this_month' | 'last_month'>('this_month');
+  // The chosen filters are kept (in the account's preferences): Finans opens with them next time.
+  const filters = preferences.financeFilters;
+  const setFilter = (patch: Partial<typeof filters>) => setPreference('financeFilters', { ...filters, ...patch });
+  const typeFilter = filters.type;
+  const statusFilter = filters.status;
+  const priorityFilter = filters.priority;
+  const currencyFilter = filters.currency;
+  const sortBy = filters.sort;
+  const periodFilter = filters.period;
+  const setTypeFilter = (type: FinanceTransactionType | 'all') => setFilter({ type });
+  const setStatusFilter = (status: typeof statusFilter) => setFilter({ status });
+  const setPriorityFilter = (priority: TaskPriority | 'all') => setFilter({ priority });
+  const setCurrencyFilter = (currency: CurrencyCode | 'all') => setFilter({ currency });
+  const setSortBy = (sort: typeof sortBy) => setFilter({ sort });
+  const setPeriodFilter = (period: typeof periodFilter) => setFilter({ period });
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);

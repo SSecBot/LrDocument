@@ -35,8 +35,9 @@ type Mark = 'done' | 'partial' | 'missed';
 /**
  * Ders Takibi › Çalışma takvimi: the student picks weekly study slots for each course of the term
  * (the courses come from the ders programı). Each slot sends a notification when it starts and when
- * it ends; afterwards the student marks it. More than %40 of the study time missed → a warning with
- * the hours to add to later sessions.
+ * it ends; afterwards the student marks it. Study outside the plan can be added as extra study. At
+ * least %60 of the term's plan must be studied: more than %40 of it missed → a warning with the hours
+ * to add to later sessions.
  */
 export function StudyTab({ data, term, courses, update }: Props) {
   const now = useNow(30_000);
@@ -97,7 +98,7 @@ export function StudyTab({ data, term, courses, update }: Props) {
         <Stat label={t('Haftalık plan')} value={formatDuration(totals.weekly)} hint={t('{length} çalışma saati', { length: sessions.length })} />
         <Stat label={t('Bu dönem çalışılan')} value={formatDuration(totals.studied)} hint={totals.planned ? t('planlanan {duration}', { duration: formatDuration(totals.planned) }) : t('henüz çalışma geçmedi')} tone={totals.studied ? 'good' : undefined} />
         <Stat label={t('Eksik')} value={formatDuration(totals.deficit)} hint={t('ileriki çalışmalara eklenmeli')} tone={totals.deficit ? 'warn' : undefined} />
-        <Stat label={t('Uyarı')} value={warnings.length} hint={t('%{v0} sınırını aşan ders', { v0: Math.round(STUDY_WARN_RATIO * 100) })} tone={warnings.length ? 'bad' : 'good'} />
+        <Stat label={t('Uyarı')} value={warnings.length} hint={t('dönemde en az %{v0} çalışılmalı', { v0: Math.round((1 - STUDY_WARN_RATIO) * 100) })} tone={warnings.length ? 'bad' : 'good'} />
       </div>
 
       {warnings.length > 0 && (
@@ -182,14 +183,25 @@ export function StudyTab({ data, term, courses, update }: Props) {
                 <span className="text-[11px] text-muted whitespace-nowrap">haftada {tx(formatDuration(s.weeklyMinutes))}</span>
               </div>
 
-              {s.plannedMinutes > 0 && (
+              {(s.plannedMinutes > 0 || s.makeupMinutes > 0) && (
                 <div className="space-y-1">
-                  <Progress value={s.studiedMinutes} max={s.plannedMinutes} state={s.warn ? 'over' : s.ratio > STUDY_WARN_RATIO / 2 ? 'warn' : 'ok'} />
+                  {s.plannedMinutes > 0 && <Progress value={Math.min(s.studiedMinutes, s.plannedMinutes)} max={s.plannedMinutes} state={s.warn ? 'over' : s.ratio > STUDY_WARN_RATIO / 2 ? 'warn' : 'ok'} />}
                   <p className={`text-[11px] ${s.warn ? 'text-rose-300' : 'text-muted'}`}>
-                    {tx(formatDuration(s.studiedMinutes))} / {tx(formatDuration(s.plannedMinutes))}{' '}{t('çalışıldı')}
-                    {s.deficitMinutes > 0 ? ` · ${formatDuration(s.deficitMinutes)} eksik (%${Math.round(s.ratio * 100)})` : ''}
-                    {s.makeupMinutes > 0 ? ` · ${formatDuration(s.makeupMinutes)} telafi` : ''}
+                    {s.plannedMinutes > 0
+                      ? t('{studied} / {planned} çalışıldı', { studied: formatDuration(s.studiedMinutes), planned: formatDuration(s.plannedMinutes) })
+                      : t('{studied} çalışıldı', { studied: formatDuration(s.studiedMinutes) })}
+                    {s.deficitMinutes > 0 ? t(' · {deficit} eksik (dönem planının %{ratio}’i)', { deficit: formatDuration(s.deficitMinutes), ratio: Math.round(s.ratio * 100) }) : ''}
+                    {s.makeupMinutes > 0 ? t(' · {extra} takvim dışı', { extra: formatDuration(s.makeupMinutes) }) : ''}
                   </p>
+                  {s.termMinutes > 0 && !s.warn && (
+                    <p className="text-[11px] text-muted">
+                      {t('Dönem planı {total} · en fazla {limit} eksik kalabilir · kalan {left}', {
+                        total: formatDuration(s.termMinutes),
+                        limit: formatDuration(Math.floor(s.termMinutes * STUDY_WARN_RATIO)),
+                        left: formatDuration(s.allowanceMinutes),
+                      })}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -210,11 +222,9 @@ export function StudyTab({ data, term, courses, update }: Props) {
                     <Plus className="w-3.5 h-3.5" />{' '}{t('Çalışma saati ekle')}
                   </button>
                 )}
-                {s.plannedMinutes > 0 && (
-                  <button className={btnGhost} onClick={() => setMakeup(s.course)} title={t('Eksik kalan saatleri telafi ettiğiniz çalışmayı ekleyin')}>
-                    {t('Telafi ekle')}
-                  </button>
-                )}
+                <button className={btnGhost} onClick={() => setMakeup(s.course)} title={t('Çalışma takvimi dışında çalıştığınız süreyi ekleyin')}>
+                  <Plus className="w-3.5 h-3.5" />{' '}{t('Takvim dışı çalışma ekle')}
+                </button>
               </div>
 
               {adding === s.course.id && (
@@ -230,7 +240,19 @@ export function StudyTab({ data, term, courses, update }: Props) {
                 />
               )}
 
-              {s.sessions.length > 0 && <History stats={s} term={term} now={nowInfo} logs={data.study?.logs ?? []} onMark={(session, date, m) => (m === 'partial' ? setPartial({ session, date }) : mark(session, date, m))} />}
+              <History
+                stats={s}
+                term={term}
+                now={nowInfo}
+                logs={data.study?.logs ?? []}
+                onMark={(session, date, m) => (m === 'partial' ? setPartial({ session, date }) : mark(session, date, m))}
+                onRemoveExtra={(log) =>
+                  setStudy((st) => ({ ...st, logs: st.logs.filter((l) => !(l.status === 'makeup' && l.courseId === log.courseId && l.date === log.date && l.minutes === log.minutes)) }), {
+                    title: t('Takvim dışı çalışma silindi'),
+                    message: `${s.course.code || s.course.name} · ${formatTurkishDate(log.date)} · ${formatDuration(log.minutes ?? 0)}`,
+                  })
+                }
+              />
             </li>
           ))}
         </ul>
@@ -276,7 +298,7 @@ function MarkButtons({ onMark, current }: { onMark: (m: Mark) => void; current?:
 }
 
 /** Weekly view of the study slots (like the ders programı). */
-function StudyWeek({ sessions, courseOf, today, nowMinutes }: { sessions: StudySession[]; courseOf: (id: string) => Course | undefined; today: string; nowMinutes: number }) {
+export function StudyWeek({ sessions, courseOf, today, nowMinutes }: { sessions: StudySession[]; courseOf: (id: string) => Course | undefined; today: string; nowMinutes: number }) {
   const used = new Set(sessions.map((s) => s.day));
   const days = [0, 1, 2, 3, 4, ...(used.has(5) ? [5] : []), ...(used.has(6) ? [6] : [])];
   const todayIndex = (new Date(`${today}T12:00:00`).getDay() + 6) % 7;
@@ -387,17 +409,24 @@ function History({
   now,
   logs,
   onMark,
+  onRemoveExtra,
 }: {
   stats: ReturnType<typeof courseStudyStats>[number];
   term: Term;
   now: { date: string; minutes: number };
   logs: StudyLog[];
   onMark: (session: StudySession, date: string, m: Mark) => void;
+  onRemoveExtra: (log: StudyLog) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const items = stats.sessions
-    .flatMap((session) => pastOccurrences(session, term, now).map((date) => ({ session, date })))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.session.start.localeCompare(a.session.start));
+  // Slots that took place, plus the study added outside the plan.
+  const slots = stats.sessions.flatMap((session) => pastOccurrences(session, term, now).map((date) => ({ date, session, extra: null })));
+  const extras = logs
+    .filter((l) => l.status === 'makeup' && l.courseId === stats.course.id && (!hasCalendar(term) || (l.date >= term.start && l.date <= term.end)))
+    .map((l) => ({ date: l.date, session: null, extra: l }));
+  const items: { date: string; session: StudySession | null; extra: StudyLog | null }[] = [...slots, ...extras].sort(
+    (a, b) => b.date.localeCompare(a.date) || (b.session?.start ?? '').localeCompare(a.session?.start ?? '')
+  );
   if (!items.length) return null;
   const logOf = (sessionId: string, date: string) => logs.find((l) => l.sessionId === sessionId && l.date === date);
   return (
@@ -407,7 +436,19 @@ function History({
       </button>
       {open && (
         <ul className="mt-1.5 space-y-1">
-          {items.slice(0, 20).map(({ session, date }) => {
+          {items.slice(0, 20).map(({ session, date, extra }, i) => {
+            if (!session) {
+              return (
+                <li key={`extra-${date}-${i}`} className="flex items-center gap-1.5 text-xs">
+                  <span className="text-muted tabular-nums flex-1">
+                    {tx(formatTurkishDate(date))} · <span className="text-emerald-300">{t('Takvim dışı çalışma')}</span> · {tx(formatDuration(extra?.minutes ?? 0))}
+                  </span>
+                  <button onClick={() => extra && onRemoveExtra(extra)} className="w-8 h-8 rounded inline-flex items-center justify-center text-muted hover:text-rose-400" aria-label={t('Takvim dışı çalışmayı sil')}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              );
+            }
             const log = logOf(session.id, date);
             return (
               <li key={`${session.id}-${date}`} className="flex flex-col sm:flex-row sm:items-center gap-1.5 text-xs">
@@ -462,7 +503,7 @@ function MakeupModal({ course, deficit, today, onClose, onSave }: { course: Cour
   const value = Number(minutes);
   const valid = minutes !== '' && Number.isFinite(value) && value > 0 && value <= 24 * 60 && !!date && date <= today;
   return (
-    <Modal isOpen={!!course} onClose={onClose} title={t('Telafi çalışması')} subtitle={course ? `${course.code || course.name}${deficit ? ` · ${formatDuration(deficit)} eksik` : ''}` : ''} maxWidth="max-w-sm">
+    <Modal isOpen={!!course} onClose={onClose} title={t('Takvim dışı çalışma')} subtitle={course ? `${course.code || course.name}${deficit ? ` · ${formatDuration(deficit)} eksik` : ''}` : ''} maxWidth="max-w-sm">
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -472,7 +513,7 @@ function MakeupModal({ course, deficit, today, onClose, onSave }: { course: Cour
           setMinutes('');
         }}
       >
-        <p className="text-xs text-muted">{t('Kaçırdığınız saatleri başka bir zaman çalıştıysanız ekleyin; eksik süreden düşülür.')}</p>
+        <p className="text-xs text-muted">{t('Çalışma takviminiz dışında bu derse çalıştıysanız ekleyin; çalışılan süreye eklenir, eksik süre varsa ondan düşülür.')}</p>
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
             <span className={labelCls}>{t('Süre (dakika)')}</span>
